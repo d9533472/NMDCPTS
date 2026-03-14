@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OPTS — Offshore Personnel Transfer System</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg-primary: #0a0e17;
+  --bg-secondary: #111827;
+  --bg-card: #1a2236;
+  --bg-card-hover: #1f2a42;
+  --bg-input: #0f1729;
+  --border: #2a3a5c;
+  --border-light: #1e2d4d;
+  --text-primary: #e8edf5;
+  --text-secondary: #8899b8;
+  --text-muted: #556688;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-glow: rgba(59,130,246,0.15);
+  --success: #10b981;
+  --success-bg: rgba(16,185,129,0.1);
+  --warning: #f59e0b;
+  --warning-bg: rgba(245,158,11,0.1);
+  --danger: #ef4444;
+  --danger-bg: rgba(239,68,68,0.1);
+  --info: #06b6d4;
+  --info-bg: rgba(6,182,212,0.1);
+  --orange: #f97316;
+  --purple: #8b5cf6;
+  --sidebar-w: 240px;
+  --header-h: 56px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.3);
+  --transition: 0.2s ease;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'DM Sans',sans-serif; background:var(--bg-primary); color:var(--text-primary); min-height:100vh; overflow-x:hidden; }
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:var(--bg-secondary); }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+.app { display:flex; min-height:100vh; }
+
+/* Sidebar */
+.sidebar {
+  width:var(--sidebar-w); background:var(--bg-secondary); border-right:1px solid var(--border-light);
+  display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; z-index:100; transition:transform var(--transition);
+}
+.sidebar-logo { padding:16px 20px; border-bottom:1px solid var(--border-light); display:flex; align-items:center; gap:10px; }
+.sidebar-logo .logo-icon {
+  width:36px; height:36px; background:linear-gradient(135deg,var(--accent),var(--info));
+  border-radius:var(--radius); display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:700; color:#fff;
+}
+.sidebar-logo h1 { font-size:13px; font-weight:700; letter-spacing:0.5px; line-height:1.3; }
+.sidebar-logo h1 span { display:block; font-weight:500; color:var(--text-secondary); font-size:11px; }
+.nav-section { padding:12px 0; flex:1; overflow-y:auto; }
+.nav-section-title { padding:8px 20px 4px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); }
+.nav-item {
+  display:flex; align-items:center; gap:10px; padding:9px 20px; cursor:pointer; transition:all var(--transition);
+  border-left:3px solid transparent; font-size:13px; color:var(--text-secondary); font-weight:500;
+}
+.nav-item:hover { background:var(--bg-card); color:var(--text-primary); }
+.nav-item.active { background:var(--accent-glow); color:var(--accent); border-left-color:var(--accent); }
+.nav-item .nav-icon { font-size:16px; width:20px; text-align:center; }
+.nav-item .badge { margin-left:auto; background:var(--danger); color:#fff; font-size:10px; padding:2px 6px; border-radius:10px; font-weight:600; }
+
+/* Sync indicator */
+.sync-bar {
+  padding:8px 20px; border-top:1px solid var(--border-light); font-size:11px; display:flex; align-items:center; gap:8px;
+}
+.sync-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.sync-dot.online { background:var(--success); box-shadow:0 0 6px var(--success); }
+.sync-dot.offline { background:var(--danger); box-shadow:0 0 6px var(--danger); }
+.sync-dot.syncing { background:var(--warning); animation:pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.sync-text { color:var(--text-muted); }
+
+/* Main Content */
+.main-content { margin-left:var(--sidebar-w); flex:1; min-height:100vh; display:flex; flex-direction:column; }
+.header {
+  height:var(--header-h); background:var(--bg-secondary); border-bottom:1px solid var(--border-light);
+  display:flex; align-items:center; justify-content:space-between; padding:0 24px; position:sticky; top:0; z-index:50;
+}
+.header-left { display:flex; align-items:center; gap:12px; }
+.header-left h2 { font-size:16px; font-weight:600; }
+.header-right { display:flex; align-items:center; gap:10px; }
+.header-search {
+  display:flex; align-items:center; gap:8px; background:var(--bg-input); border:1px solid var(--border-light);
+  border-radius:var(--radius); padding:6px 12px; width:260px;
+}
+.header-search input { background:transparent; border:none; outline:none; color:var(--text-primary); font-size:13px; width:100%; font-family:inherit; }
+.header-search input::placeholder { color:var(--text-muted); }
+
+.page-content { padding:24px; flex:1; }
+.page { display:none; }
+.page.active { display:block; }
+
+/* Cards */
+.stat-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:16px; margin-bottom:24px; }
+.stat-card {
+  background:var(--bg-card); border:1px solid var(--border-light); border-radius:var(--radius-lg);
+  padding:20px; transition:all var(--transition); position:relative;
+}
+.stat-card:hover { border-color:var(--border); transform:translateY(-1px); }
+.stat-card .stat-icon { width:40px; height:40px; border-radius:var(--radius); display:flex; align-items:center; justify-content:center; font-size:20px; margin-bottom:12px; }
+.stat-card .stat-value { font-size:28px; font-weight:700; margin-bottom:2px; }
+.stat-card .stat-label { font-size:12px; color:var(--text-secondary); font-weight:500; }
+.stat-card.blue .stat-icon { background:var(--accent-glow); }
+.stat-card.green .stat-icon { background:var(--success-bg); }
+.stat-card.orange .stat-icon { background:var(--warning-bg); }
+.stat-card.red .stat-icon { background:var(--danger-bg); }
+.stat-card.purple .stat-icon { background:rgba(139,92,246,0.1); }
+.stat-card.cyan .stat-icon { background:var(--info-bg); }
+.stat-card.clickable { cursor:pointer; }
+.stat-card.clickable:hover { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent-glow); }
+.stat-card.clickable::after { content:'→'; position:absolute; top:16px; right:16px; color:var(--text-muted); font-size:14px; opacity:0; transition:opacity var(--transition); }
+.stat-card.clickable:hover::after { opacity:1; }
+
+/* Section */
+.section { background:var(--bg-card); border:1px solid var(--border-light); border-radius:var(--radius-lg); margin-bottom:20px; overflow:hidden; }
+.section-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--border-light); }
+.section-header h3 { font-size:14px; font-weight:600; }
+.section-body { padding:20px; }
+.section-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+
+/* Table */
+.table-wrapper { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th { text-align:left; padding:10px 14px; background:var(--bg-primary); color:var(--text-secondary); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap; border-bottom:1px solid var(--border-light); }
+td { padding:10px 14px; border-bottom:1px solid var(--border-light); white-space:nowrap; }
+tr:hover td { background:var(--bg-card-hover); }
+.empty-row td { text-align:center; color:var(--text-muted); padding:40px; font-style:italic; }
+
+/* Badges */
+.badge-status { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+.badge-valid { background:var(--success-bg); color:var(--success); }
+.badge-expired { background:var(--danger-bg); color:var(--danger); }
+.badge-expiring { background:var(--warning-bg); color:var(--warning); }
+.badge-na { background:rgba(100,116,139,0.1); color:#64748b; }
+.badge-type { padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; background:var(--accent-glow); color:var(--accent); }
+
+/* Buttons */
+.btn { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:var(--radius); border:none; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; transition:all var(--transition); white-space:nowrap; }
+.btn-primary { background:var(--accent); color:#fff; }
+.btn-primary:hover { background:var(--accent-hover); }
+.btn-secondary { background:var(--bg-input); color:var(--text-secondary); border:1px solid var(--border); }
+.btn-secondary:hover { color:var(--text-primary); border-color:var(--text-muted); }
+.btn-danger { background:var(--danger-bg); color:var(--danger); }
+.btn-danger:hover { background:var(--danger); color:#fff; }
+.btn-success { background:var(--success-bg); color:var(--success); }
+.btn-success:hover { background:var(--success); color:#fff; }
+.btn-sm { padding:5px 10px; font-size:12px; }
+.btn-icon { padding:6px 8px; font-size:14px; }
+.btn:disabled { opacity:0.5; cursor:not-allowed; }
+.action-btns { display:flex; gap:4px; }
+
+/* Forms */
+.form-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; }
+.form-group { display:flex; flex-direction:column; gap:4px; }
+.form-group label { font-size:12px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; }
+.form-group input, .form-group select, .form-group textarea {
+  padding:9px 12px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:var(--radius);
+  color:var(--text-primary); font-family:inherit; font-size:13px; transition:border-color var(--transition);
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline:none; border-color:var(--accent); }
+.form-group select { cursor:pointer; }
+.form-group select optgroup { background:var(--bg-card); color:var(--text-secondary); font-weight:600; font-size:12px; }
+.form-group select option { background:var(--bg-input); color:var(--text-primary); padding:4px 8px; }
+select optgroup { background:var(--bg-card); color:var(--text-secondary); font-weight:600; }
+select option { background:var(--bg-input); color:var(--text-primary); }
+.filter-select { padding:7px 12px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:var(--radius); color:var(--text-primary); font-family:inherit; font-size:13px; cursor:pointer; }
+.filter-select:focus { outline:none; border-color:var(--accent); }
+.filter-select optgroup { background:var(--bg-card); color:var(--text-secondary); font-weight:600; }
+.filter-select option { background:var(--bg-input); color:var(--text-primary); }
+.form-group textarea { min-height:60px; resize:vertical; }
+.form-full { grid-column:1/-1; }
+.form-actions { grid-column:1/-1; display:flex; gap:10px; padding-top:8px; }
+
+/* Modal */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:1000; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
+.modal-overlay.active { display:flex; }
+.modal { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); width:90%; max-width:680px; max-height:85vh; overflow-y:auto; box-shadow:var(--shadow); }
+.modal-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--border-light); }
+.modal-header h3 { font-size:15px; font-weight:600; }
+.modal-close { background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; padding:4px; }
+.modal-close:hover { color:var(--text-primary); }
+.modal-body { padding:20px; }
+
+/* Toast */
+.toast-container { position:fixed; top:20px; right:20px; z-index:2000; display:flex; flex-direction:column; gap:8px; }
+.toast { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; font-size:13px; box-shadow:var(--shadow); display:flex; align-items:center; gap:10px; animation:slideIn 0.3s ease; min-width:280px; }
+.toast.success { border-left:3px solid var(--success); }
+.toast.error { border-left:3px solid var(--danger); }
+.toast.warning { border-left:3px solid var(--warning); }
+.toast.info { border-left:3px solid var(--accent); }
+@keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+
+/* Search Input */
+.search-input { display:flex; align-items:center; gap:8px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:var(--radius); padding:6px 12px; }
+.search-input input { background:transparent; border:none; outline:none; color:var(--text-primary); font-size:13px; width:160px; font-family:inherit; }
+.search-input input::placeholder { color:var(--text-muted); }
+
+/* Confirm Dialog */
+.confirm-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:1100; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
+.confirm-overlay.active { display:flex; }
+.confirm-box { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:24px; max-width:400px; text-align:center; box-shadow:var(--shadow); }
+.confirm-box p { margin-bottom:20px; font-size:14px; line-height:1.5; }
+.confirm-box .confirm-actions { display:flex; gap:10px; justify-content:center; }
+
+/* POB */
+.pob-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:12px; }
+.pob-count { font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px; }
+.pob-count .count { background:var(--accent); color:#fff; padding:2px 12px; border-radius:20px; font-size:14px; }
+.pob-summary-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; }
+.pob-summary-item { background:var(--bg-input); border:1px solid var(--border-light); border-radius:var(--radius); padding:14px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; transition:all var(--transition); }
+.pob-summary-item:hover { border-color:var(--accent); background:var(--accent-glow); }
+.pob-summary-item .vessel-name { font-size:13px; font-weight:600; }
+.pob-summary-item .pob-num { background:var(--accent-glow); color:var(--accent); padding:3px 12px; border-radius:20px; font-size:13px; font-weight:700; }
+
+/* Warning list */
+.warning-list { display:flex; flex-direction:column; gap:8px; }
+.warning-item { display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:var(--radius); font-size:13px; }
+.warning-item.expired { background:var(--danger-bg); border:1px solid rgba(239,68,68,0.2); }
+.warning-item.expiring { background:var(--warning-bg); border:1px solid rgba(245,158,11,0.2); }
+.warning-item .warn-icon { font-size:18px; }
+.warning-item .warn-text { flex:1; }
+.warning-item .warn-text strong { display:block; margin-bottom:2px; }
+.warning-item .warn-text span { font-size:12px; color:var(--text-secondary); }
+.warning-item.clickable { cursor:pointer; }
+.warning-item.clickable:hover { filter:brightness(1.2); }
+
+/* Timeline */
+.timeline { display:flex; flex-direction:column; }
+.timeline-item { display:flex; gap:16px; padding:12px 0; position:relative; }
+.timeline-item:not(:last-child)::before { content:''; position:absolute; left:15px; top:36px; bottom:-12px; width:2px; background:var(--border-light); }
+.timeline-dot { width:32px; height:32px; border-radius:50%; background:var(--accent-glow); border:2px solid var(--accent); display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+.timeline-content { flex:1; }
+.timeline-content .tl-title { font-size:13px; font-weight:600; margin-bottom:2px; }
+.timeline-content .tl-detail { font-size:12px; color:var(--text-secondary); }
+.timeline-content .tl-time { font-size:11px; color:var(--text-muted); margin-top:4px; font-family:'JetBrains Mono',monospace; }
+.timeline-item.clickable { cursor:pointer; }
+.timeline-item.clickable:hover .timeline-content { background:var(--bg-card-hover); border-radius:var(--radius); }
+.timeline-item.clickable .timeline-content { padding:4px 8px; transition:background var(--transition); }
+
+/* Settings */
+.settings-card { background:var(--bg-input); border:1px solid var(--border-light); border-radius:var(--radius-lg); padding:20px; margin-bottom:16px; }
+.settings-card h4 { font-size:14px; font-weight:600; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+.settings-card p { font-size:12px; color:var(--text-secondary); margin-bottom:12px; line-height:1.6; }
+.settings-row { display:flex; gap:10px; align-items:center; margin-bottom:8px; }
+.settings-row input { flex:1; padding:9px 12px; background:var(--bg-primary); border:1px solid var(--border-light); border-radius:var(--radius); color:var(--text-primary); font-family:'JetBrains Mono',monospace; font-size:12px; }
+.settings-row input:focus { outline:none; border-color:var(--accent); }
+.status-connected { color:var(--success); font-size:12px; font-weight:600; display:flex; align-items:center; gap:4px; }
+.status-disconnected { color:var(--text-muted); font-size:12px; }
+
+/* Loading overlay */
+.loading-overlay { display:none; position:fixed; inset:0; background:rgba(10,14,23,0.8); z-index:3000; align-items:center; justify-content:center; flex-direction:column; gap:16px; }
+.loading-overlay.active { display:flex; }
+.loading-spinner { width:40px; height:40px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+.loading-text { font-size:14px; color:var(--text-secondary); }
+
+/* Responsive */
+/* Transfer Personnel Picker */
+.tf-person-row {
+  display:flex; align-items:center; gap:10px; padding:8px 14px;
+  border-bottom:1px solid var(--border-light); cursor:pointer; transition:background var(--transition);
+  font-size:13px;
+}
+.tf-person-row:last-child { border-bottom:none; }
+.tf-person-row:hover { background:var(--bg-card-hover); }
+.tf-person-row.selected { background:var(--accent-glow); }
+.tf-person-row input[type="checkbox"] {
+  width:16px; height:16px; accent-color:var(--accent); cursor:pointer; flex-shrink:0;
+}
+.tf-person-row .tf-p-name { font-weight:600; min-width:120px; }
+.tf-person-row .tf-p-id { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-muted); min-width:80px; }
+.tf-person-row .tf-p-company { color:var(--text-secondary); font-size:12px; min-width:100px; }
+.tf-person-row .tf-p-loc { font-size:12px; color:var(--text-secondary); margin-left:auto; }
+.tf-person-row .tf-p-warn { color:var(--danger); font-size:11px; margin-left:6px; }
+.tf-empty { padding:20px; text-align:center; color:var(--text-muted); font-size:13px; font-style:italic; }
+
+@media(max-width:768px) {
+  .sidebar { transform:translateX(-100%); }
+  .sidebar.open { transform:translateX(0); }
+  .main-content { margin-left:0; }
+  .stat-grid { grid-template-columns:repeat(2,1fr); }
+  .form-grid { grid-template-columns:1fr; }
+  .header-search { width:180px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">⚓</div>
+      <h1>OPTS<span>Personnel Transfer System</span></h1>
+    </div>
+    <nav class="nav-section">
+      <div class="nav-section-title">Overview</div>
+      <div class="nav-item active" data-page="dashboard"><span class="nav-icon">📊</span> Dashboard</div>
+      <div class="nav-section-title">Management</div>
+      <div class="nav-item" data-page="vessels"><span class="nav-icon">🚢</span> Vessels</div>
+      <div class="nav-item" data-page="personnel"><span class="nav-icon">👷</span> Personnel</div>
+      <div class="nav-item" data-page="locations"><span class="nav-icon">📍</span> Locations</div>
+      <div class="nav-section-title">Operations</div>
+      <div class="nav-item" data-page="transfer"><span class="nav-icon">🔄</span> Transfer</div>
+      <div class="nav-item" data-page="history"><span class="nav-icon">📋</span> History</div>
+      <div class="nav-item" data-page="pob"><span class="nav-icon">🧑‍🤝‍🧑</span> POB Viewer</div>
+      <div class="nav-section-title">Safety</div>
+      <div class="nav-item" data-page="certificates"><span class="nav-icon">⚠️</span> Certificates <span class="badge" id="certBadge" style="display:none">0</span></div>
+      <div class="nav-section-title">System</div>
+      <div class="nav-item" data-page="settings"><span class="nav-icon">⚙️</span> Settings</div>
+    </nav>
+    <div class="sync-bar">
+      <div class="sync-dot offline" id="syncDot"></div>
+      <span class="sync-text" id="syncText">Not connected</span>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main-content">
+    <header class="header">
+      <div class="header-left">
+        <button class="btn btn-icon" id="menuBtn" style="display:none" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+        <h2 id="pageTitle">Dashboard</h2>
+      </div>
+      <div class="header-right">
+        <div class="header-search"><span>🔍</span><input type="text" id="globalSearch" placeholder="Quick search..." onkeyup="handleGlobalSearch(event)"></div>
+        <button class="btn btn-secondary btn-sm" onclick="syncFromCloud()" id="btnSync" title="Pull from Google Sheets">☁️ Sync</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportAllData()">📥 CSV</button>
+      </div>
+    </header>
+
+    <div class="page-content">
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div class="stat-grid" id="dashStats"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+          <div class="section">
+            <div class="section-header" style="cursor:pointer" onclick="navigateTo('pob')"><h3>🧑‍🤝‍🧑 POB Summary</h3><span style="font-size:12px;color:var(--accent)">View All →</span></div>
+            <div class="section-body" id="dashPobSummary"></div>
+          </div>
+          <div class="section">
+            <div class="section-header" style="cursor:pointer" onclick="navigateTo('certificates')"><h3>⚠️ Certificate Alerts</h3><span style="font-size:12px;color:var(--accent)">View All →</span></div>
+            <div class="section-body" id="dashCertAlerts"></div>
+          </div>
+        </div>
+        <div class="section" style="margin-top:20px">
+          <div class="section-header" style="cursor:pointer" onclick="navigateTo('history')"><h3>🕐 Recent Transfers</h3><span style="font-size:12px;color:var(--accent)">View All →</span></div>
+          <div class="section-body" id="dashRecentTransfers"></div>
+        </div>
+      </div>
+
+      <!-- VESSELS -->
+      <div class="page" id="page-vessels">
+        <div class="section">
+          <div class="section-header">
+            <h3>Vessel List</h3>
+            <div class="section-toolbar">
+              <div class="search-input"><span>🔍</span><input type="text" id="vesselSearch" placeholder="Search vessels..." oninput="renderVessels()"></div>
+              <button class="btn btn-primary btn-sm" onclick="openVesselModal()">+ Add Vessel</button>
+            </div>
+          </div>
+          <div class="section-body"><div class="table-wrapper">
+            <table><thead><tr><th>Vessel Name</th><th>MMSI</th><th>IMO</th><th>Type</th><th>Flag</th><th>Remark</th><th>Actions</th></tr></thead>
+            <tbody id="vesselTableBody"></tbody></table>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- PERSONNEL -->
+      <div class="page" id="page-personnel">
+        <div class="section">
+          <div class="section-header">
+            <h3>Personnel List</h3>
+            <div class="section-toolbar">
+              <div class="search-input"><span>🔍</span><input type="text" id="personnelSearch" placeholder="Search..." oninput="renderPersonnel()"></div>
+              <select class="filter-select" id="personnelCompanyFilter" onchange="renderPersonnel()"><option value="">All Companies</option></select>
+              <button class="btn btn-primary btn-sm" onclick="openPersonnelModal()">+ Add Personnel</button>
+            </div>
+          </div>
+          <div class="section-body"><div class="table-wrapper">
+            <table><thead><tr><th>Name</th><th>Employee ID</th><th>Company</th><th>Nationality</th><th>Position</th><th>Medical</th><th>BOSIET</th><th>Location</th><th>Actions</th></tr></thead>
+            <tbody id="personnelTableBody"></tbody></table>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- LOCATIONS -->
+      <div class="page" id="page-locations">
+        <div class="section">
+          <div class="section-header">
+            <h3>Location List</h3>
+            <div class="section-toolbar">
+              <div class="search-input"><span>🔍</span><input type="text" id="locationSearch" placeholder="Search..." oninput="renderLocations()"></div>
+              <button class="btn btn-primary btn-sm" onclick="openLocationModal()">+ Add Location</button>
+            </div>
+          </div>
+          <div class="section-body"><div class="table-wrapper">
+            <table><thead><tr><th>Location Name</th><th>Type</th><th>Linked Vessel</th><th>Remark</th><th>Actions</th></tr></thead>
+            <tbody id="locationTableBody"></tbody></table>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- TRANSFER -->
+      <div class="page" id="page-transfer">
+        <div class="section">
+          <div class="section-header"><h3>Create Personnel Transfer</h3><span style="font-size:12px;color:var(--text-secondary)">Select one or more personnel to transfer</span></div>
+          <div class="section-body">
+            <!-- Personnel Multi-Select -->
+            <div style="margin-bottom:20px">
+              <label style="font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Select Personnel *</label>
+              <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+                <div class="search-input" style="flex:1;min-width:200px"><span>🔍</span><input type="text" id="tfPersonnelSearch" placeholder="Search by name, ID, company..." oninput="renderTransferPersonnelList()"></div>
+                <select class="filter-select" id="tfLocationFilter" onchange="renderTransferPersonnelList()"><option value="">All Locations</option></select>
+                <button class="btn btn-secondary btn-sm" onclick="tfSelectAll()">Select All</button>
+                <button class="btn btn-secondary btn-sm" onclick="tfDeselectAll()">Deselect All</button>
+              </div>
+              <div id="tfPersonnelList" style="max-height:220px;overflow-y:auto;border:1px solid var(--border-light);border-radius:var(--radius);background:var(--bg-input)"></div>
+            </div>
+            <!-- Selected Summary -->
+            <div id="tfSelectedSummary" style="display:none;margin-bottom:20px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                <span style="font-size:13px;font-weight:600">📋 Selected Personnel: <span id="tfSelectedCount" style="color:var(--accent)">0</span></span>
+              </div>
+              <div class="table-wrapper" style="max-height:200px;overflow-y:auto;border:1px solid var(--border-light);border-radius:var(--radius)">
+                <table><thead><tr><th>Name</th><th>Employee ID</th><th>Company</th><th>Current Location</th><th>Qualified</th><th></th></tr></thead>
+                <tbody id="tfSelectedTable"></tbody></table>
+              </div>
+            </div>
+            <!-- Transfer Details -->
+            <div class="form-grid">
+              <div class="form-group"><label>From Location *</label><select id="tf_from"><option value="">-- Select Origin --</option></select></div>
+              <div class="form-group"><label>To Location *</label><select id="tf_to"><option value="">-- Select Destination --</option></select></div>
+              <div class="form-group"><label>Transfer Time *</label><input type="datetime-local" id="tf_time"></div>
+              <div class="form-group"><label>Transfer Type *</label><select id="tf_type"><option value="">-- Select --</option><option>Ship-to-Ship</option><option>Helicopter</option><option>Port Transfer</option><option>Crew Change</option><option>Emergency</option></select></div>
+              <div class="form-group"><label>Approved By *</label><input type="text" id="tf_approved" placeholder="Approver name"></div>
+              <div class="form-group"><label>Reason</label><input type="text" id="tf_reason" placeholder="Reason"></div>
+              <div class="form-group form-full"><label>Remark</label><textarea id="tf_remark" placeholder="Notes"></textarea></div>
+              <div class="form-actions">
+                <button class="btn btn-primary" onclick="executeTransfer()">🔄 Execute Transfer (<span id="tfExecCount">0</span> persons)</button>
+                <button class="btn btn-secondary" onclick="clearTransferForm()">Clear</button>
+              </div>
+            </div>
+            <div id="transferWarning" style="margin-top:16px;display:none" class="warning-item expired">
+              <span class="warn-icon">⛔</span><div class="warn-text" id="transferWarningText"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HISTORY -->
+      <div class="page" id="page-history">
+        <div class="section">
+          <div class="section-header">
+            <h3>Transfer History</h3>
+            <div class="section-toolbar">
+              <div class="search-input"><span>🔍</span><input type="text" id="historySearch" placeholder="Search..." oninput="renderHistory()"></div>
+              <select class="filter-select" id="historyTypeFilter" onchange="renderHistory()"><option value="">All Types</option><option>Ship-to-Ship</option><option>Helicopter</option><option>Port Transfer</option><option>Crew Change</option><option>Emergency</option></select>
+              <input type="date" class="filter-select" id="historyDateFilter" onchange="renderHistory()">
+              <button class="btn btn-secondary btn-sm" onclick="exportTransferHistory()">📥 Export</button>
+            </div>
+          </div>
+          <div class="section-body"><div class="table-wrapper">
+            <table><thead><tr><th>Time</th><th>Personnel</th><th>From</th><th>To</th><th>Type</th><th>Approved By</th><th>Reason</th><th>Remark</th></tr></thead>
+            <tbody id="historyTableBody"></tbody></table>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- POB -->
+      <div class="page" id="page-pob">
+        <div class="section">
+          <div class="section-header">
+            <h3>Persons On Board (POB)</h3>
+            <div class="section-toolbar">
+              <select class="filter-select" id="pobLocationFilter" onchange="renderPOB()"><option value="">-- Select Location / Vessel --</option></select>
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="pob-header" id="pobHeaderInfo" style="display:none">
+              <div class="pob-count">Personnel on board: <span class="count" id="pobCountNum">0</span></div>
+              <button class="btn btn-secondary btn-sm" onclick="exportPOB()">📥 Export POB</button>
+            </div>
+            <div class="table-wrapper">
+              <table><thead><tr><th>#</th><th>Name</th><th>Employee ID</th><th>Company</th><th>Position</th><th>Medical</th><th>BOSIET</th><th>Last Transfer</th></tr></thead>
+              <tbody id="pobTableBody"><tr class="empty-row"><td colspan="8">Select a location to view POB</td></tr></tbody></table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CERTIFICATES -->
+      <div class="page" id="page-certificates">
+        <div class="section"><div class="section-header"><h3>⛔ Expired Certificates</h3></div><div class="section-body"><div class="warning-list" id="expiredList"></div></div></div>
+        <div class="section"><div class="section-header"><h3>⚠️ Expiring in 30 Days</h3></div><div class="section-body"><div class="warning-list" id="expiringList"></div></div></div>
+        <div class="section"><div class="section-header"><h3>🚫 Missing Certificates</h3></div><div class="section-body"><div class="warning-list" id="missingCertList"></div></div></div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="page" id="page-settings">
+        <div class="settings-card">
+          <h4>☁️ Google Sheets Connection</h4>
+          <p>Connect to Google Sheets for cloud data storage. You need to deploy the Apps Script and paste the Web App URL here.</p>
+          <div class="settings-row">
+            <input type="text" id="apiUrlInput" placeholder="https://script.google.com/macros/s/xxxxx/exec">
+            <button class="btn btn-primary btn-sm" onclick="saveApiUrl()">Save</button>
+            <button class="btn btn-secondary btn-sm" onclick="testConnection()">Test</button>
+          </div>
+          <div id="connectionStatus" class="status-disconnected">Not connected</div>
+        </div>
+        <div class="settings-card">
+          <h4>🔄 Data Sync</h4>
+          <p>Push local data to Google Sheets (overwrites cloud), or pull cloud data to local (overwrites local).</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="pushToCloud()">⬆️ Push Local → Cloud</button>
+            <button class="btn btn-success btn-sm" onclick="syncFromCloud()">⬇️ Pull Cloud → Local</button>
+          </div>
+        </div>
+        <div class="settings-card">
+          <h4>💾 Local Backup</h4>
+          <p>Export or import all data as a JSON file for backup purposes.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" onclick="exportJSON()">📥 Export JSON</button>
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('importFile').click()">📤 Import JSON</button>
+            <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
+            <button class="btn btn-danger btn-sm" onclick="clearAllData()">🗑 Clear All Data</button>
+          </div>
+        </div>
+        <div class="settings-card">
+          <h4>📋 Setup Guide</h4>
+          <p style="line-height:2">
+            <strong>Step 1:</strong> Create a new Google Spreadsheet<br>
+            <strong>Step 2:</strong> Go to <code>Extensions → Apps Script</code><br>
+            <strong>Step 3:</strong> Paste the Apps Script code (apps_script_backend.js)<br>
+            <strong>Step 4:</strong> Run <code>initSheets()</code> once to create sheet headers<br>
+            <strong>Step 5:</strong> <code>Deploy → New deployment → Web App</code><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;• Execute as: <strong>Me</strong><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;• Who has access: <strong>Anyone</strong><br>
+            <strong>Step 6:</strong> Copy the Web App URL and paste above<br>
+            <strong>Step 7:</strong> Click <strong>Push Local → Cloud</strong> to upload existing data
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Vessel Modal -->
+<div class="modal-overlay" id="vesselModal"><div class="modal">
+  <div class="modal-header"><h3 id="vesselModalTitle">Add Vessel</h3><button class="modal-close" onclick="closeModal('vesselModal')">&times;</button></div>
+  <div class="modal-body"><div class="form-grid">
+    <input type="hidden" id="v_id">
+    <div class="form-group"><label>Vessel Name *</label><input type="text" id="v_name"></div>
+    <div class="form-group"><label>MMSI *</label><input type="text" id="v_mmsi"></div>
+    <div class="form-group"><label>IMO Number</label><input type="text" id="v_imo"></div>
+    <div class="form-group"><label>Vessel Type</label><select id="v_type"><option value="">-- Select --</option><option>Barge</option><option>Tug</option><option>Supply Vessel</option><option>Pipelaying Vessel</option><option>Crane Vessel</option><option>Dive Support Vessel</option><option>Survey Vessel</option><option>Anchor Handling Tug</option><option>Cargo Ship</option><option>Other</option></select></div>
+    <div class="form-group"><label>Flag</label><input type="text" id="v_flag"></div>
+    <div class="form-group form-full"><label>Remark</label><textarea id="v_remark"></textarea></div>
+    <div class="form-actions"><button class="btn btn-primary" onclick="saveVessel()">💾 Save</button><button class="btn btn-secondary" onclick="closeModal('vesselModal')">Cancel</button></div>
+  </div></div>
+</div></div>
+
+<!-- Personnel Modal -->
+<div class="modal-overlay" id="personnelModal"><div class="modal" style="max-width:780px">
+  <div class="modal-header"><h3 id="personnelModalTitle">Add Personnel</h3><button class="modal-close" onclick="closeModal('personnelModal')">&times;</button></div>
+  <div class="modal-body"><div class="form-grid">
+    <input type="hidden" id="p_id">
+    <div class="form-group"><label>Name *</label><input type="text" id="p_name"></div>
+    <div class="form-group"><label>Employee ID *</label><input type="text" id="p_empid"></div>
+    <div class="form-group"><label>Company *</label><input type="text" id="p_company"></div>
+    <div class="form-group"><label>Nationality</label><input type="text" id="p_nationality"></div>
+    <div class="form-group"><label>Rank / Position</label><input type="text" id="p_position"></div>
+    <div class="form-group"><label>Medical Check</label><select id="p_medical"><option value="No">No</option><option value="Yes">Yes</option></select></div>
+    <div class="form-group"><label>Medical Expiry</label><input type="date" id="p_medical_expiry"></div>
+    <div class="form-group"><label>BOSIET</label><select id="p_bosiet"><option value="No">No</option><option value="Yes">Yes</option></select></div>
+    <div class="form-group"><label>BOSIET Expiry</label><input type="date" id="p_bosiet_expiry"></div>
+    <div class="form-group"><label>Passport Number</label><input type="text" id="p_passport"></div>
+    <div class="form-group"><label>Emergency Contact</label><input type="text" id="p_emergency"></div>
+    <div class="form-group"><label>Current Location</label><select id="p_location"><option value="">-- Not Assigned --</option></select></div>
+    <div class="form-group form-full"><label>Remark</label><textarea id="p_remark"></textarea></div>
+    <div class="form-actions"><button class="btn btn-primary" onclick="savePersonnel()">💾 Save</button><button class="btn btn-secondary" onclick="closeModal('personnelModal')">Cancel</button></div>
+  </div></div>
+</div></div>
+
+<!-- Location Modal -->
+<div class="modal-overlay" id="locationModal"><div class="modal">
+  <div class="modal-header"><h3 id="locationModalTitle">Add Location</h3><button class="modal-close" onclick="closeModal('locationModal')">&times;</button></div>
+  <div class="modal-body"><div class="form-grid">
+    <input type="hidden" id="l_id">
+    <div class="form-group"><label>Location Name *</label><input type="text" id="l_name"></div>
+    <div class="form-group"><label>Location Type *</label><select id="l_type" onchange="toggleLinkedVessel()"><option value="">-- Select --</option><option>Vessel</option><option>Port</option><option>Platform</option><option>Warehouse</option><option>Base</option><option>Custom</option></select></div>
+    <div class="form-group" id="linkedVesselGroup" style="display:none"><label>Linked Vessel</label><select id="l_vessel"><option value="">-- None --</option></select></div>
+    <div class="form-group form-full"><label>Remark</label><textarea id="l_remark"></textarea></div>
+    <div class="form-actions"><button class="btn btn-primary" onclick="saveLocation()">💾 Save</button><button class="btn btn-secondary" onclick="closeModal('locationModal')">Cancel</button></div>
+  </div></div>
+</div></div>
+
+<!-- Confirm Dialog -->
+<div class="confirm-overlay" id="confirmDialog"><div class="confirm-box">
+  <p id="confirmMessage">Are you sure?</p>
+  <div class="confirm-actions"><button class="btn btn-danger" id="confirmYes">Delete</button><button class="btn btn-secondary" onclick="closeConfirm()">Cancel</button></div>
+</div></div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div><div class="loading-text" id="loadingText">Syncing...</div></div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ==================== DATA LAYER ====================
+const SK = { vessels:'opts_vessels', personnel:'opts_personnel', locations:'opts_locations', transfers:'opts_transfers', apiUrl:'opts_api_url' };
+
+function load(k) { try { return JSON.parse(localStorage.getItem(k)) || []; } catch { return []; } }
+function save(k, d) { localStorage.setItem(k, JSON.stringify(d)); }
+function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2,6); }
+
+let vessels = load(SK.vessels);
+let personnel = load(SK.personnel);
+let locations = load(SK.locations);
+let transfers = load(SK.transfers);
+
+function persistAll() {
+  save(SK.vessels, vessels);
+  save(SK.personnel, personnel);
+  save(SK.locations, locations);
+  save(SK.transfers, transfers);
+  autoSyncToCloud();
+}
+
+// ==================== CLOUD API LAYER ====================
+function getApiUrl() { return localStorage.getItem(SK.apiUrl) || ''; }
+
+async function apiCall(action, entity, data, method) {
+  const url = getApiUrl();
+  if(!url) return null;
+  try {
+    let fetchUrl = `${url}?action=${action}`;
+    if(entity) fetchUrl += `&entity=${entity}`;
+    const opts = { method: method || 'GET', headers: {} };
+    if(data) {
+      opts.method = 'POST';
+      opts.headers['Content-Type'] = 'text/plain';
+      opts.body = JSON.stringify(data);
+    }
+    if(action === 'delete') fetchUrl += `&id=${data}`;
+
+    const resp = await fetch(fetchUrl, opts);
+    const json = await resp.json();
+    return json;
+  } catch(e) {
+    console.error('API error:', e);
+    return null;
+  }
+}
+
+let syncTimer = null;
+function autoSyncToCloud() {
+  if(!getApiUrl()) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => pushToCloudSilent(), 2000);
+}
+
+async function pushToCloudSilent() {
+  if(!getApiUrl()) return;
+  setSyncStatus('syncing','Syncing...');
+  const result = await apiCall('bulkSync', null, {
+    vessels, personnel, locations, transfers
+  });
+  if(result && result.success) {
+    setSyncStatus('online','Synced ' + new Date().toLocaleTimeString());
+  } else {
+    setSyncStatus('offline','Sync failed');
+  }
+}
+
+async function pushToCloud() {
+  if(!getApiUrl()) { toast('Set API URL in Settings first','warning'); return; }
+  showLoading('Pushing data to Google Sheets...');
+  const result = await apiCall('bulkSync', null, { vessels, personnel, locations, transfers });
+  hideLoading();
+  if(result && result.success) {
+    toast('All data pushed to Google Sheets','success');
+    setSyncStatus('online','Pushed ' + new Date().toLocaleTimeString());
+  } else {
+    toast('Push failed: ' + (result?.error || 'Unknown error'),'error');
+    setSyncStatus('offline','Push failed');
+  }
+}
+
+async function syncFromCloud() {
+  if(!getApiUrl()) { toast('Set API URL in Settings first','warning'); return; }
+  showLoading('Pulling data from Google Sheets...');
+  const result = await apiCall('sync');
+  hideLoading();
+  if(result && result.success) {
+    if(result.vessels) vessels = result.vessels;
+    if(result.personnel) personnel = result.personnel;
+    if(result.locations) locations = result.locations;
+    if(result.transfers) transfers = result.transfers;
+    save(SK.vessels, vessels); save(SK.personnel, personnel);
+    save(SK.locations, locations); save(SK.transfers, transfers);
+    toast(`Synced: ${vessels.length} vessels, ${personnel.length} personnel, ${locations.length} locations, ${transfers.length} transfers`,'success');
+    setSyncStatus('online','Synced ' + new Date().toLocaleTimeString());
+    refreshCurrentPage();
+  } else {
+    toast('Sync failed: ' + (result?.error || 'Unknown error'),'error');
+    setSyncStatus('offline','Sync failed');
+  }
+}
+
+function setSyncStatus(state, text) {
+  const dot = document.getElementById('syncDot');
+  const txt = document.getElementById('syncText');
+  dot.className = 'sync-dot ' + state;
+  txt.textContent = text;
+}
+
+// ==================== SETTINGS ====================
+function saveApiUrl() {
+  const url = document.getElementById('apiUrlInput').value.trim();
+  localStorage.setItem(SK.apiUrl, url);
+  if(url) { testConnection(); }
+  else { setSyncStatus('offline','Not connected'); document.getElementById('connectionStatus').innerHTML = '<span class="status-disconnected">Disconnected</span>'; }
+  toast('API URL saved','success');
+}
+
+async function testConnection() {
+  const url = getApiUrl();
+  if(!url) { toast('Enter API URL first','warning'); return; }
+  setSyncStatus('syncing','Testing...');
+  document.getElementById('connectionStatus').innerHTML = 'Testing...';
+  const result = await apiCall('ping');
+  if(result && result.success) {
+    setSyncStatus('online','Connected');
+    document.getElementById('connectionStatus').innerHTML = '<span class="status-connected">✅ Connected — ' + (result.timestamp || '') + '</span>';
+    toast('Connection successful','success');
+  } else {
+    setSyncStatus('offline','Connection failed');
+    document.getElementById('connectionStatus').innerHTML = '<span style="color:var(--danger);font-size:12px">❌ Failed — ' + (result?.error || 'Check URL') + '</span>';
+    toast('Connection failed','error');
+  }
+}
+
+// ==================== JSON IMPORT / EXPORT ====================
+function exportJSON() {
+  const data = { vessels, personnel, locations, transfers, exported_at: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
+  const link = document.createElement('a'); link.href = URL.createObjectURL(blob);
+  link.download = 'opts_backup_' + new Date().toISOString().slice(0,10) + '.json';
+  link.click(); URL.revokeObjectURL(link.href);
+  toast('JSON backup exported','success');
+}
+
+function importJSON(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if(data.vessels) vessels = data.vessels;
+      if(data.personnel) personnel = data.personnel;
+      if(data.locations) locations = data.locations;
+      if(data.transfers) transfers = data.transfers;
+      persistAll();
+      toast(`Imported: ${vessels.length} vessels, ${personnel.length} personnel, ${locations.length} locations, ${transfers.length} transfers`,'success');
+      refreshCurrentPage();
+    } catch(err) { toast('Invalid JSON file','error'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+function clearAllData() {
+  showConfirm('Delete ALL data? This cannot be undone.', () => {
+    vessels=[]; personnel=[]; locations=[]; transfers=[];
+    persistAll();
+    toast('All data cleared','success');
+    refreshCurrentPage();
+  });
+}
+
+// ==================== UTILITY ====================
+function toast(msg, type='info') {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.innerHTML = `<span>${{success:'✅',error:'❌',warning:'⚠️',info:'ℹ️'}[type]||'ℹ️'}</span><span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.remove(),300); }, 3500);
+}
+function showLoading(t) { document.getElementById('loadingText').textContent=t; document.getElementById('loadingOverlay').classList.add('active'); }
+function hideLoading() { document.getElementById('loadingOverlay').classList.remove('active'); }
+function formatDate(d) { if(!d)return '—'; return new Date(d).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}); }
+function formatDateTime(d) { if(!d)return '—'; return new Date(d).toLocaleString('en-US',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }
+
+function getLocationName(locId) {
+  if(!locId) return 'Not Assigned';
+  if(locId.startsWith('vessel_')) { const v=vessels.find(x=>x.id===locId.replace('vessel_','')); return v?v.name:'Unknown Vessel'; }
+  if(locId.startsWith('loc_')) { const l=locations.find(x=>x.id===locId.replace('loc_','')); return l?l.name:'Unknown Location'; }
+  const loc=locations.find(l=>l.id===locId); if(loc) return loc.name;
+  const ves=vessels.find(v=>v.id===locId); if(ves) return ves.name;
+  return 'Unknown';
+}
+function getTransferCompositeId(rawId) {
+  if(!rawId) return '';
+  if(rawId.startsWith('vessel_')||rawId.startsWith('loc_')) return rawId;
+  if(locations.find(l=>l.id===rawId)) return 'loc_'+rawId;
+  if(vessels.find(v=>v.id===rawId)) return 'vessel_'+rawId;
+  return rawId;
+}
+function getTransferLocationName(cid) {
+  if(!cid) return 'Not Assigned';
+  if(cid.startsWith('vessel_')) { const v=vessels.find(x=>x.id===cid.replace('vessel_','')); return v?'🚢 '+v.name:'Unknown'; }
+  if(cid.startsWith('loc_')) { const l=locations.find(x=>x.id===cid.replace('loc_','')); return l?'📍 '+l.name:'Unknown'; }
+  return getLocationName(cid);
+}
+
+function getCertStatus(hasIt, exp) {
+  if(hasIt!=='Yes') return {status:'N/A',cls:'badge-na'};
+  if(!exp) return {status:'Valid',cls:'badge-valid'};
+  const now=new Date(),e=new Date(exp);
+  if(e<now) return {status:'Expired',cls:'badge-expired'};
+  const d=(e-now)/(864e5);
+  if(d<=30) return {status:`${Math.ceil(d)}d`,cls:'badge-expiring'};
+  return {status:'Valid',cls:'badge-valid'};
+}
+function isQualified(p) {
+  if(p.medical!=='Yes'||p.bosiet!=='Yes') return false;
+  if(p.medical_expiry&&new Date(p.medical_expiry)<new Date()) return false;
+  if(p.bosiet_expiry&&new Date(p.bosiet_expiry)<new Date()) return false;
+  return true;
+}
+function esc(s) { if(!s)return''; const d=document.createElement('div'); d.textContent=String(s); return d.innerHTML; }
+
+function buildLocationOptions() {
+  let h='<option value="">-- Select --</option>';
+  if(vessels.length){h+='<optgroup label="🚢 Vessels">';vessels.forEach(v=>{h+=`<option value="vessel_${v.id}">🚢 ${esc(v.name)}${v.type?' ('+esc(v.type)+')':''}</option>`;});h+='</optgroup>';}
+  if(locations.length){h+='<optgroup label="📍 Locations">';locations.forEach(l=>{h+=`<option value="loc_${l.id}">📍 ${esc(l.name)} (${esc(l.type)})</option>`;});h+='</optgroup>';}
+  return h;
+}
+function populateLocationSelect(selId,curVal) {
+  const s=document.getElementById(selId);
+  let h='<option value="">-- Not Assigned --</option>';
+  if(vessels.length){h+='<optgroup label="🚢 Vessels">';vessels.forEach(v=>{const val='vessel_'+v.id;h+=`<option value="${val}" ${val===curVal?'selected':''}>🚢 ${esc(v.name)}</option>`;});h+='</optgroup>';}
+  if(locations.length){h+='<optgroup label="📍 Locations">';locations.forEach(l=>{const val='loc_'+l.id;const sel=(val===curVal||l.id===curVal)?'selected':'';h+=`<option value="${val}" ${sel}>📍 ${esc(l.name)} (${l.type})</option>`;});h+='</optgroup>';}
+  s.innerHTML=h;
+}
+function populateVesselSelect(selId,curVal) {
+  document.getElementById(selId).innerHTML='<option value="">-- None --</option>'+vessels.map(v=>`<option value="${v.id}" ${v.id===curVal?'selected':''}>${esc(v.name)}</option>`).join('');
+}
+
+// ==================== NAVIGATION ====================
+let currentPage = 'dashboard';
+function navigateTo(page) {
+  currentPage = page;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const el=document.getElementById('page-'+page); if(el)el.classList.add('active');
+  const nav=document.querySelector(`.nav-item[data-page="${page}"]`); if(nav)nav.classList.add('active');
+  const titles={dashboard:'Dashboard',vessels:'Vessel Management',personnel:'Personnel Management',locations:'Location Management',transfer:'Transfer Personnel',history:'Transfer History',pob:'POB Viewer',certificates:'Certificate Warning',settings:'Settings'};
+  document.getElementById('pageTitle').textContent=titles[page]||page;
+  refreshPage(page);
+}
+function refreshPage(page) {
+  switch(page){
+    case 'dashboard':renderDashboard();break;case 'vessels':renderVessels();break;case 'personnel':renderPersonnel();break;
+    case 'locations':renderLocations();break;case 'transfer':populateTransferForm();break;case 'history':renderHistory();break;
+    case 'pob':populatePOBFilter();break;case 'certificates':renderCertificates();break;
+    case 'settings':document.getElementById('apiUrlInput').value=getApiUrl();break;
+  }
+}
+function refreshCurrentPage() { refreshPage(currentPage); }
+document.querySelectorAll('.nav-item').forEach(i=>i.addEventListener('click',()=>navigateTo(i.dataset.page)));
+
+// ==================== MODAL / CONFIRM ====================
+function openModal(id){document.getElementById(id).classList.add('active');}
+function closeModal(id){document.getElementById(id).classList.remove('active');}
+let confirmCb=null;
+function showConfirm(msg,cb){document.getElementById('confirmMessage').textContent=msg;confirmCb=cb;document.getElementById('confirmDialog').classList.add('active');}
+function closeConfirm(){document.getElementById('confirmDialog').classList.remove('active');confirmCb=null;}
+document.getElementById('confirmYes').onclick=()=>{if(confirmCb)confirmCb();closeConfirm();};
+
+// ==================== DASHBOARD NAV HELPERS ====================
+function gotoPOB(cid){navigateTo('pob');setTimeout(()=>{document.getElementById('pobLocationFilter').value=cid;renderPOB();},50);}
+function gotoHistory(s){navigateTo('history');setTimeout(()=>{document.getElementById('historySearch').value=s;renderHistory();},50);}
+
+// ==================== DASHBOARD ====================
+function renderDashboard() {
+  const today=new Date().toDateString();
+  const todayT=transfers.filter(t=>new Date(t.time).toDateString()===today).length;
+  const {expired,expiring}=getCertWarningCounts();
+  const tw=expired+expiring;
+  document.getElementById('dashStats').innerHTML=`
+    <div class="stat-card blue clickable" onclick="navigateTo('personnel')"><div class="stat-icon">👷</div><div class="stat-value">${personnel.length}</div><div class="stat-label">Total Personnel</div></div>
+    <div class="stat-card cyan clickable" onclick="navigateTo('vessels')"><div class="stat-icon">🚢</div><div class="stat-value">${vessels.length}</div><div class="stat-label">Total Vessels</div></div>
+    <div class="stat-card green clickable" onclick="navigateTo('locations')"><div class="stat-icon">📍</div><div class="stat-value">${locations.length}</div><div class="stat-label">Total Locations</div></div>
+    <div class="stat-card purple clickable" onclick="navigateTo('history')"><div class="stat-icon">🔄</div><div class="stat-value">${todayT}</div><div class="stat-label">Transfers Today</div></div>
+    <div class="stat-card orange clickable" onclick="navigateTo('history')"><div class="stat-icon">📋</div><div class="stat-value">${transfers.length}</div><div class="stat-label">Total Transfers</div></div>
+    <div class="stat-card red clickable" onclick="navigateTo('certificates')"><div class="stat-icon">⚠️</div><div class="stat-value">${tw}</div><div class="stat-label">Cert Warnings</div></div>`;
+
+  // POB Summary
+  let ph='<div class="pob-summary-grid">';let has=false;
+  vessels.forEach(v=>{const c='vessel_'+v.id;const n=personnel.filter(p=>p.current_location===c).length;ph+=`<div class="pob-summary-item" onclick="gotoPOB('${c}')"><span class="vessel-name">🚢 ${esc(v.name)}</span><span class="pob-num">${n}</span></div>`;has=true;});
+  locations.forEach(l=>{const c='loc_'+l.id;const n=personnel.filter(p=>p.current_location===c||p.current_location===l.id).length;if(n>0||l.type==='Vessel'||l.type==='Platform'){ph+=`<div class="pob-summary-item" onclick="gotoPOB('${c}')"><span class="vessel-name">📍 ${esc(l.name)}</span><span class="pob-num">${n}</span></div>`;has=true;}});
+  if(!has)ph+='<p style="color:var(--text-muted);font-size:13px">No vessels or locations defined</p>';
+  ph+='</div>';document.getElementById('dashPobSummary').innerHTML=ph;
+
+  // Cert Alerts
+  const alerts=getCertAlerts();let ah='';
+  if(!alerts.length)ah='<p style="color:var(--text-muted);font-size:13px">No alerts</p>';
+  alerts.slice(0,5).forEach(a=>{ah+=`<div class="warning-item ${a.severity} clickable" onclick="navigateTo('certificates')" style="cursor:pointer"><span class="warn-icon">${a.severity==='expired'?'⛔':'⚠️'}</span><div class="warn-text"><strong>${esc(a.name)}</strong><span>${esc(a.message)}</span></div></div>`;});
+  if(alerts.length>5)ah+=`<p style="margin-top:8px;font-size:12px;color:var(--accent);cursor:pointer" onclick="navigateTo('certificates')">View all ${alerts.length} alerts →</p>`;
+  document.getElementById('dashCertAlerts').innerHTML=ah;
+
+  // Recent Transfers
+  const rec=[...transfers].sort((a,b)=>new Date(b.time)-new Date(a.time)).slice(0,8);
+  let th='<div class="timeline">';
+  if(!rec.length)th+='<p style="color:var(--text-muted);font-size:13px">No transfers recorded</p>';
+  rec.forEach(t=>{const p=personnel.find(pp=>pp.id===t.personnel_id);const pn=p?p.name:'Unknown';
+    th+=`<div class="timeline-item clickable" onclick="gotoHistory('${esc(pn)}')"><div class="timeline-dot">🔄</div><div class="timeline-content"><div class="tl-title">${esc(pn)} → ${esc(getLocationName(t.to_location))}</div><div class="tl-detail">${esc(getLocationName(t.from_location))} → ${esc(getLocationName(t.to_location))} · ${esc(t.type)} · Approved: ${esc(t.approved_by)}</div><div class="tl-time">${formatDateTime(t.time)}</div></div></div>`;
+  });
+  th+='</div>';document.getElementById('dashRecentTransfers').innerHTML=th;
+  updateCertBadge();
+}
+
+function getCertWarningCounts(){let e=0,x=0;const n=new Date();personnel.forEach(p=>{['medical','bosiet'].forEach(c=>{if(p[c]==='Yes'&&p[c+'_expiry']){const d=new Date(p[c+'_expiry']);if(d<n)e++;else if((d-n)/864e5<=30)x++;}});if(p.medical!=='Yes')e++;if(p.bosiet!=='Yes')e++;});return{expired:e,expiring:x};}
+function getCertAlerts(){const a=[];const n=new Date();personnel.forEach(p=>{if(p.medical!=='Yes')a.push({name:p.name,message:'No Medical Check',severity:'expired'});if(p.bosiet!=='Yes')a.push({name:p.name,message:'No BOSIET Certificate',severity:'expired'});['medical','bosiet'].forEach(c=>{if(p[c]==='Yes'&&p[c+'_expiry']){const e=new Date(p[c+'_expiry']);const l=c==='medical'?'Medical':'BOSIET';if(e<n)a.push({name:p.name,message:`${l} expired ${formatDate(p[c+'_expiry'])}`,severity:'expired'});else if((e-n)/864e5<=30)a.push({name:p.name,message:`${l} expires ${formatDate(p[c+'_expiry'])}`,severity:'expiring'});}});});return a;}
+function updateCertBadge(){const{expired,expiring}=getCertWarningCounts();const t=expired+expiring;const b=document.getElementById('certBadge');if(t>0){b.style.display='inline';b.textContent=t;}else b.style.display='none';}
+
+// ==================== VESSELS CRUD ====================
+function renderVessels(){const q=document.getElementById('vesselSearch').value.toLowerCase();const f=vessels.filter(v=>v.name.toLowerCase().includes(q)||v.mmsi.toLowerCase().includes(q)||(v.imo||'').toLowerCase().includes(q));const tb=document.getElementById('vesselTableBody');if(!f.length){tb.innerHTML='<tr class="empty-row"><td colspan="7">No vessels found</td></tr>';return;}tb.innerHTML=f.map(v=>`<tr><td><strong>${esc(v.name)}</strong></td><td style="font-family:'JetBrains Mono',monospace;font-size:12px">${esc(v.mmsi)}</td><td style="font-family:'JetBrains Mono',monospace;font-size:12px">${esc(v.imo||'—')}</td><td>${esc(v.type||'—')}</td><td>${esc(v.flag||'—')}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(v.remark||'—')}</td><td><div class="action-btns"><button class="btn btn-secondary btn-sm" onclick="editVessel('${v.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteVessel('${v.id}')">🗑</button></div></td></tr>`).join('');}
+
+function openVesselModal(){['v_id','v_name','v_mmsi','v_imo','v_flag','v_remark'].forEach(i=>document.getElementById(i).value='');document.getElementById('v_type').value='';document.getElementById('vesselModalTitle').textContent='Add Vessel';openModal('vesselModal');}
+function editVessel(id){const v=vessels.find(x=>x.id===id);if(!v)return;document.getElementById('v_id').value=v.id;document.getElementById('v_name').value=v.name;document.getElementById('v_mmsi').value=v.mmsi;document.getElementById('v_imo').value=v.imo||'';document.getElementById('v_type').value=v.type||'';document.getElementById('v_flag').value=v.flag||'';document.getElementById('v_remark').value=v.remark||'';document.getElementById('vesselModalTitle').textContent='Edit Vessel';openModal('vesselModal');}
+function saveVessel(){const id=document.getElementById('v_id').value;const name=document.getElementById('v_name').value.trim();const mmsi=document.getElementById('v_mmsi').value.trim();if(!name||!mmsi){toast('Name and MMSI required','error');return;}const d={name,mmsi,imo:document.getElementById('v_imo').value.trim(),type:document.getElementById('v_type').value,flag:document.getElementById('v_flag').value.trim(),remark:document.getElementById('v_remark').value.trim()};if(id){const i=vessels.findIndex(v=>v.id===id);if(i>=0)vessels[i]={...vessels[i],...d};toast('Vessel updated','success');}else{d.id=genId();vessels.push(d);toast('Vessel added','success');}persistAll();closeModal('vesselModal');renderVessels();}
+function deleteVessel(id){const v=vessels.find(x=>x.id===id);const cid='vessel_'+id;if(personnel.some(p=>p.current_location===cid||p.current_location===id)){toast('Cannot delete: personnel assigned','error');return;}showConfirm(`Delete vessel "${v?.name}"?`,()=>{vessels=vessels.filter(x=>x.id!==id);persistAll();renderVessels();toast('Vessel deleted','success');});}
+
+// ==================== PERSONNEL CRUD ====================
+function renderPersonnel(){const q=document.getElementById('personnelSearch').value.toLowerCase();const cf=document.getElementById('personnelCompanyFilter').value;const f=personnel.filter(p=>(p.name.toLowerCase().includes(q)||p.employee_id.toLowerCase().includes(q)||(p.company||'').toLowerCase().includes(q))&&(!cf||p.company===cf));const tb=document.getElementById('personnelTableBody');if(!f.length){tb.innerHTML='<tr class="empty-row"><td colspan="9">No personnel found</td></tr>';return;}tb.innerHTML=f.map(p=>{const m=getCertStatus(p.medical,p.medical_expiry);const b=getCertStatus(p.bosiet,p.bosiet_expiry);return`<tr><td><strong>${esc(p.name)}</strong></td><td style="font-family:'JetBrains Mono',monospace;font-size:12px">${esc(p.employee_id)}</td><td>${esc(p.company||'—')}</td><td>${esc(p.nationality||'—')}</td><td>${esc(p.position||'—')}</td><td><span class="badge-status ${m.cls}">${m.status}</span></td><td><span class="badge-status ${b.cls}">${b.status}</span></td><td>${esc(getLocationName(p.current_location))}</td><td><div class="action-btns"><button class="btn btn-secondary btn-sm" onclick="editPersonnel('${p.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="deletePersonnel('${p.id}')">🗑</button></div></td></tr>`;}).join('');
+  const co=[...new Set(personnel.map(p=>p.company).filter(Boolean))];const sel=document.getElementById('personnelCompanyFilter');const cur=sel.value;sel.innerHTML='<option value="">All Companies</option>'+co.map(c=>`<option ${c===cur?'selected':''}>${esc(c)}</option>`).join('');}
+
+function openPersonnelModal(){['p_id','p_name','p_empid','p_company','p_nationality','p_position','p_medical_expiry','p_bosiet_expiry','p_passport','p_emergency','p_remark'].forEach(i=>document.getElementById(i).value='');document.getElementById('p_medical').value='No';document.getElementById('p_bosiet').value='No';populateLocationSelect('p_location','');document.getElementById('personnelModalTitle').textContent='Add Personnel';openModal('personnelModal');}
+function editPersonnel(id){const p=personnel.find(x=>x.id===id);if(!p)return;document.getElementById('p_id').value=p.id;document.getElementById('p_name').value=p.name;document.getElementById('p_empid').value=p.employee_id;document.getElementById('p_company').value=p.company||'';document.getElementById('p_nationality').value=p.nationality||'';document.getElementById('p_position').value=p.position||'';document.getElementById('p_medical').value=p.medical||'No';document.getElementById('p_medical_expiry').value=p.medical_expiry||'';document.getElementById('p_bosiet').value=p.bosiet||'No';document.getElementById('p_bosiet_expiry').value=p.bosiet_expiry||'';document.getElementById('p_passport').value=p.passport||'';document.getElementById('p_emergency').value=p.emergency||'';document.getElementById('p_remark').value=p.remark||'';populateLocationSelect('p_location',p.current_location||'');document.getElementById('personnelModalTitle').textContent='Edit Personnel';openModal('personnelModal');}
+function savePersonnel(){const id=document.getElementById('p_id').value;const name=document.getElementById('p_name').value.trim();const empid=document.getElementById('p_empid').value.trim();const company=document.getElementById('p_company').value.trim();if(!name||!empid||!company){toast('Name, Employee ID and Company required','error');return;}const d={name,employee_id:empid,company,nationality:document.getElementById('p_nationality').value.trim(),position:document.getElementById('p_position').value.trim(),medical:document.getElementById('p_medical').value,medical_expiry:document.getElementById('p_medical_expiry').value,bosiet:document.getElementById('p_bosiet').value,bosiet_expiry:document.getElementById('p_bosiet_expiry').value,passport:document.getElementById('p_passport').value.trim(),emergency:document.getElementById('p_emergency').value.trim(),remark:document.getElementById('p_remark').value.trim(),current_location:document.getElementById('p_location').value};if(id){const i=personnel.findIndex(p=>p.id===id);if(i>=0)personnel[i]={...personnel[i],...d};toast('Personnel updated','success');}else{d.id=genId();personnel.push(d);toast('Personnel added','success');}persistAll();closeModal('personnelModal');renderPersonnel();}
+function deletePersonnel(id){const p=personnel.find(x=>x.id===id);showConfirm(`Delete "${p?.name}"?`,()=>{personnel=personnel.filter(x=>x.id!==id);persistAll();renderPersonnel();toast('Personnel deleted','success');});}
+
+// ==================== LOCATIONS CRUD ====================
+function renderLocations(){const q=document.getElementById('locationSearch').value.toLowerCase();const f=locations.filter(l=>l.name.toLowerCase().includes(q)||l.type.toLowerCase().includes(q));const tb=document.getElementById('locationTableBody');if(!f.length){tb.innerHTML='<tr class="empty-row"><td colspan="5">No locations found</td></tr>';return;}tb.innerHTML=f.map(l=>{let lv='—';if(l.linked_vessel){const v=vessels.find(vv=>vv.id===l.linked_vessel);lv=v?v.name:'—';}return`<tr><td><strong>${esc(l.name)}</strong></td><td><span class="badge-type">${esc(l.type)}</span></td><td>${esc(lv)}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(l.remark||'—')}</td><td><div class="action-btns"><button class="btn btn-secondary btn-sm" onclick="editLocation('${l.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteLocation('${l.id}')">🗑</button></div></td></tr>`;}).join('');}
+
+function openLocationModal(){['l_id','l_name','l_remark'].forEach(i=>document.getElementById(i).value='');document.getElementById('l_type').value='';document.getElementById('l_vessel').value='';document.getElementById('linkedVesselGroup').style.display='none';populateVesselSelect('l_vessel','');document.getElementById('locationModalTitle').textContent='Add Location';openModal('locationModal');}
+function editLocation(id){const l=locations.find(x=>x.id===id);if(!l)return;document.getElementById('l_id').value=l.id;document.getElementById('l_name').value=l.name;document.getElementById('l_type').value=l.type;document.getElementById('l_remark').value=l.remark||'';populateVesselSelect('l_vessel',l.linked_vessel||'');toggleLinkedVessel();document.getElementById('locationModalTitle').textContent='Edit Location';openModal('locationModal');}
+function saveLocation(){const id=document.getElementById('l_id').value;const name=document.getElementById('l_name').value.trim();const type=document.getElementById('l_type').value;if(!name||!type){toast('Name and Type required','error');return;}const d={name,type,linked_vessel:type==='Vessel'?document.getElementById('l_vessel').value:'',remark:document.getElementById('l_remark').value.trim()};if(id){const i=locations.findIndex(l=>l.id===id);if(i>=0)locations[i]={...locations[i],...d};toast('Location updated','success');}else{d.id=genId();locations.push(d);toast('Location added','success');}persistAll();closeModal('locationModal');renderLocations();}
+function deleteLocation(id){const l=locations.find(x=>x.id===id);const cid='loc_'+id;if(personnel.some(p=>p.current_location===id||p.current_location===cid)){toast('Cannot delete: personnel assigned','error');return;}showConfirm(`Delete "${l?.name}"?`,()=>{locations=locations.filter(x=>x.id!==id);persistAll();renderLocations();toast('Location deleted','success');});}
+function toggleLinkedVessel(){document.getElementById('linkedVesselGroup').style.display=document.getElementById('l_type').value==='Vessel'?'flex':'none';}
+
+// ==================== TRANSFER (BATCH) ====================
+let tfSelectedIds = new Set();
+
+function populateTransferForm(){
+  tfSelectedIds = new Set();
+  const lo=buildLocationOptions();
+  document.getElementById('tf_from').innerHTML=lo;
+  document.getElementById('tf_to').innerHTML=lo;
+  document.getElementById('tf_from').value='';
+  document.getElementById('tf_to').value='';
+  document.getElementById('tf_time').value=new Date().toISOString().slice(0,16);
+  ['tf_type','tf_approved','tf_reason','tf_remark'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('transferWarning').style.display='none';
+  // Location filter dropdown
+  const lf=document.getElementById('tfLocationFilter');
+  let lfh='<option value="">All Locations</option>';
+  if(vessels.length){lfh+='<optgroup label="🚢 Vessels">';vessels.forEach(v=>{lfh+=`<option value="vessel_${v.id}">🚢 ${esc(v.name)}</option>`;});lfh+='</optgroup>';}
+  if(locations.length){lfh+='<optgroup label="📍 Locations">';locations.forEach(l=>{lfh+=`<option value="loc_${l.id}">📍 ${esc(l.name)}</option>`;});lfh+='</optgroup>';}
+  lfh+='<option value="__none__">⚠️ Not Assigned</option>';
+  lf.innerHTML=lfh;
+  document.getElementById('tfPersonnelSearch').value='';
+  renderTransferPersonnelList();
+  renderTransferSelectedSummary();
+}
+
+function renderTransferPersonnelList(){
+  const q=document.getElementById('tfPersonnelSearch').value.toLowerCase();
+  const locF=document.getElementById('tfLocationFilter').value;
+  let list=personnel.filter(p=>{
+    const matchQ=!q||p.name.toLowerCase().includes(q)||p.employee_id.toLowerCase().includes(q)||(p.company||'').toLowerCase().includes(q);
+    let matchL=true;
+    if(locF==='__none__') matchL=!p.current_location;
+    else if(locF) matchL=(p.current_location===locF||getTransferCompositeId(p.current_location)===locF);
+    return matchQ&&matchL;
+  });
+  const container=document.getElementById('tfPersonnelList');
+  if(!list.length){container.innerHTML='<div class="tf-empty">No personnel found</div>';return;}
+  container.innerHTML=list.map(p=>{
+    const checked=tfSelectedIds.has(p.id)?'checked':'';
+    const sel=tfSelectedIds.has(p.id)?'selected':'';
+    const locName=getTransferLocationName(p.current_location);
+    const qual=isQualified(p);
+    return `<div class="tf-person-row ${sel}" onclick="tfToggle('${p.id}')">
+      <input type="checkbox" ${checked} onclick="event.stopPropagation();tfToggle('${p.id}')">
+      <span class="tf-p-name">${esc(p.name)}</span>
+      <span class="tf-p-id">${esc(p.employee_id)}</span>
+      <span class="tf-p-company">${esc(p.company||'')}</span>
+      <span class="tf-p-loc">${esc(locName)}</span>
+      ${qual?'':'<span class="tf-p-warn">⚠️</span>'}
+    </div>`;
+  }).join('');
+}
+
+function tfToggle(id){
+  if(tfSelectedIds.has(id)) tfSelectedIds.delete(id);
+  else tfSelectedIds.add(id);
+  renderTransferPersonnelList();
+  renderTransferSelectedSummary();
+  autoFillFromLocation();
+}
+
+function tfSelectAll(){
+  // Select all currently VISIBLE (filtered) personnel
+  const q=document.getElementById('tfPersonnelSearch').value.toLowerCase();
+  const locF=document.getElementById('tfLocationFilter').value;
+  personnel.forEach(p=>{
+    const matchQ=!q||p.name.toLowerCase().includes(q)||p.employee_id.toLowerCase().includes(q)||(p.company||'').toLowerCase().includes(q);
+    let matchL=true;
+    if(locF==='__none__') matchL=!p.current_location;
+    else if(locF) matchL=(p.current_location===locF||getTransferCompositeId(p.current_location)===locF);
+    if(matchQ&&matchL) tfSelectedIds.add(p.id);
+  });
+  renderTransferPersonnelList();
+  renderTransferSelectedSummary();
+  autoFillFromLocation();
+}
+
+function tfDeselectAll(){
+  tfSelectedIds.clear();
+  renderTransferPersonnelList();
+  renderTransferSelectedSummary();
+}
+
+function tfRemoveSelected(id){
+  tfSelectedIds.delete(id);
+  renderTransferPersonnelList();
+  renderTransferSelectedSummary();
+  autoFillFromLocation();
+}
+
+function renderTransferSelectedSummary(){
+  const container=document.getElementById('tfSelectedSummary');
+  const tbody=document.getElementById('tfSelectedTable');
+  const countEl=document.getElementById('tfSelectedCount');
+  const execCount=document.getElementById('tfExecCount');
+  const n=tfSelectedIds.size;
+  countEl.textContent=n;
+  execCount.textContent=n;
+  if(n===0){container.style.display='none';return;}
+  container.style.display='block';
+  const selected=personnel.filter(p=>tfSelectedIds.has(p.id));
+  tbody.innerHTML=selected.map(p=>{
+    const locName=getTransferLocationName(p.current_location);
+    const qual=isQualified(p);
+    return `<tr>
+      <td><strong>${esc(p.name)}</strong></td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:12px">${esc(p.employee_id)}</td>
+      <td>${esc(p.company||'—')}</td>
+      <td>${esc(locName)}</td>
+      <td>${qual?'<span class="badge-status badge-valid">✓ Yes</span>':'<span class="badge-status badge-expired">✗ No</span>'}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="tfRemoveSelected('${p.id}')" title="Remove">✕</button></td>
+    </tr>`;
+  }).join('');
+
+  // Show warnings
+  checkTransferWarnings();
+}
+
+function autoFillFromLocation(){
+  if(tfSelectedIds.size===0){document.getElementById('tf_from').value='';return;}
+  const selected=personnel.filter(p=>tfSelectedIds.has(p.id));
+  const locs=[...new Set(selected.map(p=>getTransferCompositeId(p.current_location)))];
+  if(locs.length===1&&locs[0]){
+    document.getElementById('tf_from').value=locs[0];
+  } else {
+    document.getElementById('tf_from').value='';
+  }
+}
+
+function checkTransferWarnings(){
+  const wE=document.getElementById('transferWarning'),wT=document.getElementById('transferWarningText');
+  if(tfSelectedIds.size===0){wE.style.display='none';return;}
+  const selected=personnel.filter(p=>tfSelectedIds.has(p.id));
+  const warnings=[];
+  // Check unqualified
+  const unqual=selected.filter(p=>!isQualified(p));
+  if(unqual.length){
+    warnings.push(`<strong>⚠️ ${unqual.length} personnel not qualified:</strong> ${unqual.map(p=>esc(p.name)).join(', ')}`);
+  }
+  // Check mixed locations
+  const locs=[...new Set(selected.map(p=>getTransferCompositeId(p.current_location)).filter(Boolean))];
+  if(locs.length>1){
+    warnings.push(`<strong>📍 Personnel at different locations (${locs.length}):</strong> ${locs.map(l=>esc(getTransferLocationName(l))).join(', ')}. <br>From location will be validated per person.`);
+  }
+  // Unassigned
+  const noLoc=selected.filter(p=>!p.current_location);
+  if(noLoc.length){
+    warnings.push(`<strong>❓ ${noLoc.length} personnel with no assigned location:</strong> ${noLoc.map(p=>esc(p.name)).join(', ')}`);
+  }
+  if(warnings.length){
+    wT.innerHTML=warnings.join('<br style="margin:8px 0">');
+    wE.style.display='flex';
+    wE.className='warning-item '+(unqual.length?'expired':'expiring');
+  } else {
+    wE.style.display='none';
+  }
+}
+
+function executeTransfer(){
+  const fc=document.getElementById('tf_from').value;
+  const tc=document.getElementById('tf_to').value;
+  const time=document.getElementById('tf_time').value;
+  const type=document.getElementById('tf_type').value;
+  const appr=document.getElementById('tf_approved').value.trim();
+
+  if(tfSelectedIds.size===0){toast('Select at least one person','error');return;}
+  if(!tc||!time||!type||!appr){toast('Fill all required fields (To, Time, Type, Approved By)','error');return;}
+  if(fc===tc){toast('Origin and destination cannot be the same','error');return;}
+
+  const selected=personnel.filter(p=>tfSelectedIds.has(p.id));
+  let successCount=0;
+  const errors=[];
+
+  selected.forEach(p=>{
+    const personFrom=getTransferCompositeId(p.current_location);
+    // If From is specified, it must match this person's current location
+    if(fc && fc!==personFrom){
+      errors.push(`${p.name}: not at selected From location (at ${getTransferLocationName(p.current_location)})`);
+      return;
+    }
+    // If From is not specified, use the person's current location as from
+    const actualFrom=fc||personFrom;
+    if(actualFrom===tc){
+      errors.push(`${p.name}: already at destination`);
+      return;
+    }
+
+    transfers.push({
+      id:genId(),
+      personnel_id:p.id,
+      from_location:actualFrom,
+      to_location:tc,
+      time,type,
+      approved_by:appr,
+      reason:document.getElementById('tf_reason').value.trim(),
+      remark:document.getElementById('tf_remark').value.trim(),
+      created_at:new Date().toISOString()
+    });
+    const i=personnel.findIndex(x=>x.id===p.id);
+    if(i>=0) personnel[i].current_location=tc;
+    successCount++;
+  });
+
+  persistAll();
+
+  if(successCount>0){
+    toast(`✅ ${successCount} personnel transferred to ${getTransferLocationName(tc)}`,'success');
+  }
+  if(errors.length){
+    toast(`⚠️ ${errors.length} skipped: ${errors[0]}${errors.length>1?' (+more)':''}`,'warning');
+  }
+  clearTransferForm();
+  populateTransferForm();
+}
+
+function clearTransferForm(){
+  tfSelectedIds=new Set();
+  ['tf_from','tf_to','tf_type','tf_approved','tf_reason','tf_remark'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('tf_time').value=new Date().toISOString().slice(0,16);
+  document.getElementById('transferWarning').style.display='none';
+  document.getElementById('tfSelectedSummary').style.display='none';
+  document.getElementById('tfSelectedCount').textContent='0';
+  document.getElementById('tfExecCount').textContent='0';
+  document.getElementById('tfPersonnelSearch').value='';
+}
+
+// ==================== HISTORY ====================
+function renderHistory(){const q=document.getElementById('historySearch').value.toLowerCase();const tf=document.getElementById('historyTypeFilter').value;const df=document.getElementById('historyDateFilter').value;let f=[...transfers].sort((a,b)=>new Date(b.time)-new Date(a.time));if(q)f=f.filter(t=>{const p=personnel.find(pp=>pp.id===t.personnel_id);return(p?p.name.toLowerCase():'').includes(q)||getLocationName(t.from_location).toLowerCase().includes(q)||getLocationName(t.to_location).toLowerCase().includes(q);});if(tf)f=f.filter(t=>t.type===tf);if(df)f=f.filter(t=>t.time&&t.time.startsWith(df));const tb=document.getElementById('historyTableBody');if(!f.length){tb.innerHTML='<tr class="empty-row"><td colspan="8">No records found</td></tr>';return;}tb.innerHTML=f.map(t=>{const p=personnel.find(pp=>pp.id===t.personnel_id);return`<tr><td style="font-family:'JetBrains Mono',monospace;font-size:12px">${formatDateTime(t.time)}</td><td><strong>${esc(p?p.name:'Unknown')}</strong></td><td>${esc(getLocationName(t.from_location))}</td><td>${esc(getLocationName(t.to_location))}</td><td><span class="badge-type">${esc(t.type)}</span></td><td>${esc(t.approved_by)}</td><td>${esc(t.reason||'—')}</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis">${esc(t.remark||'—')}</td></tr>`;}).join('');}
+
+// ==================== POB ====================
+function populatePOBFilter(){const s=document.getElementById('pobLocationFilter');let h='<option value="">-- Select Location / Vessel --</option>';if(vessels.length){h+='<optgroup label="🚢 Vessels">';vessels.forEach(v=>{h+=`<option value="vessel_${v.id}">🚢 ${esc(v.name)}</option>`;});h+='</optgroup>';}if(locations.length){h+='<optgroup label="📍 Locations">';locations.forEach(l=>{h+=`<option value="loc_${l.id}">📍 ${esc(l.name)} (${l.type})</option>`;});h+='</optgroup>';}s.innerHTML=h;}
+function renderPOB(){const cid=document.getElementById('pobLocationFilter').value;const tb=document.getElementById('pobTableBody');const hi=document.getElementById('pobHeaderInfo');if(!cid){tb.innerHTML='<tr class="empty-row"><td colspan="8">Select a location to view POB</td></tr>';hi.style.display='none';return;}const pobs=personnel.filter(p=>p.current_location===cid||getTransferCompositeId(p.current_location)===cid);document.getElementById('pobCountNum').textContent=pobs.length;hi.style.display='flex';if(!pobs.length){tb.innerHTML='<tr class="empty-row"><td colspan="8">No personnel at this location</td></tr>';return;}tb.innerHTML=pobs.map((p,i)=>{const m=getCertStatus(p.medical,p.medical_expiry);const b=getCertStatus(p.bosiet,p.bosiet_expiry);const lt=[...transfers].filter(t=>t.personnel_id===p.id).sort((a,b)=>new Date(b.time)-new Date(a.time))[0];return`<tr><td>${i+1}</td><td><strong>${esc(p.name)}</strong></td><td style="font-family:'JetBrains Mono',monospace;font-size:12px">${esc(p.employee_id)}</td><td>${esc(p.company||'—')}</td><td>${esc(p.position||'—')}</td><td><span class="badge-status ${m.cls}">${m.status}</span></td><td><span class="badge-status ${b.cls}">${b.status}</span></td><td style="font-size:12px">${lt?formatDateTime(lt.time):'—'}</td></tr>`;}).join('');}
+
+// ==================== CERTIFICATES ====================
+function renderCertificates(){const n=new Date();const exp=[],exg=[],mis=[];personnel.forEach(p=>{if(p.medical!=='Yes')mis.push({name:p.name,empid:p.employee_id,company:p.company,message:'Missing Medical Check'});if(p.bosiet!=='Yes')mis.push({name:p.name,empid:p.employee_id,company:p.company,message:'Missing BOSIET'});['medical','bosiet'].forEach(c=>{const l=c==='medical'?'Medical':'BOSIET';if(p[c]==='Yes'&&p[c+'_expiry']){const e=new Date(p[c+'_expiry']);if(e<n)exp.push({name:p.name,empid:p.employee_id,company:p.company,message:`${l} expired ${formatDate(p[c+'_expiry'])}`});else if((e-n)/864e5<=30)exg.push({name:p.name,empid:p.employee_id,company:p.company,message:`${l} expires ${formatDate(p[c+'_expiry'])}`});}});});
+  const rl=(items,sev,cid)=>{const el=document.getElementById(cid);if(!items.length){el.innerHTML='<p style="color:var(--text-muted);font-size:13px;padding:8px 0">None</p>';return;}el.innerHTML=items.map(it=>`<div class="warning-item ${sev}"><span class="warn-icon">${sev==='expired'?'⛔':'⚠️'}</span><div class="warn-text"><strong>${esc(it.name)} (${esc(it.empid||'')}) — ${esc(it.company||'')}</strong><span>${esc(it.message)}</span></div></div>`).join('');};
+  rl(exp,'expired','expiredList');rl(exg,'expiring','expiringList');rl(mis,'expired','missingCertList');updateCertBadge();
+}
+
+// ==================== GLOBAL SEARCH ====================
+function handleGlobalSearch(e){if(e.key==='Enter'){const q=document.getElementById('globalSearch').value.trim().toLowerCase();if(!q)return;if(personnel.find(p=>p.name.toLowerCase().includes(q)||p.employee_id.toLowerCase().includes(q))){navigateTo('personnel');document.getElementById('personnelSearch').value=q;renderPersonnel();return;}if(vessels.find(v=>v.name.toLowerCase().includes(q)||v.mmsi.toLowerCase().includes(q))){navigateTo('vessels');document.getElementById('vesselSearch').value=q;renderVessels();return;}toast('No results for "'+q+'"','warning');}}
+
+// ==================== CSV EXPORT ====================
+function downloadCSV(csv,fn){const b=new Blob([csv],{type:'text/csv;charset=utf-8;'});const l=document.createElement('a');l.href=URL.createObjectURL(b);l.download=fn;l.click();URL.revokeObjectURL(l.href);}
+function exportAllData(){let c='Name,Employee ID,Company,Nationality,Position,Medical,Medical Expiry,BOSIET,BOSIET Expiry,Location\n';personnel.forEach(p=>{c+=`"${p.name}","${p.employee_id}","${p.company||''}","${p.nationality||''}","${p.position||''}","${p.medical}","${p.medical_expiry||''}","${p.bosiet}","${p.bosiet_expiry||''}","${getLocationName(p.current_location)}"\n`;});downloadCSV(c,'opts_personnel.csv');toast('Exported','success');}
+function exportTransferHistory(){let c='Time,Personnel,From,To,Type,Approved By,Reason,Remark\n';[...transfers].sort((a,b)=>new Date(b.time)-new Date(a.time)).forEach(t=>{const p=personnel.find(pp=>pp.id===t.personnel_id);c+=`"${formatDateTime(t.time)}","${p?p.name:'Unknown'}","${getLocationName(t.from_location)}","${getLocationName(t.to_location)}","${t.type}","${t.approved_by}","${t.reason||''}","${t.remark||''}"\n`;});downloadCSV(c,'opts_history.csv');toast('Exported','success');}
+function exportPOB(){const cid=document.getElementById('pobLocationFilter').value;if(!cid){toast('Select a location','warning');return;}const ln=getLocationName(cid);const pobs=personnel.filter(p=>p.current_location===cid||getTransferCompositeId(p.current_location)===cid);let c=`POB Report - ${ln}\nGenerated: ${new Date().toLocaleString()}\n\n#,Name,Employee ID,Company,Position,Medical,BOSIET\n`;pobs.forEach((p,i)=>{c+=`${i+1},"${p.name}","${p.employee_id}","${p.company||''}","${p.position||''}","${p.medical} ${p.medical_expiry||''}","${p.bosiet} ${p.bosiet_expiry||''}"\n`;});c+=`\nTotal POB: ${pobs.length}\n`;downloadCSV(c,`pob_${ln.replace(/[^a-zA-Z0-9]/g,'_')}.csv`);toast('Exported','success');}
+
+// ==================== RESPONSIVE ====================
+function checkResponsive(){document.getElementById('menuBtn').style.display=window.innerWidth<=768?'block':'none';}
+window.addEventListener('resize',checkResponsive);checkResponsive();
+
+// ==================== INIT ====================
+function init(){
+  renderDashboard();updateCertBadge();
+  // Auto-connect if URL saved
+  if(getApiUrl()){setSyncStatus('syncing','Connecting...');apiCall('ping').then(r=>{if(r&&r.success)setSyncStatus('online','Connected');else setSyncStatus('offline','Connection failed');});}
+}
+init();
+</script>
+</body>
+</html>
