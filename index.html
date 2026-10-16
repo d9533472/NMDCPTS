@@ -182,6 +182,7 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
 
 <!-- ================= AUTH ================= -->
 <div class="auth" id="auth">
+  <button class="btn btn-sm lang-btn notr" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.35)" onclick="toggleLang()">中文</button>
   <div class="auth-card">
     <div class="auth-brand"><img src="data:image/png;base64,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" alt="NMDC"><h1>Offshore Personnel Transfer System</h1></div>
     <div id="authLogin">
@@ -247,6 +248,7 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
         <h2 id="pageTitle">Dashboard</h2>
       </div>
       <div class="header-right">
+        <button class="btn btn-secondary btn-sm lang-btn notr" onclick="toggleLang()">中文</button>
         <button class="btn btn-secondary btn-sm" onclick="reloadData(true)" title="Reload data from server">⟳ Refresh</button>
         <div class="user-chip" id="userChip" onclick="toggleUserMenu(event)">
           <span>👤</span><span class="uname" id="ucName">—</span><span class="role" id="ucRole">—</span>
@@ -330,7 +332,7 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
               <div class="form-group"><label>To *</label><select id="tfTo"></select></div>
               <div class="form-group"><label>Transport (vessel)</label><select id="tfTransport"></select></div>
               <div class="form-group"><label>Time *</label><input type="datetime-local" id="tfTime"></div>
-              <div class="form-group"><label>Transfer type *</label><select id="tfType"><option value="">-- Select --</option><option>Ship-to-Ship</option><option>Walk-to-Work</option><option>Helicopter</option><option>Port Transfer</option><option>Crew Change</option><option>Emergency</option></select></div>
+              <div class="form-group"><label>Transfer type *</label><select id="tfType"><option value="">-- Select --</option><option value="Ship-to-Ship">Ship-to-Ship</option><option value="Walk-to-Work">Walk-to-Work</option><option value="Helicopter">Helicopter</option><option value="Port Transfer">Port Transfer</option><option value="Crew Change">Crew Change</option><option value="Emergency">Emergency</option></select></div>
               <div class="form-group"><label>Approved by *</label><input id="tfApproved"></div>
               <div class="form-group"><label>Reason</label><input id="tfReason"></div>
               <div class="form-group full"><label>Remark</label><input id="tfRemark" placeholder="e.g. tower unmanned"></div>
@@ -827,7 +829,7 @@ function gotoPOB(cid) { go('pob'); document.getElementById('pobSel').value = cid
 function renderPersonnel() {
   const sel = document.getElementById('pCompany');
   const cur = sel.value;
-  sel.innerHTML = '<option value="">All companies</option>' + companyNames().map(c => `<option ${c === cur ? 'selected' : ''}>${esc(c)}</option>`).join('');
+  sel.innerHTML = '<option value="">All companies</option>' + companyNames().map(c => `<option value="${esc(c)}" ${c === cur ? 'selected' : ''}>${esc(c)}</option>`).join('');
   sel.classList.toggle('hidden', !isStaff());
   const q = v('pSearch').toLowerCase(), cf = sel.value, qf = v('pQual');
   const list = S.personnel.filter(p => {
@@ -935,7 +937,7 @@ async function savePersonnel(btn, id) {
 }
 async function deletePersonnel(id) {
   const p = S.personnel.find(x => x.id === id);
-  if (!await confirmBox(`Delete <b>${esc(p.name)}</b> and all of their certificates?`)) return;
+  if (!await confirmBox(L(`Delete <b>${esc(p.name)}</b> and all of their certificates?`, `確定刪除 <b>${esc(p.name)}</b> 及其所有證照？`))) return;
   await withBusy(null, async () => {
     await api('personnel.delete', { id });
     dropId(S.personnel, id);
@@ -957,7 +959,7 @@ function renderPmCerts(pid) {
   const p = S.personnel.find(x => x.id === pid);
   const list = certsOf(pid).sort((a, b) => pcType(a.type_id).category.localeCompare(pcType(b.type_id).category));
   const miss = missingCats(p);
-  let h = miss.length ? `<div class="note bad">⛔ Not qualified for offshore transfer — missing a valid, approved certificate for: <b>${miss.map(esc).join(', ')}</b></div>` : '<div class="note">✅ Qualified — all required certificate categories are valid and approved.</div>';
+  let h = miss.length ? `<div class="note bad">⛔ ${L('Not qualified for offshore transfer — missing a valid, approved certificate for:', '不符合離岸轉運資格 — 缺少以下類別的有效且已核准證照：')} <b>${miss.map(c => esc(tz(c))).join(L(', ', '、'))}</b></div>` : `<div class="note">✅ ${L('Qualified — all required certificate categories are valid and approved.', '合格 — 所有必備類別的證照皆有效且已核准。')}</div>`;
   if (!isStaff()) h += '<p class="hint" style="margin-bottom:10px">Certificates you upload or change are sent to MC for approval.</p>';
   if (!list.length) { el.innerHTML = h + '<p class="muted">No certificates uploaded yet.</p>'; return; }
   h += `<div class="table-wrap"><table><thead><tr><th>Category</th><th>Certificate</th><th>Cert No</th><th>Issued</th><th>Expiry</th><th>Status</th><th>File</th><th></th></tr></thead><tbody>${list.map(c => `<tr>
@@ -981,9 +983,9 @@ function openPersonCert(pid, cid) {
       <div class="form-group"><label>Certificate No</label><input id="pc_no" value="${esc(c.cert_no || '')}"></div>
       <div class="form-group"><label>Issue date</label><input id="pc_issue" type="date" value="${esc(c.issue_date || '')}"></div>
       <div class="form-group"><label>Expiry date <span id="pc_expReq">*</span></label><input id="pc_expiry" type="date" value="${esc(c.expiry_date || '')}"></div>
-      <div class="form-group full"><label>Certificate file ${cid ? '(leave empty to keep current file)' : '*'} — PDF / image, max 10 MB</label><input id="pc_file" type="file" accept=".pdf,image/*">
+      <div class="form-group full"><label>${cid ? L('Certificate file (leave empty to keep current file)', '證照檔案（留空則保留目前檔案）') : L('Certificate file *', '證照檔案 *')} — ${L('PDF / image, max 10 MB', 'PDF／圖片，上限 10 MB')}</label><input id="pc_file" type="file" accept=".pdf,image/*">
         ${c.file_id ? `<div class="hint">Current file: ${fileLink(c.file_id, c.file_name)} ${esc(c.file_name || '')}</div>` : ''}</div>
-      ${!isStaff() ? '<div class="note warn full">After saving, this certificate will be <b>Pending</b> until MC approves it.</div>' : ''}
+      ${!isStaff() ? L('<div class="note warn full">After saving, this certificate will be <b>Pending</b> until MC approves it.</div>', '<div class="note warn full">儲存後此證照會是<b>待核准</b>狀態，MC 核准後才生效。</div>') : ''}
       <div class="form-actions"><button class="btn btn-primary" onclick="savePersonCert(this,'${pid}','${cid || ''}')">💾 Save certificate</button></div>
     </div>`);
   pcTypeChanged();
@@ -1012,7 +1014,7 @@ async function savePersonCert(btn, pid, cid) {
 }
 async function deletePersonCert(cid) {
   const c = S.personCerts.find(x => x.id === cid);
-  if (!await confirmBox(`Delete certificate <b>${esc(pcName(c))}</b> and its file?`)) return;
+  if (!await confirmBox(L(`Delete certificate <b>${esc(pcName(c))}</b> and its file?`, `確定刪除證照 <b>${esc(pcName(c))}</b> 及其檔案？`))) return;
   await withBusy(null, async () => {
     await api('pcert.delete', { id: cid });
     dropId(S.personCerts, cid);
@@ -1031,7 +1033,7 @@ async function reviewCert(cid, status) {
     const rec = await api('pcert.review', { id: cid, status, note });
     upsert(S.personCerts, rec);
     renderPmCerts(rec.personnel_id); refreshPage();
-    toast('Certificate ' + status.toLowerCase(), 'success');
+    toast(L('Certificate ' + status.toLowerCase(), status === 'Approved' ? '證照已核准' : '證照已退件'), 'success');
   });
 }
 
@@ -1080,7 +1082,7 @@ function openVessel(id, tab) {
     </div>
     <div id="vmTab-info"><div class="form-grid">
       <div class="form-group"><label>Vessel name *</label><input id="vm_name" value="${esc(x.name || '')}" ${ro}></div>
-      <div class="form-group"><label>Vessel type</label><select id="vm_type" ${ro}><option value="">-- Select --</option>${VESSEL_TYPES.concat(x.type && VESSEL_TYPES.indexOf(x.type) < 0 ? [x.type] : []).map(t => `<option ${t === x.type ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Vessel type</label><select id="vm_type" ${ro}><option value="">-- Select --</option>${VESSEL_TYPES.concat(x.type && VESSEL_TYPES.indexOf(x.type) < 0 ? [x.type] : []).map(t => `<option value="${esc(t)}" ${t === x.type ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></div>
       <div class="form-group"><label>MMSI</label><input id="vm_mmsi" value="${esc(x.mmsi || '')}" ${ro}></div>
       <div class="form-group"><label>IMO No</label><input id="vm_imo" value="${esc(x.imo || '')}" ${ro}></div>
       <div class="form-group"><label>Flag</label><input id="vm_flag" value="${esc(x.flag || '')}" ${ro}></div>
@@ -1108,7 +1110,7 @@ function renderVmCerts(id) {
   if (!el) return;
   const comp = vesselCompliance(id);
   const types = vcTypesActive();
-  el.innerHTML = (comp.issues.length ? `<div class="note bad">⛔ ${comp.issues.length} mandatory certificate issue(s): missing, expired or without an uploaded file.</div>` : '<div class="note">✅ All mandatory certificates are valid and uploaded.</div>') +
+  el.innerHTML = (comp.issues.length ? `<div class="note bad">⛔ ${L(comp.issues.length + ' mandatory certificate issue(s): missing, expired or without an uploaded file.', comp.issues.length + ' 項強制證書有缺失：缺少、已過期或未上傳檔案。')}</div>` : '<div class="note">✅ All mandatory certificates are valid and uploaded.</div>') +
     `<p class="hint" style="margin-bottom:10px">Mandatory items are set by the administrator (Administration → Vessel Certificate Requirements).</p>
     <div class="table-wrap"><table><thead><tr><th>#</th><th>Certificate</th><th>Required</th><th>Issued</th><th>Expiry</th><th>Status</th><th>File</th><th>Description</th>${isStaff() ? '<th></th>' : ''}</tr></thead><tbody>${types.map((t, i) => {
       const s = vcState(id, t), c = s.c || {};
@@ -1123,7 +1125,7 @@ function renderVmPTW(id) {
   const x = vesselById(id);
   if (!PTW.data) { el.innerHTML = '<p class="muted">Loading PTW data…</p>'; refreshPTW(false).then(() => renderVmPTW(id)).catch(e => { el.innerHTML = `<div class="note bad">${esc(e.message)}</div>`; }); return; }
   const list = vesselPTWs(x.name);
-  el.innerHTML = `<p class="hint" style="margin-bottom:10px">Open permits in the Offshore PTW System whose vessel field matches “${esc(x.name)}”.</p>` + ptwTable(list);
+  el.innerHTML = `<p class="hint" style="margin-bottom:10px">${L('Open permits in the Offshore PTW System whose vessel field matches', 'Offshore PTW 系統中船舶欄位符合以下船名的開立中 PTW：')} “${esc(x.name)}”</p>` + ptwTable(list);
 }
 function openVesselCert(vid, tid) {
   const t = S.vesselCertTypes.find(x => x.id === tid);
@@ -1134,7 +1136,7 @@ function openVesselCert(vid, tid) {
       <div class="form-group"><label>Issue date</label><input id="vc_issue" type="date" value="${esc(c.issue_date || '')}"></div>
       <div class="form-group"><label>Expiry date</label><input id="vc_expiry" type="date" value="${esc(c.expiry_date || '')}"></div>
       <div class="form-group full"><label>Description</label><input id="vc_desc" value="${esc(c.description || '')}"></div>
-      <div class="form-group full"><label>Certificate file — PDF / image, max 10 MB ${c.file_id ? '(leave empty to keep current)' : ''}</label><input id="vc_file" type="file" accept=".pdf,image/*">
+      <div class="form-group full"><label>${L('Certificate file — PDF / image, max 10 MB', '證書檔案 — PDF／圖片，上限 10 MB')} ${c.file_id ? L('(leave empty to keep current)', '（留空則保留目前檔案）') : ''}</label><input id="vc_file" type="file" accept=".pdf,image/*">
         ${c.file_id ? `<div class="hint">Current file: ${fileLink(c.file_id, c.file_name)} ${esc(c.file_name || '')} &nbsp; <label class="chk"><input type="checkbox" id="vc_rm"> remove file</label></div>` : ''}</div>
       <div class="form-actions"><button class="btn btn-primary" onclick="saveVesselCert(this,'${vid}','${tid}')">💾 Save</button>${c.id ? `<button class="btn btn-danger" onclick="deleteVesselCert('${c.id}','${vid}')">Clear record</button>` : ''}</div>
     </div>`);
@@ -1173,7 +1175,7 @@ async function saveVessel(btn, id) {
 }
 async function deleteVessel(id) {
   const x = vesselById(id);
-  if (!await confirmBox(`Delete vessel <b>${esc(x.name)}</b> and all its certificates?`)) return;
+  if (!await confirmBox(L(`Delete vessel <b>${esc(x.name)}</b> and all its certificates?`, `確定刪除船舶 <b>${esc(x.name)}</b> 及其所有證書？`))) return;
   await withBusy(null, async () => {
     await api('vessel.delete', { id });
     dropId(S.vessels, id);
@@ -1197,7 +1199,7 @@ function openLocation(id) {
   const l = id ? S.locations.find(x => x.id === id) : {};
   openModal(id ? 'Edit location' : 'Add location', `<div class="form-grid">
     <div class="form-group"><label>Name *</label><input id="lm_name" value="${esc(l.name || '')}" placeholder="e.g. S01, N01, OSS"></div>
-    <div class="form-group"><label>Type *</label><select id="lm_type"><option value="">-- Select --</option>${LOCATION_TYPES.concat(l.type && LOCATION_TYPES.indexOf(l.type) < 0 ? [l.type] : []).map(t => `<option ${t === l.type ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></div>
+    <div class="form-group"><label>Type *</label><select id="lm_type"><option value="">-- Select --</option>${LOCATION_TYPES.concat(l.type && LOCATION_TYPES.indexOf(l.type) < 0 ? [l.type] : []).map(t => `<option value="${esc(t)}" ${t === l.type ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></div>
     <div class="form-group"><label>Linked vessel</label><select id="lm_vessel">${vesselOptions(l.linked_vessel || '')}</select></div>
     <div class="form-group full"><label>Remark</label><textarea id="lm_remark">${esc(l.remark || '')}</textarea></div>
     <div class="form-actions"><button class="btn btn-primary" onclick="saveLocation(this,'${id || ''}')">💾 Save</button></div></div>`);
@@ -1212,7 +1214,7 @@ async function saveLocation(btn, id) {
 }
 async function deleteLocation(id) {
   const l = S.locations.find(x => x.id === id);
-  if (!await confirmBox(`Delete location <b>${esc(l.name)}</b>?`)) return;
+  if (!await confirmBox(L(`Delete location <b>${esc(l.name)}</b>?`, `確定刪除位置 <b>${esc(l.name)}</b>？`))) return;
   await withBusy(null, async () => { await api('location.delete', { id }); dropId(S.locations, id); refreshPage(); }, 'Deleting…');
 }
 
@@ -1256,11 +1258,11 @@ function tfAutoFrom() {
 function tfSummary() {
   const sel = S.personnel.filter(p => tfSel.has(p.id));
   document.getElementById('tfCount').textContent = sel.length;
-  document.getElementById('tfSummary').innerHTML = sel.length ? `<b>${sel.length}</b> selected: ${sel.map(p => esc(p.name)).join(', ')}` : 'No personnel selected.';
+  document.getElementById('tfSummary').innerHTML = sel.length ? `<b>${sel.length}</b> ${L('selected:', '人已選：')} ${sel.map(p => esc(p.name)).join(', ')}` : 'No personnel selected.';
   const unq = sel.filter(p => !isQualified(p));
   const w = document.getElementById('tfWarn');
   w.classList.toggle('hidden', !unq.length);
-  w.innerHTML = unq.length ? '⛔ <b>Not qualified:</b><br>' + unq.map(p => `${esc(p.name)} — missing ${esc(missingCats(p).join(', '))}`).join('<br>') : '';
+  w.innerHTML = unq.length ? `⛔ <b>${L('Not qualified:', '不合格：')}</b><br>` + unq.map(p => `${esc(p.name)} — ${L('missing', '缺少')} ${esc(missingCats(p).map(tz).join(L(', ', '、')))}`).join('<br>') : '';
 }
 async function executeTransfer(btn) {
   const d = { personnel_ids: [...tfSel], from_location: v('tfFrom'), to_location: v('tfTo'), transport: v('tfTransport'), time: v('tfTime'),
@@ -1269,14 +1271,15 @@ async function executeTransfer(btn) {
   if (!d.to_location || !d.time || !d.type || !d.approved_by) { toast('Fill in To, Time, Transfer type and Approved by', 'error'); return; }
   if (d.from_location && d.from_location === d.to_location) { toast('From and To cannot be the same', 'error'); return; }
   const unq = S.personnel.filter(p => tfSel.has(p.id) && !isQualified(p));
-  if (unq.length && !await confirmBox(`<b>${unq.length}</b> selected person(s) are <b>not qualified</b> (missing valid approved certificates):<br>${unq.map(p => esc(p.name)).join(', ')}<br><br>Transfer anyway?`, 'Transfer anyway')) return;
+  if (unq.length && !await confirmBox(L(`<b>${unq.length}</b> selected person(s) are <b>not qualified</b> (missing valid approved certificates):<br>${unq.map(p => esc(p.name)).join(', ')}<br><br>Transfer anyway?`,
+    `已選人員中有 <b>${unq.length}</b> 人<b>不合格</b>（缺少有效且已核准的證照）：<br>${unq.map(p => esc(p.name)).join('、')}<br><br>仍要執行轉運嗎？`), 'Transfer anyway')) return;
   await withBusy(btn, async () => {
     const r = await api('transfer.execute', d);
     r.transfers.forEach(t => S.transfers.push(t));
     r.personnel.forEach(p => upsert(S.personnel, p));
     if (r.siteLog) S.siteLog.push(r.siteLog);
-    if (r.transfers.length) toast(`${r.transfers.length} personnel transferred to ${locName(d.to_location)}`, 'success');
-    if (r.skipped.length) toast('Skipped: ' + r.skipped.join('; '), 'warning');
+    if (r.transfers.length) toast(L(`${r.transfers.length} personnel transferred to ${locName(d.to_location)}`, `已將 ${r.transfers.length} 位人員轉運至 ${locName(d.to_location)}`), 'success');
+    if (r.skipped.length) toast(L('Skipped: ', '已略過：') + r.skipped.join('; '), 'warning');
     tfSel.clear();
     ['tfReason','tfRemark'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('tfTime').value = nowLocal();
@@ -1290,7 +1293,7 @@ function initSiteLog() {
   document.getElementById('slAsset').innerHTML = locOptions(v('slAsset'), 'All assets');
   document.getElementById('slTransport').innerHTML = vesselOptions(v('slTransport'), 'All transports');
   const a = v('slActivity');
-  document.getElementById('slActivity').innerHTML = '<option value="">All activities</option>' + ACTIVITIES.map(x => `<option ${x === a ? 'selected' : ''}>${x}</option>`).join('');
+  document.getElementById('slActivity').innerHTML = '<option value="">All activities</option>' + ACTIVITIES.map(x => `<option value="${x}" ${x === a ? 'selected' : ''}>${x}</option>`).join('');
   renderSiteLog();
 }
 function siteLogFiltered() {
@@ -1322,7 +1325,7 @@ function openSiteLog(id) {
   const l = id ? S.siteLog.find(x => x.id === id) : { time: nowLocal(), activity: 'INFO' };
   openModal(id ? 'Edit log entry' : 'New log entry', `<div class="form-grid">
     <div class="form-group"><label>Date / time *</label><input id="sl_time" type="datetime-local" value="${esc(String(l.time || '').slice(0, 16))}"></div>
-    <div class="form-group"><label>Activity *</label><select id="sl_act">${ACTIVITIES.map(a => `<option ${a === l.activity ? 'selected' : ''}>${a}</option>`).join('')}</select></div>
+    <div class="form-group"><label>Activity *</label><select id="sl_act">${ACTIVITIES.map(a => `<option value="${a}" ${a === l.activity ? 'selected' : ''}>${a}</option>`).join('')}</select></div>
     <div class="form-group"><label>Asset / location</label><select id="sl_asset">${locOptions(l.asset || '', '-- None --')}</select></div>
     <div class="form-group"><label>Transport (vessel)</label><select id="sl_tr">${vesselOptions(l.transport || '')}</select></div>
     <div class="form-group full"><label>Personnel</label><input id="sl_people" value="${esc(l.personnel || '')}" placeholder="Names (optional)"></div>
@@ -1362,7 +1365,7 @@ function renderHistory() {
     ${isAdmin() ? `<td><button class="btn btn-danger btn-sm" title="Delete this record (does not move the person back)" onclick="deleteTransfer('${t.id}')">🗑</button></td>` : ''}</tr>`).join('') : '<tr class="empty"><td colspan="10">No transfers</td></tr>';
 }
 async function deleteTransfer(id) {
-  if (!await confirmBox('Delete this transfer record?<br><span class="hint">This only removes the history line — it does not move the person back.</span>')) return;
+  if (!await confirmBox(L('Delete this transfer record?<br><span class="hint">This only removes the history line — it does not move the person back.</span>', '確定刪除這筆轉運紀錄？<br><span class="hint">只會刪除紀錄，不會把人員移回原位置。</span>'))) return;
   await withBusy(null, async () => { await api('transfer.delete', { id }); dropId(S.transfers, id); refreshPage(); }, 'Deleting…');
 }
 function exportHistoryCSV() {
@@ -1399,9 +1402,9 @@ function personAlerts() {
   const out = [];
   S.personnel.forEach(p => {
     const miss = missingCats(p);
-    if (miss.length) out.push({ sev: 'bad', title: p.name + ' — ' + p.company, msg: 'Not qualified: ' + miss.map(c => c + ' (' + catStatus(p, c).text + ')').join(', '), pid: p.id });
+    if (miss.length) out.push({ sev: 'bad', title: p.name + ' — ' + p.company, msg: L('Not qualified: ', '不合格：') + miss.map(c => tz(c) + ' (' + tz(catStatus(p, c).text) + ')').join(L(', ', '、')), pid: p.id });
     certsOf(p.id).forEach(c => {
-      if (c.status === 'Approved' && certExpiringSoon(c)) out.push({ sev: 'warn', title: p.name + ' — ' + p.company, msg: pcName(c) + ' expires ' + fmtDate(c.expiry_date), pid: p.id });
+      if (c.status === 'Approved' && certExpiringSoon(c)) out.push({ sev: 'warn', title: p.name + ' — ' + p.company, msg: pcName(c) + L(' expires ', ' 到期日 ') + fmtDate(c.expiry_date), pid: p.id });
     });
   });
   return out.sort((a, b) => (a.sev === 'bad' ? 0 : 1) - (b.sev === 'bad' ? 0 : 1));
@@ -1413,7 +1416,7 @@ function alertHtml(a) {
 function renderCertificates() {
   const staff = isStaff();
   const pend = S.personCerts.filter(c => c.status === 'Pending').sort((a, b) => String(a.updated_at).localeCompare(String(b.updated_at)));
-  document.getElementById('pendingTitle').textContent = staff ? `⏳ Pending Approval (${pend.length})` : `⏳ Waiting for MC approval (${pend.length})`;
+  document.getElementById('pendingTitle').textContent = staff ? L(`⏳ Pending Approval (${pend.length})`, `⏳ 待核准（${pend.length}）`) : L(`⏳ Waiting for MC approval (${pend.length})`, `⏳ 等待 MC 核准（${pend.length}）`);
   const pname = id => (S.personnel.find(p => p.id === id) || {});
   document.getElementById('pendBody').innerHTML = pend.length ? pend.map(c => {
     const p = pname(c.personnel_id);
@@ -1434,8 +1437,8 @@ function renderCertificates() {
   const va = [];
   S.vessels.forEach(x => {
     const c = vesselCompliance(x.id);
-    if (c.issues.length) va.push({ sev: 'bad', title: x.name, msg: c.issues.length + ' mandatory issue(s): ' + c.issues.slice(0, 4).map(i => i.t.name.replace(/^[^A-Za-z]+/, '') + ' (' + i.s.text + ')').join('; ') + (c.issues.length > 4 ? ' …' : ''), vid: x.id });
-    else if (c.soon) va.push({ sev: 'warn', title: x.name, msg: c.soon + ' certificate(s) expiring within 30 days', vid: x.id });
+    if (c.issues.length) va.push({ sev: 'bad', title: x.name, msg: L(c.issues.length + ' mandatory issue(s): ', c.issues.length + ' 項強制證書缺失：') + c.issues.slice(0, 4).map(i => (LANG === 'zh' ? i.t.name.split(' ')[0] : i.t.name.replace(/^[^A-Za-z]+/, '')) + ' (' + tz(i.s.text) + ')').join('; ') + (c.issues.length > 4 ? ' …' : ''), vid: x.id });
+    else if (c.soon) va.push({ sev: 'warn', title: x.name, msg: L(c.soon + ' certificate(s) expiring within 30 days', c.soon + ' 張證書將於 30 天內到期'), vid: x.id });
   });
   document.getElementById('vesselAlerts').innerHTML = va.length ? va.map(alertHtml).join('') : '<p class="muted">No vessel certificate alerts 🎉</p>';
 }
@@ -1463,7 +1466,7 @@ function initPTW() {
   const cur = v('ptwVessel');
   const names = new Set(S.vessels.map(x => x.name));
   if (PTW.data) PTW.data.active.concat(PTW.data.overdue).forEach(p => p.vessel && names.add(p.vessel));
-  document.getElementById('ptwVessel').innerHTML = '<option value="">All vessels</option>' + [...names].sort().map(n => `<option ${n === cur ? 'selected' : ''}>${esc(n)}</option>`).join('');
+  document.getElementById('ptwVessel').innerHTML = '<option value="">All vessels</option>' + [...names].sort().map(n => `<option value="${esc(n)}" ${n === cur ? 'selected' : ''}>${esc(n)}</option>`).join('');
   if (!PTW.data && !PTW.loading) refreshPTW(false).catch(() => {});
   renderPTW();
 }
@@ -1504,7 +1507,7 @@ function renderPTW() {
   ].map(c => `<div class="stat ${c[3]}"><div class="v">${c[1]}</div><div class="l">${c[0]} ${c[2]}</div></div>`).join('');
   const html = ptwTable(list);
   document.getElementById('ptwBody').innerHTML = list.length ? html.split('<tbody>')[1].split('</tbody>')[0] : '<tr class="empty"><td colspan="8">No open permits match</td></tr>';
-  foot.textContent = 'Source: Offshore PTW System · updated ' + new Date(PTW.at).toLocaleTimeString('en-GB') + ' · click a PTW number to open it.';
+  foot.textContent = L('Source: Offshore PTW System · updated ', '資料來源：Offshore PTW 系統 · 更新於 ') + new Date(PTW.at).toLocaleTimeString('en-GB') + L(' · click a PTW number to open it.', ' · 點 PTW 編號可開啟該張 PTW。');
 }
 
 // ==================== ADMIN ====================
@@ -1519,7 +1522,8 @@ function renderAdmin() {
 function adminUsers(el) {
   const list = [...S.users].sort((a, b) => a.role.localeCompare(b.role) || a.username.localeCompare(b.username));
   el.innerHTML = `<div class="section"><div class="section-header"><h3>User accounts</h3><button class="btn btn-green btn-sm" onclick="openUser()">+ Add user</button></div>
-    <div class="section-body note" style="margin:0;border-radius:0"><b>Admin</b> = MC administrator (everything incl. accounts & settings) · <b>MC</b> = marine coordination operations (transfers, site log, approvals, vessels) · <b>Contractor</b> = can only add / edit personnel and certificates of their own company; everything else is read-only.</div>
+    <div class="section-body note" style="margin:0;border-radius:0">${L('<b>Admin</b> = MC administrator (everything incl. accounts & settings) · <b>MC</b> = marine coordination operations (transfers, site log, approvals, vessels) · <b>Contractor</b> = can only add / edit personnel and certificates of their own company; everything else is read-only.',
+      '<b>管理員</b> = MC 管理者（全部功能，含帳號與系統設定）· <b>MC</b> = 海事協調作業（轉運、現場日誌、證照核准、船舶）· <b>承包商</b> = 只能新增／編輯自家公司的人員與證照，其餘皆唯讀。')}</div>
     <div class="table-wrap"><table><thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Company</th><th>Email</th><th>Status</th><th>Last login</th><th></th></tr></thead><tbody>${list.map(u => `<tr>
       <td class="mono">${esc(u.username)}</td><td>${esc(u.name)}</td><td><span class="b ${u.role === 'contractor' ? 'b-info' : 'b-navy'}">${ROLE_LABEL[u.role] || u.role}</span></td><td>${esc(u.company)}</td><td>${esc(u.email)}</td>
       <td>${u.active ? '<span class="b b-ok">Active</span>' : '<span class="b b-na">Disabled</span>'}${u.must_change ? ' <span class="b b-warn">Temp password</span>' : ''}</td><td class="hint">${fmtDT(u.last_login)}</td>
@@ -1527,7 +1531,7 @@ function adminUsers(el) {
 }
 async function deleteUser(id) {
   const u = S.users.find(x => x.id === id);
-  if (!await confirmBox(`Delete account <b>${esc(u.username)}</b>? (Tip: untick “Account active” instead to keep it for later.)`)) return;
+  if (!await confirmBox(L(`Delete account <b>${esc(u.username)}</b>? (Tip: untick “Account active” instead to keep it for later.)`, `確定刪除帳號 <b>${esc(u.username)}</b>？（提示：若之後還會用到，可改為取消勾選「帳號啟用」。）`))) return;
   await withBusy(null, async () => { await api('user.delete', { id }); dropId(S.users, id); renderAdmin(); toast('User deleted', 'success'); }, 'Deleting…');
 }
 function showCredentials(username, pw) {
@@ -1582,7 +1586,7 @@ async function addCompany(btn) {
 }
 async function deleteCompany(id) {
   const c = S.companies.find(x => x.id === id);
-  if (!await confirmBox(`Delete company <b>${esc(c.name)}</b>?`)) return;
+  if (!await confirmBox(L(`Delete company <b>${esc(c.name)}</b>?`, `確定刪除公司 <b>${esc(c.name)}</b>？`))) return;
   await withBusy(null, async () => { await api('company.delete', { id }); dropId(S.companies, id); renderAdmin(); }, 'Deleting…');
 }
 async function toggleCompany(id) {
@@ -1594,7 +1598,8 @@ function adminVct(el) {
   const mand = list.filter(t => t.mandatory === 'TRUE' && t.active !== 'FALSE').length;
   el.innerHTML = `<div class="section"><div class="section-header"><h3>Vessel certificate requirements (${mand} mandatory)</h3>
       <div class="toolbar"><input class="fi" id="newVct" placeholder="New certificate name" style="width:260px"><button class="btn btn-green btn-sm" onclick="addVct(this)">+ Add</button></div></div>
-    <div class="section-body note" style="margin:0;border-radius:0">Tick <b>Mandatory</b> for certificates every vessel must hold <b>with an uploaded file</b>. Optional certificates can still be recorded but do not raise alerts. Untick <b>Shown</b> to hide an item from the checklist.</div>
+    <div class="section-body note" style="margin:0;border-radius:0">${L('Tick <b>Mandatory</b> for certificates every vessel must hold <b>with an uploaded file</b>. Optional certificates can still be recorded but do not raise alerts. Untick <b>Shown</b> to hide an item from the checklist.',
+      '勾選<b>強制</b>的證書，每艘船都必須具備並<b>上傳檔案</b>；選填的證書仍可登錄，但不會產生警示。取消勾選<b>顯示</b>可將該項目從清單隱藏。')}</div>
     <div class="table-wrap"><table><thead><tr><th>#</th><th>Code</th><th>Certificate</th><th>Mandatory</th><th>Shown</th></tr></thead><tbody>${list.map((t, i) => `<tr>
       <td class="muted">${i + 1}</td><td class="mono">${esc(t.code)}</td><td>${esc(t.name)}</td>
       <td><label class="chk"><input type="checkbox" ${t.mandatory === 'TRUE' ? 'checked' : ''} onchange="setVct('${t.id}','mandatory',this)"></label></td>
@@ -1614,10 +1619,11 @@ function adminPct(el) {
   const list = [...S.personCertTypes].sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0));
   const cats = [...new Set(['Medical','Sea Survival','Training','Other'].concat(list.map(t => t.category)))];
   el.innerHTML = `<div class="section"><div class="section-header"><h3>Personnel certificate types</h3>
-      <div class="toolbar"><input class="fi" id="newPct" placeholder="e.g. GWO First Aid" style="width:220px"><select class="fi" id="newPctCat">${cats.map(c => `<option>${esc(c)}</option>`).join('')}</select><button class="btn btn-green btn-sm" onclick="addPct(this)">+ Add</button></div></div>
-    <div class="section-body note" style="margin:0;border-radius:0">A person is <b>qualified</b> for transfer when they have at least one <b>approved, unexpired</b> certificate in each required category (set in the System tab: currently <b>${esc(requiredCats().join(', ') || 'none')}</b>). Types whose name starts with “Other” let the user type the certificate name.</div>
+      <div class="toolbar"><input class="fi" id="newPct" placeholder="e.g. GWO First Aid" style="width:220px"><select class="fi" id="newPctCat">${cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}</select><button class="btn btn-green btn-sm" onclick="addPct(this)">+ Add</button></div></div>
+    <div class="section-body note" style="margin:0;border-radius:0">${L(`A person is <b>qualified</b> for transfer when they have at least one <b>approved, unexpired</b> certificate in each required category (set in the System tab: currently <b>${esc(requiredCats().join(', ') || 'none')}</b>). Types whose name starts with “Other” let the user type the certificate name.`,
+      `人員在每個必備類別都至少有一張<b>已核准且未過期</b>的證照，才算<b>合格</b>可轉運（必備類別在「系統」分頁設定，目前為：<b>${esc(requiredCats().map(tz).join('、') || '無')}</b>）。名稱以「Other」開頭的類型，使用者可自行輸入證照名稱。`)}</div>
     <div class="table-wrap"><table><thead><tr><th>Certificate type</th><th>Category</th><th>Expiry required</th><th>Shown</th></tr></thead><tbody>${list.map(t => `<tr>
-      <td>${esc(t.name)}</td><td><select class="fi" onchange="setPct('${t.id}','category',this)">${cats.map(c => `<option ${c === t.category ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></td>
+      <td>${esc(t.name)}</td><td><select class="fi" onchange="setPct('${t.id}','category',this)">${cats.map(c => `<option value="${esc(c)}" ${c === t.category ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></td>
       <td><label class="chk"><input type="checkbox" ${t.has_expiry === 'TRUE' ? 'checked' : ''} onchange="setPct('${t.id}','has_expiry',this)"></label></td>
       <td><label class="chk"><input type="checkbox" ${t.active !== 'FALSE' ? 'checked' : ''} onchange="setPct('${t.id}','active',this)"></label></td></tr>`).join('')}</tbody></table></div></div>`;
 }
@@ -1656,6 +1662,233 @@ function exportJSON() {
   a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
   a.download = 'opts_backup_' + todayStr() + '.json'; a.click();
 }
+
+// ==================== I18N（中英切換） ====================
+// 一般字串：ZH 字典 + MutationObserver 自動翻譯畫面上的文字節點／placeholder／title；
+// 含變數或行內標籤的句子：程式內用 L(en, zh)，或在 RULES 以正規式翻譯。
+const ZH = {
+  'OPTS — Offshore Personnel Transfer System': 'OPTS — 離岸人員轉運系統', 'Offshore Personnel Transfer System': '離岸人員轉運系統',
+  'OPTS · Personnel Transfer System': 'OPTS · 人員轉運系統',
+  'Sign in': '登入', 'Signing in…': '登入中…', 'Use the account provided by Marine Coordination (MC).': '請使用海事協調（MC）提供的帳號登入。',
+  'Username or email': '帳號或 Email', 'Password': '密碼', 'Enter username and password': '請輸入帳號與密碼',
+  'First-time setup': '首次設定', 'No accounts exist yet. Create the first administrator account.': '系統尚無任何帳號，請建立第一個管理員帳號。',
+  'Username': '帳號', 'Full name': '姓名', 'Email': 'Email', 'Password * (min 6)': '密碼 *（至少 6 碼）', 'Create administrator': '建立管理員',
+  'Set a new password': '設定新密碼', 'Your account uses a temporary password. Please choose a new one to continue.': '您的帳號目前使用臨時密碼，請先設定新密碼。',
+  'Current (temporary) password': '目前（臨時）密碼', 'New password (min 6)': '新密碼（至少 6 碼）', 'Confirm new password': '確認新密碼',
+  'Save and continue': '儲存並繼續', 'Connecting…': '連線中…', 'Current password': '目前密碼', 'New passwords do not match': '兩次輸入的新密碼不一致',
+  'Password changed': '密碼已變更', 'Change password': '變更密碼', 'Sign out': '登出',
+  'Overview': '總覽', 'Dashboard': '儀表板', 'Management': '管理', 'Personnel': '人員', 'Vessels': '船舶', 'Locations': '位置',
+  'Operations': '作業', 'Transfer': '轉運', 'Site Log': '現場日誌', 'Transfer History': '轉運紀錄', 'POB Viewer': '在場人數（POB）',
+  'Safety': '安全', 'Certificates': '證照', 'PTW Monitor': 'PTW 監控', 'System': '系統', 'Administration': '系統管理',
+  'Refresh': '重新整理', 'Reload data from server': '從伺服器重新載入資料', 'Loading…': '載入中…', 'Loading data…': '載入資料中…',
+  'Saving…': '儲存中…', 'Deleting…': '刪除中…', 'Uploading…': '上傳中…', 'Executing transfer…': '執行轉運中…', 'Loading file…': '檔案載入中…',
+  'Personnel Transfer': '人員轉運', 'Locations / Assets': '位置／資產',
+  // Dashboard
+  'POB Summary': '在場人數總覽', 'View all': '查看全部', 'Certificate Alerts': '證照警示', 'Latest Site Log': '最新現場日誌',
+  'My personnel': '我的人員', 'Assigned to a location': '已派駐位置', 'Not qualified': '不合格', 'Certs pending approval': '待核准證照',
+  'Vessels with cert issues': '證書有缺失的船舶', 'Transfers today': '今日轉運', 'Active PTW': '執行中 PTW', 'Overdue PTW': '逾期 PTW',
+  'No vessels or locations yet.': '尚未建立船舶或位置。', 'No alerts 🎉': '沒有警示 🎉', 'No log entries yet.': '尚無日誌。',
+  // Personnel
+  'All status': '全部狀態', 'Qualified': '合格', 'Has pending cert': '有待核准證照', 'Add Personnel': '新增人員',
+  'Name': '姓名', 'Employee ID': '員工編號', 'Company': '公司', 'Position': '職稱', 'Contact': '聯絡方式', 'Medical': '體檢',
+  'Sea Survival': '海上求生', 'Training': '訓練', 'Other': '其他', 'Location': '位置', 'All companies': '所有公司', 'No personnel found': '查無人員',
+  'Open': '開啟', 'Upload profile photo': '上傳大頭照', 'Remove': '移除', 'Optional. The photo is resized automatically.': '選填，照片會自動縮小。',
+  'Full name *': '姓名 *', 'Employee ID *': '員工編號 *', 'Company *': '公司 *', 'Position / Job title': '職稱', 'Mobile phone': '手機',
+  'Nationality': '國籍', 'Passport No': '護照號碼', 'Emergency contact': '緊急聯絡人', 'Current location': '目前位置', 'Remark': '備註',
+  'Save personnel': '儲存人員', 'Add certificate': '新增證照', 'Certificates (medical, sea survival, training)': '證照（體檢、海上求生、訓練）',
+  'Save the personnel record first, then add certificates.': '請先儲存人員資料，再新增證照。',
+  'Name / relation / phone': '姓名／關係／電話', 'Name, ID, email…': '姓名、編號、Email…',
+  'Pending approval': '待核准', 'Rejected': '已退件', 'Expired': '已過期', 'Expiring': '即將到期', 'Approved': '已核准', 'Missing': '缺少',
+  'Not provided': '未提供', 'No file uploaded': '未上傳檔案', 'Valid': '有效', 'Pending': '待核准',
+  'Certificates you upload or change are sent to MC for approval.': '您上傳或修改的證照會送交 MC 核准。',
+  'No certificates uploaded yet.': '尚未上傳證照。', 'Category': '類別', 'Certificate': '證照', 'Cert No': '證號', 'Issued': '發證日', 'Expiry': '到期日',
+  'Status': '狀態', 'File': '檔案', 'View': '檢視', 'Approve': '核准', 'Reject': '退件', 'Edit': '編輯', 'Add': '新增',
+  'Edit certificate': '編輯證照', 'Certificate type *': '證照類型 *', 'Certificate name (for "Other")': '證照名稱（選「其他」時填寫）',
+  'Certificate No': '證號', 'Issue date': '發證日期', 'Expiry date': '到期日期', 'Save certificate': '儲存證照', 'Current file': '目前檔案',
+  'Personnel updated': '人員已更新', 'Personnel added — now add certificates': '人員已新增，請接著新增證照', 'Personnel deleted': '人員已刪除',
+  'Name, Employee ID and Company are required': '姓名、員工編號、公司為必填', 'Email address looks invalid': 'Email 格式不正確',
+  'Could not read the image': '無法讀取圖片', 'Select a certificate type': '請選擇證照類型', 'Expiry date is required': '到期日期為必填',
+  'Please attach the certificate file': '請附上證照檔案', 'Certificate submitted for MC approval': '證照已送 MC 核准', 'Certificate saved': '證照已儲存',
+  'Certificate deleted': '證照已刪除', 'Reject certificate': '退件', 'Reason (sent back to the contractor)': '退件原因（會回傳給承包商）',
+  'A reason is required to reject': '退件必須填寫原因',
+  // Vessels
+  'Add Vessel': '新增船舶', 'Vessel': '船舶', 'Operator': '營運公司',
+  'Name, MMSI, IMO…': '船名、MMSI、IMO…', 'No vessels found': '查無船舶', 'Compliant': '符合', 'Details & Contact': '基本資料與聯絡',
+  'Vessel name *': '船名 *', 'Vessel type': '船型', 'IMO No': 'IMO 編號', 'Flag': '船籍', 'Operator / Owner': '營運公司／船東',
+  'Master / contact person': '船長／聯絡人', 'Contact phone': '聯絡電話', 'Save vessel': '儲存船舶',
+  'All mandatory certificates are valid and uploaded.': '所有強制證書皆有效且已上傳。',
+  'Mandatory items are set by the administrator (Administration → Vessel Certificate Requirements).': '強制項目由管理員設定（系統管理 → 船舶證書要求）。',
+  'Required': '要求', 'Description': '說明', 'Mandatory': '強制', 'Optional': '選填', 'Loading PTW data…': 'PTW 資料載入中…',
+  'Vessel certificate': '船舶證書', 'remove file': '移除檔案', 'Save': '儲存', 'Clear record': '清除紀錄',
+  'Clear this certificate record and delete its file?': '確定清除這筆證書紀錄並刪除檔案？', 'Vessel name is required': '船名為必填',
+  'Vessel updated': '船舶已更新', 'Vessel added — now upload its certificates': '船舶已新增，請接著上傳證書', 'Vessel deleted': '船舶已刪除',
+  'CTV (Crew Transfer Vessel)': 'CTV（人員運輸船）', 'SOV (Service Operation Vessel)': 'SOV（運維母船）', 'Supply Vessel': '補給船', 'Tug': '拖船',
+  'Barge': '駁船', 'Crane Vessel': '起重船', 'Jack-up': '自升式平台船', 'Dive Support Vessel': '潛水支援船', 'Survey Vessel': '測量船',
+  'Anchor Handling Tug': '起錨拖船', 'Guard Vessel': '警戒船',
+  // Locations
+  'Add Location': '新增位置', 'Type': '類型', 'Linked Vessel': '連結船舶', 'Linked vessel': '連結船舶', 'No locations found': '查無位置',
+  'Edit location': '編輯位置', 'Add location': '新增位置', 'Name *': '名稱 *', 'Type *': '類型 *', 'Name and type are required': '名稱與類型為必填',
+  'Location saved': '位置已儲存', 'WTG': '風機（WTG）', 'Substation': '變電站', 'Platform': '平台', 'Port': '港口', 'Base': '基地', 'Warehouse': '倉庫',
+  // Transfer
+  'Create Personnel Transfer': '建立人員轉運', 'Each executed transfer is also written to the Site Log automatically.': '每次執行的轉運都會自動寫入現場日誌。',
+  'Search by name, ID, company…': '依姓名、編號、公司搜尋…', 'Select visible': '全選目前清單', 'Clear': '清除', 'No personnel selected.': '尚未選擇人員。',
+  'From': '出發地', 'To': '目的地', 'To *': '目的地 *', 'Transport (vessel)': '運輸船舶', 'Time *': '時間 *', 'Transfer type *': '轉運方式 *',
+  'Approved by *': '核准人 *', 'Reason': '原因', 'e.g. tower unmanned': '例：風機無人',
+  'Ship-to-Ship': '船對船', 'Walk-to-Work': '舷梯步行（W2W）', 'Helicopter': '直升機', 'Port Transfer': '港口接駁', 'Crew Change': '人員換班', 'Emergency': '緊急',
+  'Not assigned': '未派駐', 'All locations': '所有位置', "-- Each person's current location --": '-- 各人員目前位置 --', '-- Select destination --': '-- 選擇目的地 --',
+  '-- Select --': '-- 請選擇 --', '-- None --': '-- 無 --', '-- Not assigned --': '-- 未派駐 --', '-- Select vessel / location --': '-- 選擇船舶／位置 --',
+  'Select at least one person': '請至少選擇一位人員', 'Fill in To, Time, Transfer type and Approved by': '請填寫目的地、時間、轉運方式與核准人',
+  'From and To cannot be the same': '出發地與目的地不可相同', 'Transfer anyway': '仍要轉運', 'Unknown vessel': '未知船舶', 'Unknown location': '未知位置',
+  // Site log
+  'Log entry': '新增日誌', 'Date / Time': '日期／時間', 'Activity': '事件', 'Source': '來源', 'Detail': '內容', 'Asset': '資產', 'Transport': '運輸船舶',
+  'TRANSFER': '轉運', 'INFO': '資訊', 'ARRIVAL': '抵達', 'DEPARTURE': '離開', 'STANDBY': '待命', 'WEATHER': '天候', 'INCIDENT': '事故', 'OTHER': '其他',
+  'Logged by': '記錄人', 'All assets': '所有資產', 'All transports': '所有運輸船舶', 'All activities': '所有事件', 'Personnel / detail…': '人員／內容…',
+  'From date': '起始日期', 'To date': '結束日期', 'No log entries': '沒有日誌', 'New log entry': '新增日誌', 'Edit log entry': '編輯日誌',
+  'Date / time *': '日期／時間 *', 'Activity *': '事件 *', 'Asset / location': '資產／位置', 'Detail *': '內容 *', 'Names (optional)': '姓名（選填）',
+  'e.g. Wind Seeker GL N01 / TSS Cruiser 6pax up S01': '例：Wind Seeker GL N01 / TSS Cruiser 6pax up S01', 'Time and detail are required': '時間與內容為必填',
+  'Log saved': '日誌已儲存', 'Delete this log entry?': '確定刪除這筆日誌？', 'Manual': '手動',
+  // History / POB
+  'Time': '時間', 'Approved by': '核准人', 'No transfers': '沒有轉運紀錄', 'Search…': '搜尋…', 'Persons On Board': '在場人員（POB）',
+  'Phone': '電話', 'Last transfer': '最後轉運', 'Select a vessel or location.': '請選擇船舶或位置。',
+  'Nobody at this location': '此位置目前沒有人', 'Select a location first': '請先選擇位置', 'Delete this record (does not move the person back)': '刪除此紀錄（不會把人員移回）',
+  // Certificates page
+  'Submitted': '送出', 'Rejected — needs resubmission': '已退件 — 需重新上傳', 'Reviewed by': '審核人',
+  'Personnel Alerts': '人員警示', 'Vessel Certificate Alerts': '船舶證書警示', 'Nothing pending': '沒有待核准項目',
+  'No personnel alerts 🎉': '沒有人員警示 🎉', 'No vessel certificate alerts 🎉': '沒有船舶證書警示 🎉',
+  // PTW
+  'Permits to Work (from Offshore PTW System)': '工作許可（來自 Offshore PTW 系統）', 'All vessels': '所有船舶', 'Active + Overdue': '執行中＋逾期',
+  'Active only': '僅執行中', 'Overdue only': '僅逾期', 'Reload': '重新載入', 'Open PTW System': '開啟 PTW 系統', 'PTW no, work, holder…': 'PTW 編號、工作、負責人…',
+  'PTW No': 'PTW 編號', 'Validity': '有效期間', 'Area / Location': '區域／位置', 'Work description': '工作內容', 'Holder': '負責人',
+  'No open permits.': '沒有開立中的 PTW。', 'No open permits match': '沒有符合的 PTW', 'Active permits': '執行中 PTW', 'Expire today': '今日到期',
+  'Overdue (not closed)': '逾期（未關閉）', 'Overdue — not closed': '逾期 — 未關閉', 'Expires today': '今日到期', 'Active': '啟用',
+  // Admin
+  'Users': '使用者', 'Companies': '公司', 'Vessel Certificate Requirements': '船舶證書要求', 'Personnel Certificate Types': '人員證照類型',
+  'User accounts': '使用者帳號', 'Add user': '新增使用者', 'Admin': '管理員', 'Contractor': '承包商', 'Role': '角色', 'Role *': '角色 *',
+  'Last login': '最後登入', 'Disabled': '已停用', 'Temp password': '臨時密碼', 'Reset password': '重設密碼', 'Edit user': '編輯使用者',
+  'Username *': '帳號 *', 'Company * (contractors)': '公司 *（承包商必填）', 'Temporary password * (min 6)': '臨時密碼 *（至少 6 碼）', 'Account active': '帳號啟用',
+  'Give the username and temporary password to the user. They must set a new password on first sign-in.': '請將帳號與臨時密碼交給使用者，對方首次登入時須設定新密碼。',
+  'Account details': '帳號資訊', 'Send these sign-in details to the user. They will be asked to set their own password at first sign-in.': '請把以下登入資訊傳給使用者，對方首次登入時會被要求設定自己的密碼。',
+  'Website:': '網址：', 'Username:': '帳號：', 'Temporary password:': '臨時密碼：', 'Done': '完成', 'User updated': '使用者已更新', 'User deleted': '使用者已刪除',
+  'New temporary password (min 6)': '新的臨時密碼（至少 6 碼）', 'Companies (contractors)': '公司（承包商）', 'Company name': '公司名稱',
+  'Inactive': '停用', 'Activate': '啟用', 'Deactivate': '停用', 'No companies yet': '尚無公司', 'Company already exists': '公司已存在',
+  'New certificate name': '新證書名稱', 'Code': '代碼', 'Shown': '顯示', 'Personnel certificate types': '人員證照類型', 'Certificate type': '證照類型',
+  'Expiry required': '需填到期日', 'e.g. GWO First Aid': '例：GWO First Aid', 'Saved': '已儲存', 'System settings': '系統設定',
+  'Offshore PTW System URL (Web App /exec)': 'Offshore PTW 系統網址（Web App /exec）', 'Certificate categories required for transfer': '轉運必備的證照類別',
+  'Save settings': '儲存設定', 'Settings saved': '設定已儲存', 'Backup': '備份', 'Download JSON snapshot': '下載 JSON 快照',
+  'Data is stored in the Google Sheet “Person transfer”; files are in the Drive folder “OPTS Files (Person transfer)”. You can also download a JSON snapshot of the data (without files).':
+    '資料存放於 Google 試算表「Person transfer」，附件存放於雲端硬碟資料夾「OPTS Files (Person transfer)」。也可以下載資料的 JSON 快照（不含附件）。',
+  // Dialogs
+  'Please confirm': '請確認', 'Delete': '刪除', 'Cancel': '取消', 'OK': '確定', 'Close': '關閉',
+  // Server / network messages
+  'Record not found': '找不到資料', 'Permission denied': '權限不足', 'Password must be at least 6 characters': '密碼至少需要 6 個字元', 'Please log in': '請先登入',
+  'Session expired, please log in again': '登入已逾時，請重新登入', 'Account disabled': '帳號已停用', 'System already set up': '系統已完成初始設定',
+  'Username required': '請輸入帳號', 'Wrong username or password': '帳號或密碼錯誤', 'Current password is wrong': '目前密碼錯誤',
+  'Contractor accounts need a company': '承包商帳號必須指定公司', 'Username already exists': '帳號已存在',
+  'You cannot demote or disable your own account': '不能降級或停用自己的帳號', 'You cannot delete your own account': '不能刪除自己的帳號', 'Name is required': '名稱為必填',
+  'Company still has personnel or user accounts — deactivate it instead': '此公司仍有人員或帳號，請改用「停用」',
+  'Cannot delete: personnel are on board this vessel': '無法刪除：船上仍有人員', 'Cannot delete: personnel are at this location': '無法刪除：此位置仍有人員',
+  'Photo is too large': '照片太大', 'Personnel not found': '找不到人員',
+  'This person is currently assigned to a location — ask MC to transfer them out first': '此人員目前派駐中，請先請 MC 將其轉出',
+  'File is larger than 10 MB': '檔案超過 10 MB', 'Missing file id': '缺少檔案代碼', 'File not found': '找不到檔案', 'Certificate type is required': '請選擇證照類型',
+  'Please give a reason for rejection': '請填寫退件原因', 'Vessel not found': '找不到船舶', 'Certificate type not found': '找不到證書類型',
+  'To, Time, Type and Approved By are required': '目的地、時間、方式、核准人為必填', 'Time and Detail are required': '時間與內容為必填',
+  'Network error — please check your connection': '網路錯誤，請檢查連線', 'Could not read file': '無法讀取檔案'
+};
+const RULES = [
+  [/^(\d+) issues?$/, (m, n) => n + ' 項缺失'],
+  [/^(\d+) expiring$/, (m, n) => n + ' 項即將到期'],
+  [/^(\d+) open(?: · (\d+) overdue)?$/, (m, a, b) => a + ' 張開立中' + (b ? ' · ' + b + ' 張逾期' : '')],
+  [/^(\d+) not qualified$/, (m, n) => n + ' 人不合格'],
+  [/^Valid · (\d+)d left$/, (m, n) => '有效 · 剩 ' + n + ' 天'],
+  [/^Personnel — (.+)$/, (m, n) => '人員 — ' + n],
+  [/^Vessel — (.+)$/, (m, n) => '船舶 — ' + n],
+  [/^Reset password — (.+)$/, (m, n) => '重設密碼 — ' + n],
+  [/^Vessel certificate requirements \((\d+) mandatory\)$/, (m, n) => '船舶證書要求（' + n + ' 項強制）'],
+  [/^Employee ID (.+) already exists in (.+)$/, (m, a, b) => '員工編號 ' + a + ' 已存在於 ' + b],
+  [/^Expiry date is required for (.+)$/, (m, a) => a + ' 必須填寫到期日'],
+  [/^Server is not responding correctly \(HTTP (\d+)\)$/, (m, a) => '伺服器回應異常（HTTP ' + a + '）'],
+  [/^Execute transfer \((\d+)\)$/, (m, a) => '執行轉運（' + a + '）'],
+  [/^Execute transfer \($/, () => '執行轉運（'],
+  [/^(\d+) entr(?:y|ies)$/, (m, a) => '共 ' + a + ' 筆'],
+  [/^Showing latest 500 of (\d+) entries — use the filters or export CSV for the rest\.$/, (m, a) => '僅顯示最新 500 筆（共 ' + a + ' 筆），其餘請用篩選或匯出 CSV。'],
+  [/^Signed in as (.+)$/, (m, a) => '目前登入：' + a],
+  [/^Could not load PTW data: (.+)$/, (m, a) => '無法載入 PTW 資料：' + a],
+  [/^Server error: (.+)$/, (m, a) => '伺服器錯誤：' + a]
+];
+let LANG = 'en';
+try { LANG = localStorage.getItem('opts_lang') || ((navigator.language || '').toLowerCase().indexOf('zh') === 0 ? 'zh' : 'en'); } catch (e) {}
+function L(en, zh) { return LANG === 'zh' ? zh : en; }
+function tz(s) { return LANG === 'zh' && ZH[s] ? ZH[s] : s; }
+function trCore(t) {
+  if (ZH[t]) return ZH[t];
+  for (const [re, fn] of RULES) { if (re.test(t)) return t.replace(re, fn); }
+  // 前綴圖示／符號（如「💾 」「+ 」）與結尾符號（「 *」「 →」「:」）保留，只翻中間文字
+  const m = t.match(/^([^A-Za-z(]*?)\s*([A-Za-z(].*?)\s*([*:→↗…]*)$/);
+  if (!m) return null;
+  let core = ZH[m[2]];
+  if (core === undefined) { for (const [re, fn] of RULES) { if (re.test(m[2])) { core = m[2].replace(re, fn); break; } } }
+  if (core === undefined) return null;
+  return (m[1] ? m[1] + ' ' : '') + core + (m[3] ? (m[3] === ':' ? '：' : ' ' + m[3]) : '');
+}
+const SKIP_TAGS = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1 };
+function trTextNode(n) {
+  if (n.__zh !== undefined && n.nodeValue === n.__zh) return;      // 已經是我們翻好的
+  n.__en = n.nodeValue; n.__zh = undefined;
+  if (LANG !== 'zh') return;
+  const raw = n.nodeValue, t = raw.replace(/\s+/g, ' ').trim();
+  if (!t || !/[A-Za-z]/.test(t)) return;
+  const zh = trCore(t);
+  if (zh === null) return;
+  n.__zh = raw.match(/^\s*/)[0] + zh + raw.match(/\s*$/)[0];
+  n.nodeValue = n.__zh;
+}
+function trAttrs(el) {
+  if (!el.getAttribute) return;
+  ['placeholder', 'title', 'label'].forEach(a => {
+    if (!el.hasAttribute(a)) return;
+    el.__enA = el.__enA || {}; el.__zhA = el.__zhA || {};
+    const cur = el.getAttribute(a);
+    if (el.__enA[a] === undefined || cur !== el.__zhA[a]) el.__enA[a] = cur;
+    const zh = LANG === 'zh' ? trCore(el.__enA[a].trim()) : null;
+    el.__zhA[a] = zh || el.__enA[a];
+    if (cur !== el.__zhA[a]) el.setAttribute(a, el.__zhA[a]);
+  });
+}
+function trTree(root) {
+  if (!root) return;
+  if (root.nodeType === 3) { if (root.parentNode && !SKIP_TAGS[root.parentNode.nodeName]) trTextNode(root); return; }
+  if (root.nodeType !== 1 || SKIP_TAGS[root.nodeName] || root.classList.contains('notr')) return;
+  trAttrs(root);
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+    acceptNode: n => (n.nodeType === 1 && (SKIP_TAGS[n.nodeName] || n.classList.contains('notr'))) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+  let n;
+  while ((n = w.nextNode())) { if (n.nodeType === 3) trTextNode(n); else trAttrs(n); }
+}
+const trObserver = new MutationObserver(muts => {
+  muts.forEach(m => {
+    if (m.type === 'characterData') trTree(m.target);
+    else if (m.type === 'attributes') trAttrs(m.target);
+    else m.addedNodes.forEach(trTree);
+  });
+});
+function applyLang() {
+  document.documentElement.lang = LANG === 'zh' ? 'zh-Hant' : 'en';
+  document.title = tz('OPTS — Offshore Personnel Transfer System');
+  document.querySelectorAll('.lang-btn').forEach(b => { b.textContent = LANG === 'zh' ? 'EN' : '中文'; });
+  // 先把翻過的文字還原成英文，再依目前語言重翻整頁
+  const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  let n;
+  while ((n = w.nextNode())) { if (n.__zh !== undefined && n.nodeValue === n.__zh) n.nodeValue = n.__en; n.__zh = undefined; }
+  trTree(document.body);
+}
+function toggleLang() {
+  LANG = LANG === 'zh' ? 'en' : 'zh';
+  try { localStorage.setItem('opts_lang', LANG); } catch (e) {}
+  applyLang();
+  if (S) refreshPage();      // 重畫含 L() 的動態內容
+}
+applyLang();
+trObserver.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['placeholder', 'title', 'label'] });
 
 boot();
 </script>
