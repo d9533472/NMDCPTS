@@ -485,7 +485,16 @@ function showAuth(which) {
 async function boot() {
   showAuth('authLoading');
   if (TOKEN) {
-    try { await reloadData(); return; } catch (e) { setToken(''); }
+    // 連線偶發失敗時重試，別因為一次網路問題就把登入狀態清掉（登入逾時會由 api() 的 AUTH 處理）
+    for (let i = 0; i < 3 && TOKEN; i++) {
+      try { await reloadData(); return; }
+      catch (e) { if (!TOKEN) break; await new Promise(r => setTimeout(r, 1500 * (i + 1))); }
+    }
+    if (TOKEN) {
+      showAuth('authLogin');
+      document.getElementById('liErr').textContent = L('Could not reach the server. Please check your connection and reload the page.', '無法連線到伺服器，請檢查網路後重新整理頁面。');
+      return;
+    }
   }
   try {
     const st = await api('auth.status');
