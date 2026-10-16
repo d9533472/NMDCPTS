@@ -232,6 +232,16 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
 .dash-row .t{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap}
 .dash-row .d{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
+/* PTW Monitor 頂部連結橫幅 */
+.ptw-banner{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px;padding:14px 18px;border-radius:var(--radius-lg);color:#fff;
+  background:linear-gradient(100deg,#001428 0%,#002038 55%,#00476b 100%);border:1px solid rgba(0,176,80,.5);box-shadow:0 0 0 1px rgba(0,176,80,.15),0 8px 24px rgba(0,32,56,.18);position:relative;overflow:hidden}
+.ptw-banner::after{content:'';position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,var(--green),var(--cyan),transparent)}
+.ptw-banner-ico{font-size:24px;width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(0,176,80,.18);border:1px solid rgba(0,176,80,.5)}
+.ptw-banner div{flex:1;min-width:220px}
+.ptw-banner strong{display:block;font-size:16px;letter-spacing:.3px}
+.ptw-banner span{font-size:12px;color:#b8c7d9}
+.ptw-banner .btn{background:var(--green);color:#fff}.ptw-banner .btn:hover{background:var(--green-dark)}
+
 /* Meetings */
 .mt-card{border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:12px;background:#fff;cursor:pointer;transition:box-shadow .15s}
 .mt-card:hover{box-shadow:var(--glow)}
@@ -462,6 +472,10 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
       <div class="page" id="page-dashboard">
         <div class="kpi-grid" id="dashStats"></div>
         <div class="grid-2">
+          <div class="section"><div class="section-header"><h3 id="dashPendTitle">⏳ Awaiting Approval</h3><span class="link" onclick="go('certificates')">View all →</span></div><div class="section-body" id="dashPending" style="max-height:330px;overflow-y:auto"></div></div>
+          <div class="section"><div class="section-header"><h3 id="dashPtwTitle">📝 Active PTW</h3><span class="link" onclick="go('ptw')">View all →</span></div><div class="section-body" id="dashPTW" style="max-height:330px;overflow-y:auto"></div></div>
+        </div>
+        <div class="grid-2">
           <div class="section"><div class="section-header"><h3>⚠️ Certificate Alerts</h3><span class="link" onclick="go('certificates')">View all →</span></div><div class="section-body" id="dashAlerts"></div></div>
           <div class="section"><div class="section-header"><h3>🚢 Vessel Certificate Alerts</h3><span class="link" onclick="go('certificates')">View all →</span></div><div class="section-body" id="dashVAlerts"></div></div>
         </div>
@@ -635,6 +649,11 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
 
       <!-- PTW -->
       <div class="page" id="page-ptw">
+        <div class="ptw-banner">
+          <span class="ptw-banner-ico">🔗</span>
+          <div><strong>This page is linked to the Offshore PTW System</strong><span>All permits shown here are read live from the Offshore PTW System and cannot be edited in OPTS. Click a PTW number to open its details in the PTW System.</span></div>
+          <a class="btn btn-sm" id="ptwBannerLink" target="_blank" rel="noopener">Open PTW System ↗</a>
+        </div>
         <div class="stat-grid" id="ptwStats"></div>
         <div class="section">
           <div class="section-header"><h3>Permits to Work (from Offshore PTW System)</h3>
@@ -1068,6 +1087,37 @@ function animateKPIs() {
   });
   requestAnimationFrame(() => document.querySelectorAll('#dashStats .kpi-bar i').forEach(i => { i.style.width = i.dataset.w + '%'; }));
 }
+// 第二行：待核准（人員＋船舶＋證照）
+function renderDashPending() {
+  const rows = [];
+  S.personnel.filter(p => !isApproved(p)).forEach(p => rows.push({ t: p.updated_at || p.created_at, kind: L('Personnel', '人員'), ico: '👷', name: p.name, org: p.company, rec: p,
+    open: `openPersonnel('${p.id}')`, act: isAdmin() && p.approval !== 'Rejected' ? `<button class="btn btn-green btn-sm" onclick="event.stopPropagation();reviewRecord('Personnel','${p.id}','Approved')">✔</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();reviewRecord('Personnel','${p.id}','Rejected')">✖</button>` : '' }));
+  S.vessels.filter(x => !isApproved(x)).forEach(x => rows.push({ t: x.updated_at || x.created_at, kind: L('Vessel', '船舶'), ico: '🚢', name: x.name, org: x.operator, rec: x,
+    open: `openVessel('${x.id}')`, act: isAdmin() && x.approval !== 'Rejected' ? `<button class="btn btn-green btn-sm" onclick="event.stopPropagation();reviewRecord('Vessels','${x.id}','Approved')">✔</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();reviewRecord('Vessels','${x.id}','Rejected')">✖</button>` : '' }));
+  S.personCerts.filter(c => c.status === 'Pending').forEach(c => { const p = S.personnel.find(x => x.id === c.personnel_id) || {};
+    rows.push({ t: c.updated_at, kind: L('Certificate', '證照'), ico: '🪪', name: p.name + ' — ' + pcName(c), org: p.company, rec: { approval: 'Pending' },
+      open: `openPersonnel('${p.id}')`, act: isStaff() ? `<button class="btn btn-green btn-sm" onclick="event.stopPropagation();reviewCert('${c.id}','Approved')">✔</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();reviewCert('${c.id}','Rejected')">✖</button>` : '' }); });
+  rows.sort((a, b) => String(a.t).localeCompare(String(b.t)));
+  document.getElementById('dashPendTitle').textContent = L(`⏳ Awaiting Approval (${rows.length})`, `⏳ 待核准（${rows.length}）`);
+  document.getElementById('dashPending').innerHTML = rows.length ? '<div class="dash-list">' + rows.map(r => `<div class="dash-row" style="cursor:pointer" onclick="${r.open}">
+      <span title="${esc(r.kind)}">${r.ico}</span><span class="d"><strong>${esc(r.name)}</strong> <span class="muted">${esc(r.org || '')}</span></span>
+      ${r.rec.approval === 'Rejected' ? approvalBadge(r.rec) : `<span class="t">${fmtDT(r.t)}</span>`}<span class="acts">${r.act}</span></div>`).join('') + '</div>'
+    : `<p class="muted">${L('Nothing awaiting approval 🎉', '目前沒有待核准項目 🎉')}</p>`;
+}
+// 第二行：執行中 PTW（PTW 編號｜公司｜位置），點一下開 PTW 系統該張詳情
+function renderDashPTW() {
+  const el = document.getElementById('dashPTW');
+  if (!PTW.data) { el.innerHTML = `<p class="muted">${PTW.err ? esc(PTW.err) : L('Loading PTW data…', 'PTW 資料載入中…')}</p>`; return; }
+  const list = [...PTW.data.active].sort((a, b) => String(a.vessel + a.areaLocation).localeCompare(String(b.vessel + b.areaLocation)));
+  document.getElementById('dashPtwTitle').textContent = L(`📝 Active PTW (${list.length})`, `📝 執行中 PTW（${list.length}）`);
+  const base = S.settings.ptw_url;
+  el.innerHTML = list.length ? `<div class="table-wrap"><table><thead><tr><th>PTW</th><th>${L('Company', '公司')}</th><th>${L('Location', '位置')}</th></tr></thead><tbody>${list.map(p => {
+      const loc = [p.vessel, p.areaLocation].filter(Boolean).join(' · ');
+      return `<tr style="cursor:pointer" onclick="window.open('${esc(base)}?ptw=${encodeURIComponent(p.id)}','_blank','noopener')" title="${esc(p.workDescription || '')}">
+        <td class="nowrap"><strong style="color:var(--info)">${esc(p.number)}</strong> ↗</td><td>${esc(p.companyEn || p.companyZh || '—')}</td><td>📍 ${esc(loc || '—')}</td></tr>`;
+    }).join('')}</tbody></table></div>`
+    : `<p class="muted">${L('No active PTW right now.', '目前沒有執行中的 PTW。')}</p>`;
+}
 function renderDashboard() {
   const people = S.personnel;
   const apprP = people.filter(isApproved).length;
@@ -1077,11 +1127,6 @@ function renderDashboard() {
   const today = todayStr();
   const tToday = S.transfers.filter(t => String(t.time).slice(0, 10) === today);
   const tPeople = new Set(tToday.map(t => t.personnel_id)).size;
-  const ptwA = PTW.data ? PTW.data.active.length : '…', ptwO = PTW.data ? PTW.data.overdue.length : '…';
-  const ptwToday = PTW.data ? PTW.data.active.filter(p => p.validTo && p.validTo <= today).length : 0;
-  const pendP = people.filter(p => !isApproved(p) && p.approval !== 'Rejected').length;
-  const pendV = S.vessels.filter(x => !isApproved(x) && x.approval !== 'Rejected').length;
-  const pendC = S.personCerts.filter(c => c.status === 'Pending').length;
   const groups = [
     { cls: 'g-reg', title: L('Registry & Approval', '登錄核准'), cards: [
       { ico: '👷', value: apprP, total: people.length, label: L('Approved personnel', '已核准人員'), sub: L(`of ${people.length} registered`, `共 ${people.length} 人登錄`), page: 'personnel', tone: 't-green' },
@@ -1089,14 +1134,11 @@ function renderDashboard() {
     { cls: 'g-ops', title: L('Offshore Operations', '海上作業'), cards: [
       { ico: '🌊', value: offshore.length, total: apprP, label: L('Working offshore', '海上作業人數'), sub: L(`at ${offLocs} vessel(s) / asset(s)`, `分布於 ${offLocs} 處船舶／資產`), page: isStaff() ? 'pob' : 'personnel', tone: 't-blue' },
       { ico: '🔄', value: tPeople, total: 0, label: L('Transferred today', '今日轉運人數'), sub: L(`${tToday.length} movement(s)`, `共 ${tToday.length} 人次`), page: 'history', tone: 't-cyan' }] },
-    { cls: 'g-safe wide', title: L('Safety & Compliance', '安全與合規'), cards: [
-      { ico: '📝', value: ptwA, total: 0, label: L('Active PTW', '執行中 PTW'), sub: PTW.data ? L(`${ptwToday} expire today`, `今日到期 ${ptwToday} 張`) : '', page: 'ptw', tone: 't-green' },
-      { ico: '⏰', value: ptwO, total: 0, label: L('Overdue PTW', '逾期 PTW'), sub: L('not closed after validity', '超過有效期仍未關閉'), page: 'ptw', tone: ptwO ? 't-red' : 't-green' },
-      ].concat(isAdmin() ? [{ ico: '⏳', value: pendP + pendV + pendC, total: 0, label: L('Awaiting approval', '待核准'),
-        sub: L(`${pendP} personnel · ${pendV} vessels · ${pendC} certs`, `人員 ${pendP} · 船舶 ${pendV} · 證照 ${pendC}`), page: 'certificates', tone: (pendP + pendV + pendC) ? 't-amber' : 't-green' }] : []) }
   ];
   document.getElementById('dashStats').innerHTML = groups.map(g => `<div class="kpi-group ${g.cls}"><div class="kpi-group-title">${esc(g.title)}</div>
     <div class="kpi-row" style="--n:${g.cards.length}">${g.cards.map(kpiCard).join('')}</div></div>`).join('');
+  renderDashPending();
+  renderDashPTW();
   animateKPIs();
 
   const al = personAlerts().slice(0, 6);
@@ -2013,6 +2055,7 @@ function refreshPTW(force) {
 }
 function initPTW() {
   document.getElementById('ptwOpen').href = S.settings.ptw_url || '#';
+  document.getElementById('ptwBannerLink').href = S.settings.ptw_url || '#';
   const cur = v('ptwVessel');
   const names = new Set(S.vessels.map(x => x.name));
   if (PTW.data) PTW.data.active.concat(PTW.data.overdue).forEach(p => p.vessel && names.add(p.vessel));
@@ -2413,7 +2456,10 @@ const ZH = {
   'Too many wrong codes — send a new one': '驗證碼錯誤次數過多，請重新寄送', 'Role (non-Admin)': '角色（非 Admin）', 'Last synced': '最後同步時間',
   'Remove': '移除',
   'Activity Log': '操作紀錄', 'User': '使用者', 'Action': '動作', 'Target': '對象', 'Details': '內容', 'Result': '結果', 'Failed only': '只看失敗',
-  'Search': '查詢', 'Failed': '失敗', 'Name, target, detail…': '姓名、對象、內容…'
+  'Search': '查詢', 'Failed': '失敗', 'Name, target, detail…': '姓名、對象、內容…', 'Awaiting Approval': '待核准',
+  'This page is linked to the Offshore PTW System': '此頁面係連結至 Offshore PTW System',
+  'All permits shown here are read live from the Offshore PTW System and cannot be edited in OPTS. Click a PTW number to open its details in the PTW System.':
+    '本頁的工作許可皆即時讀取自 Offshore PTW System，無法在 OPTS 內修改。點選 PTW 編號即可開啟 PTW 系統中的詳細內容。'
 };
 const RULES = [
   [/^(\d+) issues?$/, (m, n) => n + ' 項缺失'],
