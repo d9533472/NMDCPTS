@@ -5,17 +5,21 @@
 //
 // 協定：POST text/plain JSON {action, token, payload} → {ok:true, data} / {ok:false, error}
 //       GET ?action=ping 僅供健康檢查（GET 不做任何寫入）
-// 角色：admin（MC 管理員，含帳號／設定）、mc（MC 作業）、contractor（只管自家公司人員）
+// 角色：admin（全部功能、全部公司）、mc（MC 作業：轉運／日誌／會議／證照核准；人員只能編自家公司）、
+//       contractor（只管自家公司人員）。人員與船舶需 Admin 核准；Admin 自己新增的直接核准。
+// 通知信：Settings.notify_emails（共用收件者）＋ notify_events（啟用的事件）；每日到期提醒由 setup() 建立的觸發器執行。
 // ============================================================
 
-const VERSION = '2.0';
+const VERSION = '2.1';
+const CAT_SAFETY = 'Offshore Safety Training';   // 原 'Sea Survival'（2.1 改名，ensureSchema_ 會遷移舊資料）
 
 const SCHEMAS = {
   Users: ['id','username','name','email','role','company','password_hash','password_salt','active','must_change','last_login','created_at','updated_at'],
   Sessions: ['token','user_id','expires_at','created_at'],
   Companies: ['id','name','active','created_at'],
-  Vessels: ['id','name','mmsi','imo','type','flag','operator','contact_person','phone','whatsapp','email','remark','created_at','updated_at'],
-  Personnel: ['id','name','employee_id','company','nationality','position','email','phone','passport','emergency','photo','remark','current_location','created_by','created_at','updated_at'],
+  Vessels: ['id','name','mmsi','imo','type','flag','operator','contact_person','phone','whatsapp','email','remark','approval','approval_note','approved_by','approved_at','created_by','created_at','updated_at'],
+  Personnel: ['id','name','employee_id','company','nationality','position','email','phone','passport','emergency','photo','remark','current_location','approval','approval_note','approved_by','approved_at','created_by','created_at','updated_at'],
+  Meetings: ['id','title','time','location','items','attendees','externals','remark','created_by','created_at','updated_at'],
   Locations: ['id','name','type','linked_vessel','remark','created_at','updated_at'],
   Transfers: ['id','personnel_id','personnel_name','company','from_location','to_location','time','type','transport','approved_by','reason','remark','logged_by','created_at'],
   SiteLog: ['id','time','activity','source','detail','asset','transport','personnel','logged_by','created_at'],
@@ -28,8 +32,13 @@ const SCHEMAS = {
 
 const DEFAULT_SETTINGS = {
   ptw_url: 'https://script.google.com/macros/s/AKfycbyhOITKpUPZDcvL-jZx52H-ZNX-tGTvCjFXYY3-J_XrBfj7PRwzZE7fDYnu9vG8_z8/exec',
-  required_categories: 'Medical,Sea Survival'
+  required_categories: 'Medical,' + CAT_SAFETY,
+  app_url: 'https://d9533472.github.io/NMDCPTS/',
+  notify_emails: '',
+  notify_events: 'personnel_pending,vessel_pending,cert_pending,review_result,transfer,expiry,meeting'
 };
+const NOTIFY_EVENTS = ['personnel_pending','vessel_pending','cert_pending','review_result','transfer','expiry','meeting'];
+const EXPIRY_ALERT_DAYS = [30, 14, 7, 1, 0];
 
 // SeaPlanner Vessel Certs Matrix（44 項）
 const VESSEL_CERT_SEED = [
@@ -52,8 +61,8 @@ const VESSEL_CERT_SEED = [
 
 const PERSON_CERT_SEED = [
   ['OEUK Medical','Medical'],['ADNOC Medical','Medical'],['Other Medical','Medical'],
-  ['BOSIET','Sea Survival'],['FOET','Sea Survival'],['STCW95 Basic Safety Training','Sea Survival'],
-  ['GWO Basic Safety Training (Sea Survival)','Sea Survival'],['Other Sea Survival','Sea Survival'],
+  ['BOSIET',CAT_SAFETY],['FOET',CAT_SAFETY],['STCW95 Basic Safety Training',CAT_SAFETY],
+  ['GWO Basic Safety Training (Sea Survival)',CAT_SAFETY],['Other Offshore Safety Training',CAT_SAFETY],
   ['HUET / CA-EBS','Training'],['GWO Working at Heights','Training'],['H2S Awareness','Training'],['Other Certificate','Other']
 ];
 
@@ -111,7 +120,14 @@ const ROUTES = {
   'auth.changePassword': (u, p) => changePassword_(u, p),
   'data.load': (u) => loadData_(u),
 
-  'vessel.save': (u, p) => { requireRole_(u, ['admin','mc']); return saveSimple_('Vessels', p, ['name','mmsi','imo','type','flag','operator','contact_person','phone','whatsapp','email','remark'], ['name']); },
+  'vessel.save': (u, p) => { requireRole_(u, ['admin','mc']); return saveVessel_(u, p); },
+  'vessel.review': (u, p) => reviewRecord_(u, 'Vessels', p),
+  'personnel.review': (u, p) => reviewRecord_(u, 'Personnel', p),
+  'meeting.save': (u, p) => { requireRole_(u, ['admin','mc']); return saveMeeting_(u, p); },
+  'meeting.delete': (u, p) => { requireRole_(u, ['admin','mc']); withLock_(() => Repo.remove('Meetings', p.id)); return { id: p.id }; },
+  'notify.test': (u, p) => { requireRole_(u, ['admin']); return notifyTest_(u); },
+  'reset.request': (u, p) => { requireRole_(u, ['admin']); return resetRequest_(u, p); },
+  'reset.confirm': (u, p) => { requireRole_(u, ['admin']); return resetConfirm_(u, p); },
   'vessel.delete': (u, p) => { requireRole_(u, ['admin','mc']); return deleteVessel_(p.id); },
   'location.save': (u, p) => { requireRole_(u, ['admin','mc']); return saveSimple_('Locations', p, ['name','type','linked_vessel','remark'], ['name','type']); },
   'location.delete': (u, p) => { requireRole_(u, ['admin','mc']); return deleteLocation_(p.id); },
@@ -219,6 +235,15 @@ const Repo = (function () {
       delete cache[name];
       return rows.length;
     },
+    /** 清空整張表（保留表頭）；用 clearContent 避免「不能刪除所有未凍結列」的限制，空白列 all() 會略過 */
+    clear: function (name) {
+      const t = load_(name);
+      const n = t.rows.filter(r => r[key_(name)]).length;
+      const last = t.sh.getLastRow();
+      if (last > 1) t.sh.getRange(2, 1, last - 1, Math.max(1, t.sh.getLastColumn())).clearContent();
+      delete cache[name];
+      return n;
+    },
     flush: function () { Object.keys(cache).forEach(k => delete cache[k]); }
   };
 })();
@@ -257,16 +282,42 @@ function ensureSchema_() {
     Object.keys(DEFAULT_SETTINGS).forEach(k => {
       if (!st.find(s => s.key === k)) Repo.insert('Settings', { key: k, value: DEFAULT_SETTINGS[k] });
     });
+    migrate21_();
     props.setProperty('schema_version', VERSION);
   } finally { lock.releaseLock(); }
 }
 
-/** 在 GAS 編輯器手動執行一次：授權 Drive 權限並建立附件資料夾 */
+// 2.1：「Sea Survival」類別改名為海上安全訓練證書；既有人員／船舶視為已核准；公司清單補上 NMDC 與使用者既有公司
+function migrate21_() {
+  Repo.all('PersonCertTypes').forEach(t => {
+    const patch = {};
+    if (t.category === 'Sea Survival') patch.category = CAT_SAFETY;
+    if (t.name === 'Other Sea Survival') patch.name = 'Other Offshore Safety Training';
+    if (Object.keys(patch).length) Repo.update('PersonCertTypes', t.id, patch);
+  });
+  const rc = Repo.get('Settings', 'required_categories');
+  if (rc && rc.value.indexOf('Sea Survival') >= 0) Repo.update('Settings', 'required_categories', { value: rc.value.split('Sea Survival').join(CAT_SAFETY) });
+  ['Personnel', 'Vessels'].forEach(sheet => Repo.all(sheet).forEach(r => {
+    if (!r.approval) Repo.update(sheet, r.id, { approval: 'Approved', approved_by: 'migration', approved_at: nowIso_() });
+  }));
+  const names = Repo.all('Companies').map(c => c.name.toLowerCase());
+  ['NMDC'].concat(Repo.all('Users').map(u => u.company)).forEach(n => {
+    n = str_(n);
+    if (n && names.indexOf(n.toLowerCase()) < 0) {
+      Repo.insert('Companies', { id: genId_(), name: n, active: 'TRUE', created_at: nowIso_() });
+      names.push(n.toLowerCase());
+    }
+  });
+}
+
+/** 在 GAS 編輯器手動執行一次：授權 Drive／Gmail 寄信／觸發器權限，建立附件資料夾與每日到期提醒 */
 function setup() {
   PropertiesService.getScriptProperties().deleteProperty('schema_version');
   ensureSchema_();
   const f = filesFolder_();
-  Logger.log('OK — files folder: ' + f.getUrl());
+  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'dailyExpiryCheck').forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('dailyExpiryCheck').timeBased().everyDays(1).atHour(8).create();
+  Logger.log('OK — files folder: ' + f.getUrl() + ' · daily expiry check at 08:00 · mail quota left today: ' + MailApp.getRemainingDailyQuota());
 }
 
 // ============ Utility ============
@@ -377,7 +428,8 @@ function saveUser_(u, p) {
     if (!username) fail_('Username required');
     const role = ROLES.indexOf(p.role) >= 0 ? p.role : 'contractor';
     const company = str_(p.company);
-    if (role === 'contractor' && !company) fail_('Contractor accounts need a company');
+    if (!company) fail_('Please select a company');
+    if (!Repo.all('Companies').some(c => sameCompany_(c.name, company))) fail_('Company is not in the company list — add it under Companies first');
     const dup = Repo.all('Users').find(x => str_(x.username).toLowerCase() === username && x.id !== p.id);
     if (dup) fail_('Username already exists');
     const patch = { username: username, name: str_(p.name), email: str_(p.email), role: role, company: company,
@@ -418,6 +470,12 @@ function deleteUser_(u, id) {
 function saveSettings_(u, p) {
   requireRole_(u, ['admin']);
   return withLock_(() => {
+    if (p.notify_emails !== undefined) {
+      const list = str_(p.notify_emails).split(/[\s,;]+/).filter(Boolean);
+      const bad = list.filter(e => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e));
+      if (bad.length) fail_('Invalid email address: ' + bad.join(', '));
+      p.notify_emails = list.join(', ');
+    }
     Object.keys(DEFAULT_SETTINGS).forEach(k => {
       if (p[k] === undefined) return;
       if (Repo.get('Settings', k)) Repo.update('Settings', k, { value: str_(p[k]) });
@@ -446,8 +504,23 @@ function loadData_(u) {
     vesselCerts: Repo.all('VesselCerts'),
     personCertTypes: Repo.all('PersonCertTypes'),
     personCerts: Repo.all('PersonCerts').filter(c => ids[c.personnel_id]),
+    meetings: Repo.all('Meetings').filter(m => meetingVisible_(u, m, personnelAll)).map(m => {
+      // 參與者顯示用（承包商看不到其他公司的人員資料，所以把姓名／公司附在會議上）
+      m.attendee_info = JSON.stringify(parseList_(m.attendees).map(id => { const x = personnelAll.find(q => q.id === id); return x ? { id: id, name: x.name, company: x.company, position: x.position } : null; }).filter(Boolean));
+      return m;
+    }),
+    // 會議勾選參與者用：Admin／MC 拿全部人員的精簡清單
+    people: isStaff_(u) ? personnelAll.map(p => ({ id: p.id, name: p.name, company: p.company, position: p.position })) : [],
     users: u.role === 'admin' ? Repo.all('Users').map(publicUser_) : []
   };
+}
+function meetingVisible_(u, m, personnelAll) {
+  if (isStaff_(u)) return true;
+  let att = [], ext = [];
+  try { att = JSON.parse(m.attendees || '[]'); } catch (e) {}
+  try { ext = JSON.parse(m.externals || '[]'); } catch (e) {}
+  return att.some(id => { const p = personnelAll.find(x => x.id === id); return p && sameCompany_(p.company, u.company); }) ||
+    ext.some(x => sameCompany_(x.company, u.company));
 }
 
 // ============ Generic save ============
@@ -516,44 +589,54 @@ function deleteLocation_(id) {
 // ============ Personnel ============
 const PERSON_FIELDS = ['name','employee_id','company','nationality','position','email','phone','passport','emergency','photo','remark','current_location'];
 function savePersonnel_(u, p) {
-  return withLock_(() => {
+  let event = '';
+  const rec = withLock_(() => {
     const d = {};
     PERSON_FIELDS.forEach(f => { if (p[f] !== undefined) d[f] = str_(p[f]); });
     if (d.photo && d.photo.length > MAX_PHOTO_CHARS) fail_('Photo is too large');
     if (d.photo && d.photo.indexOf('data:image/') !== 0) d.photo = '';
-    if (!isStaff_(u)) {
-      d.company = u.company;              // 承包商只能建自家公司的人
-      delete d.current_location;          // 位置只由 MC 轉運變更
-    }
+    if (u.role !== 'admin') d.company = u.company;      // 非 Admin 只能建／編自家公司的人
+    if (!isStaff_(u)) delete d.current_location;         // 位置只由 Admin／MC（轉運）變更
     let existing = null;
     if (p.id) {
       existing = Repo.get('Personnel', p.id);
       if (!existing) fail_('Record not found', 'NOT_FOUND');
-      if (!isStaff_(u) && !sameCompany_(existing.company, u.company)) fail_('Permission denied', 'FORBIDDEN');
+      if (u.role !== 'admin' && !sameCompany_(existing.company, u.company)) fail_('Permission denied', 'FORBIDDEN');
     }
     const merged = Object.assign({}, existing || {}, d);
     if (!merged.name || !merged.employee_id || !merged.company) fail_('Name, Employee ID and Company are required');
+    if (!Repo.all('Companies').some(c => sameCompany_(c.name, merged.company))) fail_('Company is not in the company list — add it under Companies first');
     const dup = Repo.all('Personnel').find(x => x.id !== p.id && sameCompany_(x.company, merged.company) &&
       str_(x.employee_id).toLowerCase() === merged.employee_id.toLowerCase());
     if (dup) fail_('Employee ID ' + merged.employee_id + ' already exists in ' + merged.company);
     if (existing) {
       d.updated_at = nowIso_();
+      // 被退件後由送件方修改 → 重新送 Admin 核准
+      if (existing.approval === 'Rejected' && u.role !== 'admin') { d.approval = 'Pending'; d.approval_note = ''; event = 'resubmitted'; }
       return Repo.update('Personnel', p.id, d);
     }
     d.id = genId_();
     d.created_by = u.username;
     d.created_at = d.updated_at = nowIso_();
+    if (u.role === 'admin') { d.approval = 'Approved'; d.approved_by = u.username; d.approved_at = d.created_at; }
+    else { d.approval = 'Pending'; event = 'new'; }
     return Repo.insert('Personnel', d);
   });
+  if (event) notify_('personnel_pending', 'Personnel pending approval｜人員待核准',
+    [['Name｜姓名', rec.name], ['Company｜公司', rec.company], ['Employee ID｜員工編號', rec.employee_id], ['Position｜職稱', rec.position],
+     ['Submitted by｜送件人', u.name || u.username], ['Type｜類型', event === 'new' ? 'New personnel｜新增人員' : 'Resubmitted after rejection｜退件後重新送審']]);
+  return rec;
 }
-function personFor_(u, personnelId) {
+/** forEdit=true：Admin 可編全部；MC／承包商只能編自家公司。檢視：Admin／MC 全部，承包商自家公司 */
+function personFor_(u, personnelId, forEdit) {
   const p = Repo.get('Personnel', personnelId);
   if (!p) fail_('Personnel not found', 'NOT_FOUND');
-  if (!isStaff_(u) && !sameCompany_(p.company, u.company)) fail_('Permission denied', 'FORBIDDEN');
+  const ok = forEdit ? (u.role === 'admin' || sameCompany_(p.company, u.company)) : (isStaff_(u) || sameCompany_(p.company, u.company));
+  if (!ok) fail_('Permission denied', 'FORBIDDEN');
   return p;
 }
 function deletePersonnel_(u, id) {
-  const p = personFor_(u, id);
+  const p = personFor_(u, id, true);
   if (!isStaff_(u) && p.current_location) fail_('This person is currently assigned to a location — ask MC to transfer them out first');
   return withLock_(() => {
     Repo.all('PersonCerts').filter(c => c.personnel_id === id).forEach(c => trashFile_(c.file_id));
@@ -591,7 +674,7 @@ function getFile_(u, id) {
   let allowed = Repo.all('VesselCerts').some(c => c.file_id === id);
   if (!allowed) {
     const pc = Repo.all('PersonCerts').find(c => c.file_id === id);
-    if (pc) { personFor_(u, pc.personnel_id); allowed = true; }
+    if (pc) { personFor_(u, pc.personnel_id, false); allowed = true; }
   }
   if (!allowed) fail_('File not found', 'NOT_FOUND');
   const f = DriveApp.getFileById(id);
@@ -601,7 +684,7 @@ function getFile_(u, id) {
 
 // ============ Personnel certificates ============
 function savePersonCert_(u, p) {
-  const person = personFor_(u, p.personnel_id);
+  const person = personFor_(u, p.personnel_id, true);
   const type = Repo.get('PersonCertTypes', p.type_id);
   if (!type) fail_('Certificate type is required');
   const d = { personnel_id: person.id, type_id: type.id, other_name: str_(p.other_name), cert_no: str_(p.cert_no),
@@ -614,12 +697,12 @@ function savePersonCert_(u, p) {
   }
   if (!existing && !(p.file && p.file.data)) fail_('Please attach the certificate file');
   const saved = saveFile_(p.file, person.name + ' - ' + type.name);
-  return withLock_(() => {
+  const rec = withLock_(() => {
     if (saved) {
       if (existing) trashFile_(existing.file_id);
       d.file_id = saved.id; d.file_name = saved.name;
     }
-    // 承包商上傳或修改 → 送 MC 核准；MC 自己建的直接核准
+    // 承包商上傳或修改 → 送 Admin／MC 核准；Admin／MC 自己建的直接核准
     if (isStaff_(u)) {
       d.status = 'Approved'; d.reviewed_by = u.username; d.reviewed_at = nowIso_(); d.review_note = '';
     } else {
@@ -632,11 +715,15 @@ function savePersonCert_(u, p) {
     d.created_at = d.updated_at;
     return Repo.insert('PersonCerts', d);
   });
+  if (rec.status === 'Pending') notify_('cert_pending', 'Certificate pending approval｜證照待核准',
+    [['Personnel｜人員', person.name], ['Company｜公司', person.company], ['Certificate｜證照', type.name + (rec.other_name ? ' — ' + rec.other_name : '')],
+     ['Cert No｜證號', rec.cert_no], ['Expiry｜到期日', rec.expiry_date], ['Submitted by｜送件人', u.name || u.username]]);
+  return rec;
 }
 function deletePersonCert_(u, id) {
   const c = Repo.get('PersonCerts', id);
   if (!c) return { id: id };
-  personFor_(u, c.personnel_id);
+  personFor_(u, c.personnel_id, true);
   withLock_(() => { trashFile_(c.file_id); Repo.remove('PersonCerts', id); });
   return { id: id };
 }
@@ -644,7 +731,197 @@ function reviewPersonCert_(u, p) {
   requireRole_(u, ['admin','mc']);
   const status = p.status === 'Approved' ? 'Approved' : 'Rejected';
   if (status === 'Rejected' && !str_(p.note)) fail_('Please give a reason for rejection');
-  return withLock_(() => Repo.update('PersonCerts', p.id, { status: status, review_note: str_(p.note), reviewed_by: u.username, reviewed_at: nowIso_() }));
+  const rec = withLock_(() => Repo.update('PersonCerts', p.id, { status: status, review_note: str_(p.note), reviewed_by: u.username, reviewed_at: nowIso_() }));
+  const person = Repo.get('Personnel', rec.personnel_id) || {};
+  const type = Repo.get('PersonCertTypes', rec.type_id) || {};
+  notify_('review_result', 'Certificate ' + status.toLowerCase() + '｜證照' + (status === 'Approved' ? '已核准' : '已退件'),
+    [['Personnel｜人員', person.name], ['Company｜公司', person.company], ['Certificate｜證照', type.name], ['Result｜結果', status],
+     ['Reason｜原因', rec.review_note], ['Reviewed by｜審核人', u.name || u.username]]);
+  return rec;
+}
+
+// ============ Approval（人員／船舶由 Admin 核准） ============
+function reviewRecord_(u, sheet, p) {
+  requireRole_(u, ['admin']);
+  const status = p.status === 'Approved' ? 'Approved' : 'Rejected';
+  if (status === 'Rejected' && !str_(p.note)) fail_('Please give a reason for rejection');
+  const rec = withLock_(() => Repo.update(sheet, p.id, { approval: status, approval_note: str_(p.note), approved_by: u.username, approved_at: nowIso_() }));
+  const what = sheet === 'Vessels' ? ['Vessel', '船舶'] : ['Personnel', '人員'];
+  notify_('review_result', what[0] + ' ' + status.toLowerCase() + '｜' + what[1] + (status === 'Approved' ? '已核准' : '已退件'),
+    [[what[0] + '｜' + what[1], rec.name], ['Company｜公司', rec.company || rec.operator], ['Result｜結果', status],
+     ['Reason｜原因', rec.approval_note], ['Reviewed by｜審核人', u.name || u.username]]);
+  return rec;
+}
+const VESSEL_FIELDS = ['name','mmsi','imo','type','flag','operator','contact_person','phone','whatsapp','email','remark'];
+function saveVessel_(u, p) {
+  let event = '';
+  const rec = withLock_(() => {
+    const d = {};
+    VESSEL_FIELDS.forEach(f => { if (p[f] !== undefined) d[f] = str_(p[f]); });
+    if (p.id) {
+      const existing = Repo.get('Vessels', p.id);
+      if (!existing) fail_('Record not found', 'NOT_FOUND');
+      if (d.name === '') fail_('name is required');
+      d.updated_at = nowIso_();
+      if (existing.approval === 'Rejected' && u.role !== 'admin') { d.approval = 'Pending'; d.approval_note = ''; event = 'resubmitted'; }
+      return Repo.update('Vessels', p.id, d);
+    }
+    if (!d.name) fail_('name is required');
+    d.id = genId_(); d.created_by = u.username; d.created_at = d.updated_at = nowIso_();
+    if (u.role === 'admin') { d.approval = 'Approved'; d.approved_by = u.username; d.approved_at = d.created_at; }
+    else { d.approval = 'Pending'; event = 'new'; }
+    return Repo.insert('Vessels', d);
+  });
+  if (event) notify_('vessel_pending', 'Vessel pending approval｜船舶待核准',
+    [['Vessel｜船舶', rec.name], ['Type｜船型', rec.type], ['MMSI / IMO', [rec.mmsi, rec.imo].filter(Boolean).join(' / ')], ['Operator｜營運公司', rec.operator],
+     ['Submitted by｜送件人', u.name || u.username]]);
+  return rec;
+}
+
+// ============ Meetings ============
+function parseList_(v) {
+  if (Array.isArray(v)) return v;
+  try { const a = JSON.parse(v || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+}
+function saveMeeting_(u, p) {
+  const items = parseList_(p.items).map(i => ({ topic: str_(i.topic), discussion: str_(i.discussion), action: str_(i.action), owner: str_(i.owner), due: str_(i.due) }))
+    .filter(i => i.topic || i.discussion || i.action);
+  const attendees = parseList_(p.attendees).map(str_).filter(Boolean);
+  const externals = parseList_(p.externals).map(x => ({ name: str_(x.name), company: str_(x.company) })).filter(x => x.name);
+  const d = { title: str_(p.title), time: str_(p.time), location: str_(p.location), remark: str_(p.remark),
+    items: JSON.stringify(items), attendees: JSON.stringify(attendees), externals: JSON.stringify(externals), updated_at: nowIso_() };
+  if (!d.title || !d.time) fail_('Meeting title and time are required');
+  if (!items.length) fail_('Add at least one discussion item');
+  const isNew = !p.id;
+  const rec = withLock_(() => {
+    if (p.id) return Repo.update('Meetings', p.id, d);
+    d.id = genId_(); d.created_by = u.username; d.created_at = d.updated_at;
+    return Repo.insert('Meetings', d);
+  });
+  if (isNew) {
+    const ppl = Repo.all('Personnel');
+    const names = attendees.map(id => { const x = ppl.find(q => q.id === id); return x ? x.name + ' (' + x.company + ')' : ''; }).filter(Boolean)
+      .concat(externals.map(x => x.name + (x.company ? ' (' + x.company + ')' : '')));
+    notify_('meeting', 'Meeting minutes｜會議紀錄：' + d.title,
+      [['Meeting｜會議', d.title], ['Time｜時間', d.time.replace('T', ' ')], ['Location｜地點', d.location], ['Attendees｜參與人員', names.join(', ')]]
+        .concat(items.map((i, n) => ['Item ' + (n + 1) + '｜議題 ' + (n + 1), [i.topic, i.discussion, i.action ? '→ ' + i.action + (i.owner ? ' (' + i.owner + ')' : '') + (i.due ? ' ' + i.due : '') : ''].filter(Boolean).join(' — ')])));
+  }
+  return rec;
+}
+
+// ============ Notifications ============
+function htmlEsc_(s) { return String(s === undefined || s === null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function mailHtml_(title, rows, appUrl) {
+  return '<div style="font-family:Segoe UI,Arial,sans-serif;max-width:640px;border:1px solid #dde4ec;border-radius:8px;overflow:hidden">' +
+    '<div style="background:#002038;color:#fff;padding:14px 18px;border-bottom:3px solid #00B050;font-size:16px;font-weight:600">OPTS · ' + htmlEsc_(title) + '</div>' +
+    '<table style="width:100%;border-collapse:collapse;font-size:14px">' +
+    rows.filter(r => r[1] !== undefined && r[1] !== null && String(r[1]) !== '').map(r =>
+      '<tr><td style="padding:8px 18px;color:#6b7a8c;width:170px;vertical-align:top;border-bottom:1px solid #eef1f5">' + htmlEsc_(r[0]) + '</td>' +
+      '<td style="padding:8px 18px;color:#1d2b3a;border-bottom:1px solid #eef1f5">' + htmlEsc_(r[1]) + '</td></tr>').join('') +
+    '</table><div style="padding:14px 18px"><a href="' + htmlEsc_(appUrl) + '" style="background:#00B050;color:#fff;text-decoration:none;padding:9px 16px;border-radius:6px;font-weight:600">Open OPTS｜開啟系統</a></div>' +
+    '<div style="padding:0 18px 14px;color:#9aa7b5;font-size:12px">Automatic message from OPTS — Offshore Personnel Transfer System.｜此信由系統自動發送。</div></div>';
+}
+function notify_(event, subject, rows) {
+  try {
+    const st = settings_();
+    if (String(st.notify_events || '').split(',').indexOf(event) < 0) return false;
+    const to = String(st.notify_emails || '').split(/[\s,;]+/).filter(Boolean).join(',');
+    if (!to) return false;
+    MailApp.sendEmail({ to: to, subject: '[OPTS] ' + subject, htmlBody: mailHtml_(subject, rows, st.app_url), name: 'OPTS — NMDC' });
+    return true;
+  } catch (e) { console.warn('notify ' + event + ' failed: ' + e.message); return false; }
+}
+function notifyTest_(u) {
+  const st = settings_();
+  const to = String(st.notify_emails || '').split(/[\s,;]+/).filter(Boolean).join(',');
+  if (!to) fail_('Add at least one recipient email first');
+  try {
+    MailApp.sendEmail({ to: to, subject: '[OPTS] Test notification｜測試通知', name: 'OPTS — NMDC',
+      htmlBody: mailHtml_('Test notification｜測試通知', [['Sent by｜寄件人', u.name || u.username], ['Time｜時間', new Date().toString()]], st.app_url) });
+  } catch (e) { fail_('Could not send email: ' + e.message + ' — run setup() once in the Apps Script editor to authorise sending mail'); }
+  return { to: to, quota: MailApp.getRemainingDailyQuota() };
+}
+// ============ Reset（清空資料；驗證碼寄到固定信箱，帳號／公司／設定一律保留） ============
+const RESET_EMAIL = 'paul.tong@nmdc-group.com';
+const RESET_GROUPS = {
+  personnel: ['Personnel', 'PersonCerts'],
+  vessels: ['Vessels', 'VesselCerts'],
+  locations: ['Locations'],
+  transfers: ['Transfers'],
+  sitelog: ['SiteLog'],
+  meetings: ['Meetings']
+};
+function resetRequest_(u, p) {
+  const groups = (Array.isArray(p.groups) ? p.groups : []).filter(g => RESET_GROUPS[g]);
+  if (!groups.length) fail_('Tick at least one item to clear');
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const state = { hash: hash_(code, 'reset'), groups: groups, by: u.id, tries: 0, exp: Date.now() + 10 * 60000 };
+  PropertiesService.getScriptProperties().setProperty('reset_pending', JSON.stringify(state));
+  try {
+    MailApp.sendEmail({ to: RESET_EMAIL, name: 'OPTS — NMDC', subject: '[OPTS] Data reset verification code｜清空資料驗證碼：' + code,
+      htmlBody: mailHtml_('Data reset verification code｜清空資料驗證碼', [
+        ['Code｜驗證碼', code], ['Requested by｜申請人', (u.name || u.username) + ' (' + u.username + ')'],
+        ['Data to delete｜將刪除', groups.join(', ')], ['Valid for｜有效時間', '10 minutes｜10 分鐘'],
+        ['Note｜說明', 'If you did not request this, ignore this email — nothing will be deleted.｜若非本人申請請忽略此信，資料不會被刪除。']], settings_().app_url) });
+  } catch (e) { fail_('Could not send email: ' + e.message); }
+  return { to: RESET_EMAIL.replace(/^(.).*(@.*)$/, '$1***$2') };
+}
+function resetConfirm_(u, p) {
+  const props = PropertiesService.getScriptProperties();
+  const raw = props.getProperty('reset_pending');
+  if (!raw) fail_('No reset request — send a new verification code');
+  const st = JSON.parse(raw);
+  if (st.by !== u.id) fail_('This code was requested by another administrator');
+  if (Date.now() > st.exp) { props.deleteProperty('reset_pending'); fail_('Verification code expired — send a new one'); }
+  if (hash_(str_(p.code), 'reset') !== st.hash) {
+    st.tries++;
+    if (st.tries >= 5) { props.deleteProperty('reset_pending'); fail_('Too many wrong codes — send a new one'); }
+    props.setProperty('reset_pending', JSON.stringify(st));
+    fail_('Wrong verification code (' + (5 - st.tries) + ' tries left)');
+  }
+  props.deleteProperty('reset_pending');
+  return withLock_(() => {
+    let rows = 0, files = 0;
+    const g = st.groups;
+    if (g.indexOf('personnel') >= 0) Repo.all('PersonCerts').forEach(c => { if (c.file_id) { trashFile_(c.file_id); files++; } });
+    if (g.indexOf('vessels') >= 0) Repo.all('VesselCerts').forEach(c => { if (c.file_id) { trashFile_(c.file_id); files++; } });
+    g.forEach(k => RESET_GROUPS[k].forEach(sheet => { rows += Repo.clear(sheet); }));
+    // 刪了船舶／位置但人員還在 → 把指向已刪位置的派駐清掉
+    if (g.indexOf('personnel') < 0 && (g.indexOf('vessels') >= 0 || g.indexOf('locations') >= 0)) {
+      Repo.all('Personnel').forEach(x => {
+        const c = x.current_location || '';
+        if ((c.indexOf('vessel_') === 0 && g.indexOf('vessels') >= 0) || (c.indexOf('loc_') === 0 && g.indexOf('locations') >= 0)) Repo.update('Personnel', x.id, { current_location: '' });
+      });
+    }
+    console.log('RESET by ' + u.username + ': ' + g.join(',') + ' rows=' + rows + ' files=' + files);
+    return { rows: rows, files: files, groups: g };
+  });
+}
+
+/** 每日觸發器（setup() 建立）：證照在 30／14／7／1 天前與到期當天提醒 */
+function dailyExpiryCheck() {
+  ensureSchema_();
+  const tz = Session.getScriptTimeZone();
+  const today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+  const days = d => Math.round((new Date(d + 'T00:00:00') - new Date(today + 'T00:00:00')) / 864e5);
+  const rows = [];
+  const ppl = Repo.all('Personnel'), ptypes = Repo.all('PersonCertTypes');
+  Repo.all('PersonCerts').forEach(c => {
+    if (c.status !== 'Approved' || !c.expiry_date) return;
+    const n = days(String(c.expiry_date).slice(0, 10));
+    if (EXPIRY_ALERT_DAYS.indexOf(n) < 0) return;
+    const p = ppl.find(x => x.id === c.personnel_id) || {}, t = ptypes.find(x => x.id === c.type_id) || {};
+    rows.push([n === 0 ? 'EXPIRES TODAY｜今日到期' : n + ' days left｜剩 ' + n + ' 天', '👷 ' + p.name + ' (' + p.company + ') — ' + t.name + ' · ' + c.expiry_date]);
+  });
+  const ves = Repo.all('Vessels'), vtypes = Repo.all('VesselCertTypes');
+  Repo.all('VesselCerts').forEach(c => {
+    if (!c.expiry_date) return;
+    const n = days(String(c.expiry_date).slice(0, 10));
+    if (EXPIRY_ALERT_DAYS.indexOf(n) < 0) return;
+    const v = ves.find(x => x.id === c.vessel_id) || {}, t = vtypes.find(x => x.id === c.type_id) || {};
+    rows.push([n === 0 ? 'EXPIRES TODAY｜今日到期' : n + ' days left｜剩 ' + n + ' 天', '🚢 ' + v.name + ' — ' + t.name + ' · ' + c.expiry_date]);
+  });
+  if (rows.length) notify_('expiry', 'Certificates expiring soon｜證照即將到期（' + rows.length + '）', rows);
 }
 
 // ============ Vessel certificates ============
@@ -688,7 +965,7 @@ function executeTransfer_(u, p) {
   const to = str_(p.to_location), from = str_(p.from_location);
   if (!ids.length) fail_('Select at least one person');
   if (!to || !str_(p.time) || !str_(p.type) || !str_(p.approved_by)) fail_('To, Time, Type and Approved By are required');
-  return withLock_(() => {
+  const res = withLock_(() => {
     const vessels = Repo.all('Vessels'), locations = Repo.all('Locations');
     const now = nowIso_();
     const transfers = [], updated = [], skipped = [];
@@ -698,6 +975,7 @@ function executeTransfer_(u, p) {
       const cur = person.current_location || '';
       if (from && from !== cur) { skipped.push(person.name + ': not at the selected From location'); return; }
       if (cur === to) { skipped.push(person.name + ': already at destination'); return; }
+      if (person.approval !== 'Approved') { skipped.push(person.name + ': not approved by Admin yet'); return; }
       transfers.push({ id: genId_(), personnel_id: person.id, personnel_name: person.name, company: person.company,
         from_location: cur, to_location: to, time: str_(p.time), type: str_(p.type), transport: str_(p.transport),
         approved_by: str_(p.approved_by), reason: str_(p.reason), remark: str_(p.remark), logged_by: u.username, created_at: now });
@@ -716,6 +994,11 @@ function executeTransfer_(u, p) {
     }
     return { transfers: transfers, personnel: updated, siteLog: log, skipped: skipped };
   });
+  if (res.transfers.length) notify_('transfer', 'Personnel transferred｜人員轉運：' + res.siteLog.detail,
+    [['Time｜時間', str_(p.time).replace('T', ' ')], ['Detail｜內容', res.siteLog.detail],
+     ['Personnel｜人員', res.transfers.map(t => t.personnel_name + ' (' + t.company + ')').join(', ')],
+     ['Approved by｜核准人', str_(p.approved_by)], ['Logged by｜記錄人', u.name || u.username]]);
+  return res;
 }
 function saveSiteLog_(u, p) {
   const d = { time: str_(p.time), activity: str_(p.activity) || 'INFO', detail: str_(p.detail), asset: str_(p.asset),

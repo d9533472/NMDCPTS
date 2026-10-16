@@ -176,6 +176,105 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
   .header{padding:0 14px}
   .user-chip .uname{display:none}
 }
+
+/* ================= Tech layer（淺色底＋HUD 科技感） ================= */
+:root{ --glow:0 0 0 1px rgba(0,176,80,.25),0 6px 22px rgba(0,176,80,.12); --cyan:#19b5c9; }
+body{background-color:#eef2f7;background-image:linear-gradient(rgba(0,32,56,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(0,32,56,.035) 1px,transparent 1px);background-size:28px 28px}
+.sidebar{background:linear-gradient(180deg,#001428 0%,#002038 55%,#00284a 100%)}
+.sidebar::after{content:'';position:absolute;top:0;right:0;width:1px;height:100%;background:linear-gradient(180deg,transparent,rgba(0,176,80,.55),transparent)}
+.nav-item.active{background:linear-gradient(90deg,rgba(0,176,80,.22),rgba(0,176,80,0));box-shadow:inset 3px 0 0 var(--green)}
+.nav-item.active .ico{filter:drop-shadow(0 0 4px rgba(0,176,80,.8))}
+.nav-title{font-family:'JetBrains Mono',monospace;letter-spacing:2px}
+.header{background:rgba(255,255,255,.92);backdrop-filter:blur(6px)}
+.header::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:linear-gradient(90deg,transparent,var(--green),var(--cyan),transparent);background-size:200% 100%;animation:scan 6s linear infinite;opacity:.7}
+@keyframes scan{from{background-position:200% 0}to{background-position:-200% 0}}
+.live{display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green-dark);letter-spacing:1px;padding:3px 9px;border:1px solid rgba(0,176,80,.35);border-radius:12px;background:rgba(0,176,80,.06)}
+.live i{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(0,176,80,.6);animation:pulse 1.8s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(0,176,80,.55)}70%{box-shadow:0 0 0 7px rgba(0,176,80,0)}100%{box-shadow:0 0 0 0 rgba(0,176,80,0)}}
+.section{position:relative;box-shadow:0 1px 2px rgba(0,32,56,.04)}
+.section-header{background:linear-gradient(90deg,#fbfcfd,#fff)}
+.section-header h3{display:flex;align-items:center;gap:8px}
+.section-header h3::before{content:'';width:4px;height:14px;border-radius:2px;background:linear-gradient(180deg,var(--green),var(--cyan));box-shadow:0 0 6px rgba(0,176,80,.5)}
+th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
+.btn-green{box-shadow:0 2px 10px rgba(0,176,80,.25)}.btn-green:hover{box-shadow:0 0 0 3px rgba(0,176,80,.18),0 4px 14px rgba(0,176,80,.35)}
+.btn-primary:hover{box-shadow:0 0 0 3px rgba(0,32,56,.12)}
+.modal{overflow:hidden}
+.modal-header{background:linear-gradient(90deg,#001428,#002038 60%,#003358);border-bottom:2px solid var(--green)}
+.pob-num{font-family:'JetBrains Mono',monospace}
+
+/* KPI cards */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:14px;margin-bottom:18px}
+.kpi{position:relative;background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:15px 16px 13px;cursor:pointer;overflow:hidden;transition:transform .15s,box-shadow .15s}
+.kpi:hover{transform:translateY(-2px);box-shadow:var(--glow)}
+.kpi::before,.kpi::after{content:'';position:absolute;width:12px;height:12px;border-color:var(--tone,var(--navy));opacity:.55}
+.kpi::before{top:6px;left:6px;border-top:2px solid;border-left:2px solid}
+.kpi::after{bottom:6px;right:6px;border-bottom:2px solid;border-right:2px solid}
+.kpi-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.kpi-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;padding-left:8px}
+.kpi-ico{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;background:color-mix(in srgb,var(--tone,var(--navy)) 12%,#fff)}
+.kpi-val{font-family:'JetBrains Mono',monospace;font-size:32px;font-weight:500;color:var(--tone,var(--navy));margin:6px 0 2px 8px;line-height:1.1}
+.kpi-sub{font-size:11px;color:var(--muted);margin-left:8px;min-height:15px}
+.kpi-bar{height:3px;background:#eef1f5;border-radius:2px;margin:10px 0 0 8px;overflow:hidden}
+.kpi-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--tone,var(--navy)),var(--cyan));border-radius:2px;transition:width .9s ease}
+.kpi.t-green{--tone:#00994a}.kpi.t-navy{--tone:#002038}.kpi.t-blue{--tone:#1565c0}.kpi.t-cyan{--tone:#0f8fa1}.kpi.t-red{--tone:#c62828}.kpi.t-amber{--tone:#c27c0e}
+.dash-list{display:flex;flex-direction:column}
+.dash-row{display:flex;gap:10px;align-items:center;padding:8px 2px;border-bottom:1px dashed #e3e8ef;font-size:13px}
+.dash-row:last-child{border-bottom:none}
+.dash-row .t{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap}
+.dash-row .d{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Meetings */
+.mt-card{border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:12px;background:#fff;cursor:pointer;transition:box-shadow .15s}
+.mt-card:hover{box-shadow:var(--glow)}
+.mt-card h4{font-size:14px;color:var(--navy);margin-bottom:4px}
+.mt-meta{font-size:12px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--na-bg);border-radius:14px;padding:3px 10px;font-size:12px}
+.chip small{color:var(--muted)}
+.att-list{max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius)}
+.att-row{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid #edf1f5;font-size:13px;cursor:pointer}
+.att-row:hover{background:#fafcfd}
+.att-group{padding:5px 10px;background:#f4f7fa;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;position:sticky;top:0}
+.item-row{display:grid;grid-template-columns:28px 1.2fr 2fr 1.2fr 1fr 130px 34px;gap:8px;align-items:start;margin-bottom:8px}
+.item-row .num{font-family:'JetBrains Mono',monospace;color:var(--muted);padding-top:9px;text-align:center}
+.item-row textarea{min-height:38px}
+.ext-row{display:grid;grid-template-columns:1fr 1fr 34px;gap:8px;margin-bottom:8px}
+@media(max-width:900px){.item-row{grid-template-columns:1fr}.item-row .num{text-align:left;padding:0}}
+
+/* ================= Login scene ================= */
+.auth{background:radial-gradient(1200px 500px at 50% 0%,#0b3a66 0%,transparent 60%),linear-gradient(180deg,#001226 0%,#002038 60%,#00284a 100%);flex-direction:column;justify-content:flex-start;padding-top:calc(5vh + 120px);overflow:hidden}
+.auth .auth-brand{position:absolute;left:0;right:0;bottom:calc(100% + 18px)}
+.auth::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(25,181,201,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(25,181,201,.07) 1px,transparent 1px);background-size:40px 40px;mask-image:linear-gradient(180deg,#000 0%,transparent 75%);-webkit-mask-image:linear-gradient(180deg,#000 0%,transparent 75%)}
+.auth-brand{margin:0 0 22px;position:relative;z-index:2}
+.auth-brand h1{font-size:19px;letter-spacing:1px}
+.auth-brand small{display:block;color:#7fd8e4;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:3px;margin-top:6px}
+.auth-card{position:relative;z-index:2;background:rgba(255,255,255,.97);box-shadow:0 20px 60px rgba(0,0,0,.35),0 0 0 1px rgba(0,176,80,.25)}
+.auth-card::before{content:'';position:absolute;top:0;left:20px;right:20px;height:2px;background:linear-gradient(90deg,transparent,var(--green),var(--cyan),transparent)}
+.scene{position:absolute;left:0;right:0;bottom:0;height:42vh;min-height:230px;z-index:1;pointer-events:none}
+.scene svg{width:100%;height:100%;display:block}
+.scene .wave{animation:wave 9s linear infinite}
+.scene .wave2{animation:wave 14s linear infinite reverse;opacity:.6}
+@keyframes wave{from{transform:translateX(0)}to{transform:translateX(-480px)}}
+.scene .ship{animation:bob 3.2s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 100%}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(4px) rotate(-.6deg)}}
+.scene .walker{animation:walk 15s linear infinite;opacity:0}
+.scene .w2{animation-delay:-5s}.scene .w3{animation-delay:-10s}
+@keyframes walk{0%{transform:translate(60px,212px);opacity:0}4%{opacity:1}36%{transform:translate(535px,212px)}44%{transform:translate(640px,207px)}48%{transform:translate(680px,211px)}74%{transform:translate(905px,211px);opacity:1}79%{transform:translate(945px,211px);opacity:0}100%{transform:translate(945px,211px);opacity:0}}
+.scene .bodybob{animation:bodybob .36s ease-in-out infinite alternate}
+@keyframes bodybob{from{transform:translateY(0)}to{transform:translateY(-1.6px)}}
+.scene .legA,.scene .legB,.scene .armA,.scene .armB{transform-box:fill-box;transform-origin:50% 0}
+.scene .legA{animation:swing .36s ease-in-out infinite alternate}
+.scene .legB{animation:swing .36s ease-in-out infinite alternate-reverse}
+.scene .armA{animation:swing .36s ease-in-out infinite alternate-reverse}
+.scene .armB{animation:swing .36s ease-in-out infinite alternate}
+@keyframes swing{from{transform:rotate(22deg)}to{transform:rotate(-22deg)}}
+.scene .blink{animation:blink 1.6s steps(1) infinite}
+@keyframes blink{50%{opacity:.15}}
+.scene .twinkle{animation:twinkle 3s ease-in-out infinite}
+@keyframes twinkle{50%{opacity:.2}}
+.scene .radar{transform-box:fill-box;transform-origin:50% 100%;animation:radar 4s linear infinite}
+@keyframes radar{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.scene *{animation:none!important}.scene .walker{opacity:1;transform:translate(300px,212px)}}
 </style>
 </head>
 <body>
@@ -183,6 +282,91 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
 <!-- ================= AUTH ================= -->
 <div class="auth" id="auth">
   <button class="btn btn-sm lang-btn notr" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.35)" onclick="toggleLang()">中文</button>
+  <div class="scene" aria-hidden="true">
+    <svg viewBox="0 0 1440 320" preserveAspectRatio="xMidYMax slice">
+      <defs>
+        <linearGradient id="seaG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a4a7a"/><stop offset="1" stop-color="#021a33"/></linearGradient>
+        <linearGradient id="quayG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d4d74"/><stop offset="1" stop-color="#0b2a46"/></linearGradient>
+        <linearGradient id="hullG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f7fb"/><stop offset="1" stop-color="#b9c6d6"/></linearGradient>
+        <radialGradient id="glowG"><stop offset="0" stop-color="#19b5c9" stop-opacity=".55"/><stop offset="1" stop-color="#19b5c9" stop-opacity="0"/></radialGradient>
+        <!-- Q 版工作人員（腳底在原點） -->
+        <g id="chibi">
+          <ellipse cx="0" cy="1" rx="9" ry="2.2" fill="#000" opacity=".25"/>
+          <g class="bodybob">
+            <rect class="legA" x="-6" y="-14" width="5" height="14" rx="2.5" fill="#1b2a3a"/>
+            <rect class="legB" x="1" y="-14" width="5" height="14" rx="2.5" fill="#26384c"/>
+            <rect class="armB" x="7" y="-27" width="4" height="12" rx="2" fill="var(--suit)"/>
+            <rect x="-8" y="-29" width="16" height="17" rx="6" fill="var(--suit)"/>
+            <rect x="-8" y="-22" width="16" height="3" fill="#e9ff4f" opacity=".9"/>
+            <rect class="armA" x="-11" y="-27" width="4" height="12" rx="2" fill="var(--suit)"/>
+            <circle cx="0" cy="-40" r="12" fill="#f6c79b"/>
+            <circle cx="-4" cy="-39" r="1.6" fill="#1d2b3a"/><circle cx="4" cy="-39" r="1.6" fill="#1d2b3a"/>
+            <path d="M-3 -34 Q0 -32 3 -34" stroke="#b5654a" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+            <circle cx="-7" cy="-36" r="2" fill="#ff9c8a" opacity=".55"/><circle cx="7" cy="-36" r="2" fill="#ff9c8a" opacity=".55"/>
+            <path d="M-13 -44 Q0 -60 13 -44 Z" fill="var(--hat)"/><rect x="-14.5" y="-45" width="29" height="3.4" rx="1.7" fill="var(--hat)"/>
+            <rect x="-2" y="-57" width="4" height="9" rx="2" fill="#fff" opacity=".35"/>
+          </g>
+        </g>
+      </defs>
+      <!-- stars / HUD -->
+      <g fill="#7fd8e4">
+        <circle class="twinkle" cx="140" cy="40" r="1.4"/><circle class="twinkle" cx="420" cy="70" r="1.1" style="animation-delay:-1s"/>
+        <circle class="twinkle" cx="760" cy="30" r="1.3" style="animation-delay:-2s"/><circle class="twinkle" cx="1100" cy="60" r="1.2" style="animation-delay:-.5s"/>
+        <circle class="twinkle" cx="1320" cy="35" r="1.5" style="animation-delay:-1.6s"/><circle class="twinkle" cx="980" cy="95" r="1" style="animation-delay:-2.4s"/>
+      </g>
+      <!-- offshore wind turbines on the horizon -->
+      <g stroke="#3d6f99" stroke-width="2" opacity=".7">
+        <line x1="1210" y1="232" x2="1210" y2="150"/><line x1="1330" y1="232" x2="1330" y2="165"/>
+      </g>
+      <g fill="#3d6f99" opacity=".75">
+        <g transform="translate(1210 150)"><g class="radar" style="animation-duration:7s"><rect x="-1.5" y="-34" width="3" height="34" rx="1.5"/><rect x="-1.5" y="-34" width="3" height="34" rx="1.5" transform="rotate(120)"/><rect x="-1.5" y="-34" width="3" height="34" rx="1.5" transform="rotate(240)"/></g></g>
+        <g transform="translate(1330 165)"><g class="radar" style="animation-duration:9s"><rect x="-1.2" y="-28" width="2.4" height="28" rx="1.2"/><rect x="-1.2" y="-28" width="2.4" height="28" rx="1.2" transform="rotate(120)"/><rect x="-1.2" y="-28" width="2.4" height="28" rx="1.2" transform="rotate(240)"/></g></g>
+      </g>
+      <!-- sea -->
+      <rect x="0" y="228" width="1440" height="92" fill="url(#seaG)"/>
+      <line x1="0" y1="228" x2="1440" y2="228" stroke="#19b5c9" stroke-opacity=".5" stroke-width="1"/>
+      <g class="wave"><path d="M0 240 q30 -6 60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0" stroke="#5fc6e0" stroke-opacity=".35" fill="none" stroke-width="1.5"/></g>
+      <g class="wave2"><path d="M0 262 q40 -7 80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0" stroke="#5fc6e0" stroke-opacity=".25" fill="none" stroke-width="1.5"/></g>
+      <!-- port / quay -->
+      <rect x="0" y="212" width="540" height="108" fill="url(#quayG)"/>
+      <rect x="0" y="210" width="540" height="3" fill="#00B050"/>
+      <g fill="#0e3556"><rect x="0" y="232" width="540" height="2"/><rect x="0" y="262" width="540" height="2"/></g>
+      <!-- containers -->
+      <g stroke="#002038" stroke-width="1">
+        <rect x="40" y="178" width="70" height="32" fill="#00B050"/><rect x="110" y="178" width="70" height="32" fill="#e08a2c"/>
+        <rect x="70" y="146" width="70" height="32" fill="#1f6fb5"/><rect x="190" y="178" width="70" height="32" fill="#8aa1b8"/>
+      </g>
+      <!-- gantry crane -->
+      <g stroke="#7fa8cc" stroke-width="3" fill="none">
+        <path d="M300 210 L300 100 L460 100"/><path d="M340 210 L340 100"/><path d="M300 130 L340 100 M300 160 L340 130 M300 190 L340 160"/>
+        <line x1="430" y1="100" x2="430" y2="150" stroke-width="1.5"/>
+      </g>
+      <rect x="420" y="150" width="20" height="10" fill="#e08a2c"/>
+      <circle class="blink" cx="460" cy="98" r="3.5" fill="#ff4d4d"/>
+      <circle cx="460" cy="98" r="14" fill="url(#glowG)" class="blink"/>
+      <!-- bollards -->
+      <g fill="#c9d3de"><rect x="500" y="202" width="8" height="8" rx="2"/><rect x="380" y="202" width="8" height="8" rx="2"/></g>
+      <!-- gangway (walk-to-work) -->
+      <path d="M535 211 L640 205" stroke="#c9d3de" stroke-width="4" stroke-linecap="round"/>
+      <path d="M535 199 L640 193" stroke="#7fa8cc" stroke-width="1.5"/>
+      <g stroke="#7fa8cc" stroke-width="1"><line x1="560" y1="198" x2="560" y2="210"/><line x1="590" y1="196" x2="590" y2="208"/><line x1="620" y1="194" x2="620" y2="206"/></g>
+      <!-- ship (CTV) -->
+      <g class="ship">
+        <path d="M600 206 L1010 206 L985 248 L630 248 Z" fill="url(#hullG)"/>
+        <rect x="600" y="222" width="400" height="6" fill="#00B050"/>
+        <rect x="630" y="236" width="360" height="12" fill="#002038" opacity=".85"/>
+        <rect x="790" y="160" width="130" height="46" rx="6" fill="#e7edf4" stroke="#9fb3c8"/>
+        <g fill="#0b3a66"><rect x="802" y="170" width="22" height="13" rx="2"/><rect x="830" y="170" width="22" height="13" rx="2"/><rect x="858" y="170" width="22" height="13" rx="2"/><rect x="886" y="170" width="22" height="13" rx="2"/></g>
+        <rect x="850" y="128" width="4" height="32" fill="#9fb3c8"/><rect x="838" y="132" width="28" height="3" fill="#9fb3c8"/>
+        <circle class="blink" cx="852" cy="126" r="3" fill="#00ff88" style="animation-delay:-.8s"/>
+        <text x="935" y="218" font-family="JetBrains Mono,monospace" font-size="11" fill="#002038" font-weight="600">NMDC</text>
+      </g>
+      <!-- walking crew -->
+      <g class="walker w1" style="--suit:#ff7a1a;--hat:#ffffff"><use href="#chibi"/></g>
+      <g class="walker w2" style="--suit:#1f6fb5;--hat:#ffd23f"><use href="#chibi"/></g>
+      <g class="walker w3" style="--suit:#00B050;--hat:#ff7a1a"><use href="#chibi"/></g>
+    </svg>
+  </div>
   <div class="auth-card">
     <div class="auth-brand"><img src="data:image/png;base64,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" alt="NMDC"><h1>Offshore Personnel Transfer System</h1></div>
     <div id="authLogin">
@@ -232,6 +416,7 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
       <div class="nav-item" data-page="sitelog"><span class="ico">📒</span>Site Log</div>
       <div class="nav-item" data-page="history"><span class="ico">📋</span>Transfer History</div>
       <div class="nav-item" data-page="pob" data-roles="admin,mc"><span class="ico">🧑‍🤝‍🧑</span>POB Viewer</div>
+      <div class="nav-item" data-page="meetings"><span class="ico">🗂️</span>Meeting Minutes</div>
       <div class="nav-title">Safety</div>
       <div class="nav-item" data-page="certificates"><span class="ico">🪪</span>Certificates<span class="badge hidden" id="certBadge">0</span></div>
       <div class="nav-item" data-page="ptw"><span class="ico">📝</span>PTW Monitor<span class="badge hidden" id="ptwBadge">0</span></div>
@@ -248,6 +433,7 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
         <h2 id="pageTitle">Dashboard</h2>
       </div>
       <div class="header-right">
+        <span class="live notr" id="liveTag" title="Last synced"><i></i><span id="liveTime">LIVE</span></span>
         <button class="btn btn-secondary btn-sm lang-btn notr" onclick="toggleLang()">中文</button>
         <button class="btn btn-secondary btn-sm" onclick="reloadData(true)" title="Reload data from server">⟳ Refresh</button>
         <div class="user-chip" id="userChip" onclick="toggleUserMenu(event)">
@@ -264,12 +450,15 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
     <div class="content">
       <!-- DASHBOARD -->
       <div class="page" id="page-dashboard">
-        <div class="stat-grid" id="dashStats"></div>
+        <div class="kpi-grid" id="dashStats"></div>
         <div class="grid-2">
-          <div class="section"><div class="section-header"><h3>🧑‍🤝‍🧑 POB Summary</h3><span class="link" onclick="go('pob')" data-roles="admin,mc">View all →</span></div><div class="section-body" id="dashPob"></div></div>
           <div class="section"><div class="section-header"><h3>⚠️ Certificate Alerts</h3><span class="link" onclick="go('certificates')">View all →</span></div><div class="section-body" id="dashAlerts"></div></div>
+          <div class="section"><div class="section-header"><h3>🚢 Vessel Certificate Alerts</h3><span class="link" onclick="go('certificates')">View all →</span></div><div class="section-body" id="dashVAlerts"></div></div>
         </div>
-        <div class="section"><div class="section-header"><h3>📒 Latest Site Log</h3><span class="link" onclick="go('sitelog')">View all →</span></div><div class="section-body" id="dashLog"></div></div>
+        <div class="grid-2">
+          <div class="section"><div class="section-header"><h3>📒 Site Log</h3><span class="link" onclick="go('sitelog')">View all →</span></div><div class="section-body" id="dashLog"></div></div>
+          <div class="section"><div class="section-header"><h3>🔄 Transfer History</h3><span class="link" onclick="go('history')">View all →</span></div><div class="section-body" id="dashTransfers"></div></div>
+        </div>
       </div>
 
       <!-- PERSONNEL -->
@@ -279,12 +468,12 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
             <div class="toolbar">
               <div class="search"><span>🔍</span><input id="pSearch" placeholder="Name, ID, email…" oninput="renderPersonnel()"></div>
               <select class="fi" id="pCompany" onchange="renderPersonnel()"></select>
-              <select class="fi" id="pQual" onchange="renderPersonnel()"><option value="">All status</option><option value="ok">Qualified</option><option value="no">Not qualified</option><option value="pending">Has pending cert</option></select>
+              <select class="fi" id="pQual" onchange="renderPersonnel()"><option value="">All status</option><option value="ok">Qualified</option><option value="no">Not qualified</option><option value="pending">Has pending cert</option><option value="await">Awaiting approval</option></select>
               <button class="btn btn-secondary btn-sm" onclick="exportPersonnelCSV()">⬇ CSV</button>
               <button class="btn btn-green btn-sm" onclick="openPersonnel()">+ Add Personnel</button>
             </div>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Name</th><th>Employee ID</th><th>Company</th><th>Position</th><th>Contact</th><th>Medical</th><th>Sea Survival</th><th>Location</th><th></th></tr></thead><tbody id="pBody"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>Name</th><th>Employee ID</th><th>Company</th><th>Position</th><th>Contact</th><th>Approval</th><th>Medical</th><th>Offshore Safety Training</th><th>Location</th><th></th></tr></thead><tbody id="pBody"></tbody></table></div>
         </div>
       </div>
 
@@ -297,7 +486,7 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
               <button class="btn btn-green btn-sm" onclick="openVessel()" data-roles="admin,mc">+ Add Vessel</button>
             </div>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Vessel</th><th>MMSI / IMO</th><th>Operator</th><th>Contact</th><th>Certificates</th><th>POB</th><th>PTW</th><th></th></tr></thead><tbody id="vBody"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>Vessel</th><th>MMSI / IMO</th><th>Operator</th><th>Contact</th><th>Approval</th><th>Certificates</th><th>POB</th><th>PTW</th><th></th></tr></thead><tbody id="vBody"></tbody></table></div>
         </div>
       </div>
 
@@ -384,17 +573,33 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
             <div class="toolbar"><select class="fi" id="pobSel" onchange="renderPOB()"></select><button class="btn btn-secondary btn-sm" onclick="exportPOBCSV()">⬇ CSV</button></div>
           </div>
           <div class="section-body" id="pobHead"></div>
-          <div class="table-wrap"><table><thead><tr><th>#</th><th>Name</th><th>Employee ID</th><th>Company</th><th>Position</th><th>Phone</th><th>Medical</th><th>Sea Survival</th><th>Last transfer</th></tr></thead><tbody id="pobBody"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>#</th><th>Name</th><th>Employee ID</th><th>Company</th><th>Position</th><th>Phone</th><th>Medical</th><th>Offshore Safety Training</th><th>Last transfer</th></tr></thead><tbody id="pobBody"></tbody></table></div>
         </div>
       </div>
 
       <!-- CERTIFICATES -->
       <div class="page" id="page-certificates">
+        <div class="section" id="secApprovals"><div class="section-header"><h3 id="apprTitle">✅ Personnel & Vessels Awaiting Admin Approval</h3></div><div class="table-wrap"><table><thead><tr><th>Type</th><th>Name</th><th>Company / Operator</th><th>Submitted by</th><th>Status</th><th></th></tr></thead><tbody id="apprBody"></tbody></table></div></div>
         <div class="section" id="secPending"><div class="section-header"><h3 id="pendingTitle">⏳ Pending Approval</h3></div><div class="table-wrap"><table><thead><tr><th>Personnel</th><th>Company</th><th>Certificate</th><th>Cert No</th><th>Expiry</th><th>Submitted</th><th>File</th><th></th></tr></thead><tbody id="pendBody"></tbody></table></div></div>
         <div class="section" id="secRejected"><div class="section-header"><h3>✖ Rejected — needs resubmission</h3></div><div class="table-wrap"><table><thead><tr><th>Personnel</th><th>Certificate</th><th>Reason</th><th>Reviewed by</th><th></th></tr></thead><tbody id="rejBody"></tbody></table></div></div>
         <div class="grid-2">
           <div class="section"><div class="section-header"><h3>👷 Personnel Alerts</h3></div><div class="section-body"><div class="alert-list" id="personAlerts"></div></div></div>
           <div class="section"><div class="section-header"><h3>🚢 Vessel Certificate Alerts</h3></div><div class="section-body"><div class="alert-list" id="vesselAlerts"></div></div></div>
+        </div>
+      </div>
+
+      <!-- MEETINGS -->
+      <div class="page" id="page-meetings">
+        <div class="section">
+          <div class="section-header"><h3>Meeting Minutes</h3>
+            <div class="toolbar">
+              <div class="search"><span>🔍</span><input id="mtSearch" placeholder="Title, item, attendee…" oninput="renderMeetings()"></div>
+              <input type="date" class="fi" id="mtFrom" onchange="renderMeetings()" title="From date">
+              <input type="date" class="fi" id="mtTo" onchange="renderMeetings()" title="To date">
+              <button class="btn btn-green btn-sm" onclick="openMeeting()" data-roles="admin,mc">+ New meeting</button>
+            </div>
+          </div>
+          <div class="section-body" id="mtList"></div>
         </div>
       </div>
 
@@ -443,6 +648,8 @@ const ACTIVITIES = ['TRANSFER','INFO','ARRIVAL','DEPARTURE','STANDBY','WEATHER',
 const LOCATION_TYPES = ['WTG','Substation','Platform','Vessel','Port','Base','Warehouse','Other'];
 const VESSEL_TYPES = ['CTV (Crew Transfer Vessel)','SOV (Service Operation Vessel)','Supply Vessel','Tug','Barge','Crane Vessel','Jack-up','Dive Support Vessel','Survey Vessel','Anchor Handling Tug','Guard Vessel','Other'];
 const ROLE_LABEL = { admin:'Admin', mc:'MC', contractor:'Contractor' };
+const CAT_SAFETY = 'Offshore Safety Training';
+const SHORE_TYPES = ['Port', 'Base', 'Warehouse'];   // 不算「海上」的位置類型
 
 let TOKEN = '';
 try { TOKEN = localStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
@@ -581,6 +788,8 @@ async function reloadData(showSpinner) {
   try {
     const d = await api('data.load');
     S = d;
+    S.meetings = S.meetings || []; S.people = S.people || [];
+    document.getElementById('liveTime').textContent = 'LIVE · ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
     if (S.user.must_change) { showAuth('authChange'); return; }
     enterApp();
   } catch (e) {
@@ -604,6 +813,20 @@ function enterApp() {
 }
 const isStaff = () => S && (S.user.role === 'admin' || S.user.role === 'mc');
 const isAdmin = () => S && S.user.role === 'admin';
+// 人員編修權：Admin 全部；MC／承包商只限自家公司
+const canEditPerson = p => isAdmin() || (S && String(p.company || '').toLowerCase() === String(S.user.company || '').toLowerCase());
+const isApproved = r => r.approval === 'Approved';
+function approvalBadge(r) {
+  if (r.approval === 'Approved') return '<span class="b b-ok">Approved</span>';
+  if (r.approval === 'Rejected') return `<span class="b b-bad" title="${esc(r.approval_note || '')}">Rejected</span>`;
+  return '<span class="b b-info">Awaiting approval</span>';
+}
+function isOffshore(p) {
+  const c = p.current_location || '';
+  if (c.indexOf('vessel_') === 0) return true;
+  if (c.indexOf('loc_') === 0) { const l = S.locations.find(x => x.id === c.slice(4)); return !!l && SHORE_TYPES.indexOf(l.type) < 0; }
+  return false;
+}
 function upsert(arr, rec) { const i = arr.findIndex(x => x.id === rec.id); if (i >= 0) arr[i] = Object.assign({}, arr[i], rec); else arr.push(rec); }
 function dropId(arr, id) { const i = arr.findIndex(x => x.id === id); if (i >= 0) arr.splice(i, 1); }
 
@@ -767,7 +990,7 @@ function vesselCertBadge(vid) {
 }
 
 // ==================== NAV ====================
-const TITLES = { dashboard:'Dashboard', personnel:'Personnel', vessels:'Vessels', locations:'Locations / Assets', transfer:'Personnel Transfer', sitelog:'Site Log', history:'Transfer History', pob:'POB Viewer', certificates:'Certificates', ptw:'PTW Monitor', admin:'Administration' };
+const TITLES = { dashboard:'Dashboard', personnel:'Personnel', vessels:'Vessels', locations:'Locations / Assets', transfer:'Personnel Transfer', sitelog:'Site Log', history:'Transfer History', pob:'POB Viewer', meetings:'Meeting Minutes', certificates:'Certificates', ptw:'PTW Monitor', admin:'Administration' };
 function go(page) {
   currentPage = page;
   document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
@@ -779,7 +1002,7 @@ function go(page) {
 function refreshPage() {
   if (!S) return;
   ({ dashboard: renderDashboard, personnel: renderPersonnel, vessels: renderVessels, locations: renderLocations, transfer: initTransfer,
-     sitelog: initSiteLog, history: renderHistory, pob: initPOB, certificates: renderCertificates, ptw: initPTW, admin: renderAdmin }[currentPage] || renderDashboard)();
+     sitelog: initSiteLog, history: renderHistory, pob: initPOB, meetings: renderMeetings, certificates: renderCertificates, ptw: initPTW, admin: renderAdmin }[currentPage] || renderDashboard)();
   updateBadges();
 }
 document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => go(n.dataset.page)));
@@ -787,7 +1010,8 @@ document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', 
 function updateBadges() {
   const pending = S.personCerts.filter(c => c.status === 'Pending').length;
   const rejected = S.personCerts.filter(c => c.status === 'Rejected').length;
-  const n = isStaff() ? pending : rejected;
+  const awaiting = isAdmin() ? S.personnel.filter(p => !isApproved(p)).length + S.vessels.filter(x => !isApproved(x)).length : 0;
+  const n = isStaff() ? pending + awaiting : rejected + S.personnel.filter(p => p.approval === 'Rejected').length;
   const b = document.getElementById('certBadge');
   b.textContent = n; b.classList.toggle('hidden', !n);
   const pb = document.getElementById('ptwBadge');
@@ -796,41 +1020,60 @@ function updateBadges() {
 }
 
 // ==================== DASHBOARD ====================
+function kpiCard(k) {
+  const pct = k.total ? Math.max(0, Math.min(100, Math.round(k.value / k.total * 100))) : (k.value ? 100 : 0);
+  return `<div class="kpi ${k.tone}" onclick="go('${k.page}')">
+    <div class="kpi-top"><span class="kpi-label">${esc(k.label)}</span><span class="kpi-ico">${k.ico}</span></div>
+    <div class="kpi-val" data-v="${typeof k.value === 'number' ? k.value : ''}">${typeof k.value === 'number' ? 0 : esc(k.value)}</div>
+    <div class="kpi-sub">${k.sub || ''}</div>
+    <div class="kpi-bar"><i style="width:0" data-w="${pct}"></i></div></div>`;
+}
+function animateKPIs() {
+  document.querySelectorAll('#dashStats .kpi-val[data-v]').forEach(el => {
+    const target = Number(el.dataset.v);
+    if (!target) { el.textContent = '0'; return; }
+    const t0 = performance.now(), dur = 700;
+    const step = t => { const k = Math.min(1, (t - t0) / dur); el.textContent = Math.round(target * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  });
+  requestAnimationFrame(() => document.querySelectorAll('#dashStats .kpi-bar i').forEach(i => { i.style.width = i.dataset.w + '%'; }));
+}
 function renderDashboard() {
   const people = S.personnel;
-  const offshore = people.filter(p => p.current_location).length;
-  const notQual = people.filter(p => !isQualified(p)).length;
-  const pending = S.personCerts.filter(c => c.status === 'Pending').length;
-  const vIssues = S.vessels.filter(x => vesselCompliance(x.id).issues.length).length;
+  const apprP = people.filter(isApproved).length;
+  const apprV = S.vessels.filter(isApproved).length;
+  const offshore = people.filter(isOffshore);
+  const offLocs = new Set(offshore.map(p => p.current_location)).size;
   const today = todayStr();
-  const tToday = S.transfers.filter(t => String(t.time).slice(0, 10) === today).length;
+  const tToday = S.transfers.filter(t => String(t.time).slice(0, 10) === today);
+  const tPeople = new Set(tToday.map(t => t.personnel_id)).size;
   const ptwA = PTW.data ? PTW.data.active.length : '…', ptwO = PTW.data ? PTW.data.overdue.length : '…';
+  const ptwToday = PTW.data ? PTW.data.active.filter(p => p.validTo && p.validTo <= today).length : 0;
+  const pendP = people.filter(p => !isApproved(p) && p.approval !== 'Rejected').length;
+  const pendV = S.vessels.filter(x => !isApproved(x) && x.approval !== 'Rejected').length;
+  const pendC = S.personCerts.filter(c => c.status === 'Pending').length;
   const cards = [
-    ['👷', people.length, isStaff() ? 'Personnel' : 'My personnel', 'personnel', ''],
-    ['🌊', offshore, 'Assigned to a location', isStaff() ? 'pob' : 'personnel', 'blue'],
-    ['⛔', notQual, 'Not qualified', 'certificates', notQual ? 'red' : 'green'],
-    ['⏳', pending, 'Certs pending approval', 'certificates', pending ? 'amber' : 'green'],
-    ['🚢', S.vessels.length, 'Vessels', 'vessels', ''],
-    ['📄', vIssues, 'Vessels with cert issues', 'certificates', vIssues ? 'red' : 'green'],
-    ['🔄', tToday, 'Transfers today', 'history', 'blue'],
-    ['📝', ptwA, 'Active PTW', 'ptw', 'green'],
-    ['⏰', ptwO, 'Overdue PTW', 'ptw', ptwO ? 'red' : 'green']
+    { ico: '👷', value: apprP, total: people.length, label: L('Approved personnel', '已核准人員'), sub: L(`of ${people.length} registered`, `共 ${people.length} 人登錄`), page: 'personnel', tone: 't-green' },
+    { ico: '🚢', value: apprV, total: S.vessels.length, label: L('Approved vessels', '已核准船舶'), sub: L(`of ${S.vessels.length} registered`, `共 ${S.vessels.length} 艘登錄`), page: 'vessels', tone: 't-navy' },
+    { ico: '🌊', value: offshore.length, total: apprP, label: L('Working offshore', '海上作業人數'), sub: L(`at ${offLocs} vessel(s) / asset(s)`, `分布於 ${offLocs} 處船舶／資產`), page: isStaff() ? 'pob' : 'personnel', tone: 't-blue' },
+    { ico: '🔄', value: tPeople, total: 0, label: L('Transferred today', '今日轉運人數'), sub: L(`${tToday.length} movement(s)`, `共 ${tToday.length} 人次`), page: 'history', tone: 't-cyan' },
+    { ico: '📝', value: ptwA, total: 0, label: L('Active PTW', '執行中 PTW'), sub: PTW.data ? L(`${ptwToday} expire today`, `今日到期 ${ptwToday} 張`) : '', page: 'ptw', tone: 't-green' },
+    { ico: '⏰', value: ptwO, total: 0, label: L('Overdue PTW', '逾期 PTW'), sub: L('not closed after validity', '超過有效期仍未關閉'), page: 'ptw', tone: ptwO ? 't-red' : 't-green' }
   ];
-  document.getElementById('dashStats').innerHTML = cards.map(c => `<div class="stat ${c[4]}" onclick="go('${c[3]}')"><div class="v">${c[1]}</div><div class="l">${c[0]} ${c[2]}</div></div>`).join('');
-
-  const pobItems = [];
-  S.vessels.forEach(x => pobItems.push(['vessel_' + x.id, '🚢 ' + x.name]));
-  S.locations.forEach(x => pobItems.push(['loc_' + x.id, '📍 ' + x.name]));
-  const withPob = pobItems.map(i => [i[0], i[1], pobOf(i[0])]).filter(i => i[2] > 0 || i[0].indexOf('vessel_') === 0);
-  document.getElementById('dashPob').innerHTML = withPob.length
-    ? '<div class="pob-grid">' + withPob.map(i => `<div class="pob-item" onclick="${isStaff() ? `gotoPOB('${i[0]}')` : ''}"><span>${esc(i[1])}</span><span class="pob-num">${i[2]}</span></div>`).join('') + '</div>'
-    : '<p class="muted">No vessels or locations yet.</p>';
+  if (isAdmin()) cards.push({ ico: '⏳', value: pendP + pendV + pendC, total: 0, label: L('Awaiting approval', '待核准'),
+    sub: L(`${pendP} personnel · ${pendV} vessels · ${pendC} certs`, `人員 ${pendP} · 船舶 ${pendV} · 證照 ${pendC}`), page: 'certificates', tone: (pendP + pendV + pendC) ? 't-amber' : 't-green' });
+  document.getElementById('dashStats').innerHTML = cards.map(kpiCard).join('');
+  animateKPIs();
 
   const al = personAlerts().slice(0, 6);
   document.getElementById('dashAlerts').innerHTML = al.length ? '<div class="alert-list">' + al.map(alertHtml).join('') + '</div>' : '<p class="muted">No alerts 🎉</p>';
+  const va = vesselAlerts().slice(0, 6);
+  document.getElementById('dashVAlerts').innerHTML = va.length ? '<div class="alert-list">' + va.map(alertHtml).join('') + '</div>' : '<p class="muted">No vessel certificate alerts 🎉</p>';
 
   const logs = sortedLog().slice(0, 8);
-  document.getElementById('dashLog').innerHTML = logs.length ? `<div class="table-wrap"><table><tbody>${logs.map(l => `<tr><td class="mono nowrap">${fmtDT(l.time)}</td><td><span class="b b-navy">${esc(l.activity)}</span></td><td>${esc(l.detail)}</td><td class="nowrap">${esc(locName(l.asset))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">No log entries yet.</p>';
+  document.getElementById('dashLog').innerHTML = logs.length ? '<div class="dash-list">' + logs.map(l => `<div class="dash-row"><span class="t">${fmtDT(l.time)}</span><span class="b ${l.activity === 'TRANSFER' ? 'b-navy' : 'b-info'}">${esc(l.activity)}</span><span class="d" title="${esc(l.detail)}">${esc(l.detail)}</span></div>`).join('') + '</div>' : '<p class="muted">No log entries yet.</p>';
+  const trs = [...S.transfers].sort((a, b) => String(b.time).localeCompare(String(a.time))).slice(0, 8);
+  document.getElementById('dashTransfers').innerHTML = trs.length ? '<div class="dash-list">' + trs.map(t => `<div class="dash-row"><span class="t">${fmtDT(t.time)}</span><strong>${esc(tName(t))}</strong><span class="d muted">${esc(locName(t.from_location))} → ${esc(locName(t.to_location))}</span></div>`).join('') + '</div>' : '<p class="muted">No transfers</p>';
 }
 function gotoPOB(cid) { go('pob'); document.getElementById('pobSel').value = cid; renderPOB(); }
 
@@ -847,46 +1090,58 @@ function renderPersonnel() {
     if (qf === 'ok' && !isQualified(p)) return false;
     if (qf === 'no' && isQualified(p)) return false;
     if (qf === 'pending' && !certsOf(p.id).some(c => c.status === 'Pending')) return false;
+    if (qf === 'await' && isApproved(p)) return false;
     return true;
   }).sort((a, b) => a.name.localeCompare(b.name));
   const tb = document.getElementById('pBody');
-  if (!list.length) { tb.innerHTML = '<tr class="empty"><td colspan="9">No personnel found</td></tr>'; return; }
+  if (!list.length) { tb.innerHTML = '<tr class="empty"><td colspan="10">No personnel found</td></tr>'; return; }
   tb.innerHTML = list.map(p => `<tr>
     <td><div class="person-cell">${avatar(p)}<div><strong>${esc(p.name)}</strong><small>${esc(p.nationality || '')}</small></div></div></td>
     <td class="mono">${esc(p.employee_id)}</td>
     <td>${esc(p.company)}</td>
     <td>${esc(p.position || '—')}</td>
     <td class="contact">${p.email ? `<div><a href="mailto:${esc(p.email)}">✉ ${esc(p.email)}</a></div>` : ''}${p.phone ? `<div><a href="tel:${esc(p.phone)}">☎ ${esc(p.phone)}</a></div>` : ''}${!p.email && !p.phone ? '<span class="muted">—</span>' : ''}</td>
+    <td>${approvalBadge(p)}</td>
     <td>${catBadge(p, 'Medical')}</td>
-    <td>${catBadge(p, 'Sea Survival')}</td>
+    <td>${catBadge(p, CAT_SAFETY)}</td>
     <td class="nowrap">${esc(locName(p.current_location, true))}</td>
-    <td><div class="acts"><button class="btn btn-secondary btn-sm" onclick="openPersonnel('${p.id}')">Open</button><button class="btn btn-danger btn-sm" onclick="deletePersonnel('${p.id}')">🗑</button></div></td>
+    <td><div class="acts"><button class="btn btn-secondary btn-sm" onclick="openPersonnel('${p.id}')">Open</button>${canEditPerson(p) ? `<button class="btn btn-danger btn-sm" onclick="deletePersonnel('${p.id}')">🗑</button>` : ''}</div></td>
   </tr>`).join('');
 }
 function exportPersonnelCSV() {
-  const rows = [['Name','Employee ID','Company','Nationality','Position','Email','Phone','Passport','Emergency contact','Medical','Sea Survival','Qualified','Location']];
+  const rows = [['Name','Employee ID','Company','Nationality','Position','Email','Phone','Passport','Emergency contact','Medical','Offshore Safety Training','Qualified','Location']];
   S.personnel.forEach(p => rows.push([p.name, p.employee_id, p.company, p.nationality, p.position, p.email, p.phone, p.passport, p.emergency,
-    catStatus(p, 'Medical').text, catStatus(p, 'Sea Survival').text, isQualified(p) ? 'Yes' : 'No', locName(p.current_location)]));
+    catStatus(p, 'Medical').text, catStatus(p, CAT_SAFETY).text, isQualified(p) ? 'Yes' : 'No', locName(p.current_location)]));
   downloadCSV(rows, 'opts_personnel_' + todayStr() + '.csv');
 }
 
 let pmPhoto = null;   // undefined = unchanged
 function openPersonnel(id) {
-  const p = id ? S.personnel.find(x => x.id === id) : { company: isStaff() ? '' : S.user.company };
+  const p = id ? S.personnel.find(x => x.id === id) : { company: isAdmin() ? '' : S.user.company };
   if (!p) return;
   pmPhoto = p.photo || '';
   const staff = isStaff();
-  const companyField = staff
-    ? `<input id="pm_company" list="pmCompanies" value="${esc(p.company || '')}"><datalist id="pmCompanies">${companyNames().map(c => `<option value="${esc(c)}">`).join('')}</datalist>`
-    : `<input id="pm_company" value="${esc(S.user.company)}" readonly>`;
-  const locField = staff ? `<select id="pm_location">${locOptions(p.current_location || '', '-- Not assigned --')}</select>` : `<input value="${esc(locName(p.current_location))}" readonly>`;
-  const m = openModal(id ? 'Personnel — ' + esc(p.name) : 'Add Personnel', `
+  const editable = !id || canEditPerson(p);
+  const companies = activeCompanies();
+  const companyField = isAdmin()
+    ? `<select id="pm_company"><option value="">-- Select --</option>${companies.concat(p.company && companies.indexOf(p.company) < 0 ? [p.company] : []).map(c => `<option value="${esc(c)}" ${c === p.company ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>`
+    : `<input id="pm_company" value="${esc(id ? p.company : S.user.company)}" readonly>`;
+  const locField = staff && editable ? `<select id="pm_location">${locOptions(p.current_location || '', '-- Not assigned --')}</select>` : `<input value="${esc(locName(p.current_location))}" readonly>`;
+  let banner = '';
+  if (id) {
+    if (p.approval === 'Approved') banner = `<div class="note">✅ ${L('Approved by Admin', '已由 Admin 核准')}${p.approved_by && p.approved_by !== 'migration' ? ' · ' + esc(p.approved_by) + ' · ' + fmtDT(p.approved_at) : ''}</div>`;
+    else if (p.approval === 'Rejected') banner = `<div class="note bad">✖ ${L('Rejected by Admin', '已被 Admin 退件')} — ${esc(p.approval_note)}<br>${L('Update the record and save to resubmit.', '請修改資料後儲存即可重新送審。')}</div>`;
+    else banner = `<div class="note warn">⏳ ${L('Awaiting Admin approval — this person cannot be transferred until approved.', '等待 Admin 核准 — 核准前不能被轉運。')}</div>`;
+    if (isAdmin() && !isApproved(p)) banner += `<div class="acts" style="margin:-4px 0 14px"><button class="btn btn-green btn-sm" onclick="reviewRecord('Personnel','${p.id}','Approved')">✔ ${L('Approve personnel', '核准人員')}</button><button class="btn btn-danger btn-sm" onclick="reviewRecord('Personnel','${p.id}','Rejected')">✖ ${L('Reject', '退件')}</button></div>`;
+    if (!editable) banner += `<div class="note">${L('Read-only — you can only edit personnel of your own company.', '唯讀 — 您只能編修自己公司的人員。')}</div>`;
+  } else if (!isAdmin()) banner = `<div class="note warn">${L('New personnel must be approved by Admin before they can be transferred.', '新增的人員須經 Admin 核准後才能轉運。')}</div>`;
+  const m = openModal(id ? 'Personnel — ' + esc(p.name) : 'Add Personnel', `${banner}
     <div class="photo-box"><span id="pmAvatar">${avatar(p, 84)}</span>
-      <div><input type="file" id="pmPhotoIn" accept="image/*" class="hidden" onchange="pickPhoto(this)">
+      <div ${editable ? '' : 'class="hidden"'}><input type="file" id="pmPhotoIn" accept="image/*" class="hidden" onchange="pickPhoto(this)">
         <button class="btn btn-secondary btn-sm" onclick="document.getElementById('pmPhotoIn').click()">📷 Upload profile photo</button>
         <button class="btn btn-secondary btn-sm" onclick="pmPhoto='';document.getElementById('pmAvatar').innerHTML=avatar({name:v('pm_name')},84)">Remove</button>
         <div class="hint" style="margin-top:6px">Optional. The photo is resized automatically.</div></div></div>
-    <div class="form-grid">
+    <div class="form-grid ${editable ? '' : 'ro-form'}">
       <div class="form-group"><label>Full name *</label><input id="pm_name" value="${esc(p.name || '')}"></div>
       <div class="form-group"><label>Employee ID *</label><input id="pm_empid" value="${esc(p.employee_id || '')}"></div>
       <div class="form-group"><label>Company *</label>${companyField}</div>
@@ -898,15 +1153,16 @@ function openPersonnel(id) {
       <div class="form-group"><label>Emergency contact</label><input id="pm_emergency" value="${esc(p.emergency || '')}" placeholder="Name / relation / phone"></div>
       <div class="form-group"><label>Current location</label>${locField}</div>
       <div class="form-group full"><label>Remark</label><textarea id="pm_remark">${esc(p.remark || '')}</textarea></div>
-      <div class="form-actions"><button class="btn btn-primary" onclick="savePersonnel(this,'${id || ''}')">💾 Save personnel</button></div>
+      ${editable ? `<div class="form-actions"><button class="btn btn-primary" onclick="savePersonnel(this,'${id || ''}')">💾 Save personnel</button></div>` : ''}
     </div>
     <div style="margin-top:22px;border-top:1px solid var(--border);padding-top:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-        <h3 style="font-size:14px;color:var(--navy)">🪪 Certificates (medical, sea survival, training)</h3>
-        <button class="btn btn-green btn-sm" ${id ? '' : 'disabled'} onclick="openPersonCert('${id || ''}')">+ Add certificate</button>
+        <h3 style="font-size:14px;color:var(--navy)">🪪 Certificates (medical, offshore safety training, training)</h3>
+        ${editable ? `<button class="btn btn-green btn-sm" ${id ? '' : 'disabled'} onclick="openPersonCert('${id || ''}')">+ Add certificate</button>` : ''}
       </div>
       <div id="pmCerts">${id ? '' : '<p class="hint">Save the personnel record first, then add certificates.</p>'}</div>
     </div>`, true);
+  if (!editable) m.querySelectorAll('.ro-form input, .ro-form select, .ro-form textarea').forEach(el => { el.disabled = true; });
   if (id) renderPmCerts(id);
   return m;
 }
@@ -938,10 +1194,26 @@ async function savePersonnel(btn, id) {
   await withBusy(btn, async () => {
     const rec = await api('personnel.save', d);
     upsert(S.personnel, rec);
-    toast(id ? 'Personnel updated' : 'Personnel added — now add certificates', 'success');
+    toast(id ? 'Personnel updated' : (isApproved(rec) ? 'Personnel added — now add certificates' : L('Personnel submitted for Admin approval — now add certificates', '人員已送 Admin 核准，請接著新增證照')), 'success');
     closeTop();
     refreshPage();
     if (!id) openPersonnel(rec.id);
+  });
+}
+function activeCompanies() { return S.companies.filter(c => c.active !== 'FALSE').map(c => c.name).sort((a, b) => a.localeCompare(b)); }
+async function reviewRecord(sheet, id, status) {
+  let note = '';
+  if (status === 'Rejected') {
+    note = await promptBox(L('Reject', '退件'), 'Reason (sent back to the contractor)', 'textarea');
+    if (note === null) return;
+    if (!note) { toast('A reason is required to reject', 'error'); return; }
+  }
+  await withBusy(null, async () => {
+    const rec = await api(sheet === 'Vessels' ? 'vessel.review' : 'personnel.review', { id, status, note });
+    upsert(sheet === 'Vessels' ? S.vessels : S.personnel, rec);
+    toast(status === 'Approved' ? L('Approved', '已核准') : L('Rejected', '已退件'), 'success');
+    while (modalStack.length) closeTop();
+    refreshPage();
   });
 }
 async function deletePersonnel(id) {
@@ -970,13 +1242,14 @@ function renderPmCerts(pid) {
   const miss = missingCats(p);
   let h = miss.length ? `<div class="note bad">⛔ ${L('Not qualified for offshore transfer — missing a valid, approved certificate for:', '不符合離岸轉運資格 — 缺少以下類別的有效且已核准證照：')} <b>${miss.map(c => esc(tz(c))).join(L(', ', '、'))}</b></div>` : `<div class="note">✅ ${L('Qualified — all required certificate categories are valid and approved.', '合格 — 所有必備類別的證照皆有效且已核准。')}</div>`;
   if (!isStaff()) h += '<p class="hint" style="margin-bottom:10px">Certificates you upload or change are sent to MC for approval.</p>';
+  const canEdit = canEditPerson(p);
   if (!list.length) { el.innerHTML = h + '<p class="muted">No certificates uploaded yet.</p>'; return; }
   h += `<div class="table-wrap"><table><thead><tr><th>Category</th><th>Certificate</th><th>Cert No</th><th>Issued</th><th>Expiry</th><th>Status</th><th>File</th><th></th></tr></thead><tbody>${list.map(c => `<tr>
     <td>${esc(pcType(c.type_id).category)}</td><td><strong>${esc(pcName(c))}</strong>${c.status === 'Rejected' && c.review_note ? `<div class="hint">Reason: ${esc(c.review_note)}</div>` : ''}</td>
     <td class="mono">${esc(c.cert_no || '—')}</td><td class="nowrap">${fmtDate(c.issue_date)}</td><td class="nowrap">${fmtDate(c.expiry_date)}</td>
     <td>${certStatusBadge(c)}</td><td>${fileLink(c.file_id, c.file_name)}</td>
     <td><div class="acts">${isStaff() && c.status === 'Pending' ? `<button class="btn btn-green btn-sm" onclick="reviewCert('${c.id}','Approved')">Approve</button><button class="btn btn-danger btn-sm" onclick="reviewCert('${c.id}','Rejected')">Reject</button>` : ''}
-      <button class="btn btn-secondary btn-sm" onclick="openPersonCert('${pid}','${c.id}')">Edit</button><button class="btn btn-danger btn-sm" onclick="deletePersonCert('${c.id}')">🗑</button></div></td></tr>`).join('')}</tbody></table></div>`;
+      ${canEdit ? `<button class="btn btn-secondary btn-sm" onclick="openPersonCert('${pid}','${c.id}')">Edit</button><button class="btn btn-danger btn-sm" onclick="deletePersonCert('${c.id}')">🗑</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
   el.innerHTML = h;
 }
 function openPersonCert(pid, cid) {
@@ -1056,7 +1329,7 @@ function renderVessels() {
   const q = v('vSearch').toLowerCase();
   const list = S.vessels.filter(x => !q || [x.name, x.mmsi, x.imo, x.operator].some(f => String(f || '').toLowerCase().indexOf(q) >= 0)).sort((a, b) => a.name.localeCompare(b.name));
   const tb = document.getElementById('vBody');
-  if (!list.length) { tb.innerHTML = '<tr class="empty"><td colspan="8">No vessels found</td></tr>'; return; }
+  if (!list.length) { tb.innerHTML = '<tr class="empty"><td colspan="9">No vessels found</td></tr>'; return; }
   tb.innerHTML = list.map(x => {
     const ptws = vesselPTWs(x.name);
     const od = ptws.filter(p => PTW.data.overdue.indexOf(p) >= 0).length;
@@ -1065,6 +1338,7 @@ function renderVessels() {
     <td class="mono">${esc(x.mmsi || '—')}<br>${esc(x.imo || '')}</td>
     <td>${esc(x.operator || '—')}${x.contact_person ? `<div class="hint">${esc(x.contact_person)}</div>` : ''}</td>
     <td class="contact">${contactHtml(x)}</td>
+    <td>${approvalBadge(x)}</td>
     <td>${vesselCertBadge(x.id)}</td>
     <td><span class="pob-num">${pobOf('vessel_' + x.id)}</span></td>
     <td>${PTW.data ? (ptws.length ? `<span class="b ${od ? 'b-bad' : 'b-ok'}">${ptws.length} open${od ? ' · ' + od + ' overdue' : ''}</span>` : '<span class="muted">—</span>') : '<span class="muted">…</span>'}</td>
@@ -1083,7 +1357,14 @@ function openVessel(id, tab) {
   const x = id ? vesselById(id) : {};
   if (id && !x) return;
   const ro = !isStaff() ? 'readonly disabled' : '';
-  openModal(id ? 'Vessel — ' + esc(x.name) : 'Add Vessel', `
+  let banner = '';
+  if (id) {
+    if (x.approval === 'Approved') banner = '';
+    else if (x.approval === 'Rejected') banner = `<div class="note bad">✖ ${L('Rejected by Admin', '已被 Admin 退件')} — ${esc(x.approval_note)}</div>`;
+    else banner = `<div class="note warn">⏳ ${L('This vessel is awaiting Admin approval.', '此船舶等待 Admin 核准。')}</div>`;
+    if (isAdmin() && !isApproved(x)) banner += `<div class="acts" style="margin:-4px 0 14px"><button class="btn btn-green btn-sm" onclick="reviewRecord('Vessels','${x.id}','Approved')">✔ ${L('Approve vessel', '核准船舶')}</button><button class="btn btn-danger btn-sm" onclick="reviewRecord('Vessels','${x.id}','Rejected')">✖ ${L('Reject', '退件')}</button></div>`;
+  } else if (!isAdmin()) banner = `<div class="note warn">${L('New vessels must be approved by Admin.', '新增的船舶須經 Admin 核准。')}</div>`;
+  openModal(id ? 'Vessel — ' + esc(x.name) : 'Add Vessel', `${banner}
     <div class="tabs" id="vmTabs">
       <div class="tab" data-t="info">Details & Contact</div>
       <div class="tab ${id ? '' : 'disabled'}" data-t="certs">Certificates</div>
@@ -1235,7 +1516,7 @@ function initTransfer() {
   const tr = v('tfTransport'); document.getElementById('tfTransport').innerHTML = vesselOptions(tr, '-- None --');
   if (!v('tfTime')) document.getElementById('tfTime').value = nowLocal();
   if (!v('tfApproved')) document.getElementById('tfApproved').value = S.user.name || S.user.username;
-  tfSel = new Set([...tfSel].filter(id => S.personnel.some(p => p.id === id)));
+  tfSel = new Set([...tfSel].filter(id => S.personnel.some(p => p.id === id && isApproved(p))));
   renderTfList();
 }
 function tfFiltered() {
@@ -1250,15 +1531,16 @@ function tfFiltered() {
 function renderTfList() {
   const list = tfFiltered();
   const el = document.getElementById('tfList');
-  el.innerHTML = list.length ? list.map(p => `<div class="tf-row ${tfSel.has(p.id) ? 'sel' : ''}" onclick="tfToggle('${p.id}')">
+  el.innerHTML = list.length ? list.map(p => isApproved(p) ? `<div class="tf-row ${tfSel.has(p.id) ? 'sel' : ''}" onclick="tfToggle('${p.id}')">
       <input type="checkbox" ${tfSel.has(p.id) ? 'checked' : ''} onclick="event.stopPropagation();tfToggle('${p.id}')">
       ${avatar(p, 26)}<strong>${esc(p.name)}</strong><span class="mono muted">${esc(p.employee_id)}</span><span class="muted">${esc(p.company)}</span>
       ${isQualified(p) ? '' : `<span class="b b-bad" title="Missing: ${esc(missingCats(p).join(', '))}">Not qualified</span>`}
-      <span class="loc">${esc(locName(p.current_location, true))}</span></div>`).join('') : '<div class="tf-row muted">No personnel found</div>';
+      <span class="loc">${esc(locName(p.current_location, true))}</span></div>` : `<div class="tf-row" style="opacity:.55;cursor:not-allowed">
+      <input type="checkbox" disabled>${avatar(p, 26)}<strong>${esc(p.name)}</strong><span class="muted">${esc(p.company)}</span>${approvalBadge(p)}</div>`).join('') : '<div class="tf-row muted">No personnel found</div>';
   tfSummary();
 }
 function tfToggle(id) { tfSel.has(id) ? tfSel.delete(id) : tfSel.add(id); renderTfList(); tfAutoFrom(); }
-function tfSelectAll() { tfFiltered().forEach(p => tfSel.add(p.id)); renderTfList(); tfAutoFrom(); }
+function tfSelectAll() { tfFiltered().filter(isApproved).forEach(p => tfSel.add(p.id)); renderTfList(); tfAutoFrom(); }
 function tfClear() { tfSel.clear(); renderTfList(); }
 function tfAutoFrom() {
   const locs = [...new Set(S.personnel.filter(p => tfSel.has(p.id)).map(p => p.current_location || ''))];
@@ -1395,14 +1677,14 @@ function renderPOB() {
   tb.innerHTML = list.length ? list.map((p, i) => {
     const lt = S.transfers.filter(t => t.personnel_id === p.id).sort((a, b) => String(b.time).localeCompare(String(a.time)))[0];
     return `<tr><td>${i + 1}</td><td><div class="person-cell">${avatar(p, 28)}<strong>${esc(p.name)}</strong></div></td><td class="mono">${esc(p.employee_id)}</td><td>${esc(p.company)}</td><td>${esc(p.position || '')}</td>
-      <td class="nowrap">${esc(p.phone || '')}</td><td>${catBadge(p, 'Medical')}</td><td>${catBadge(p, 'Sea Survival')}</td><td class="mono nowrap">${lt ? fmtDT(lt.time) : '—'}</td></tr>`;
+      <td class="nowrap">${esc(p.phone || '')}</td><td>${catBadge(p, 'Medical')}</td><td>${catBadge(p, CAT_SAFETY)}</td><td class="mono nowrap">${lt ? fmtDT(lt.time) : '—'}</td></tr>`;
   }).join('') : '<tr class="empty"><td colspan="9">Nobody at this location</td></tr>';
 }
 function exportPOBCSV() {
   const cid = v('pobSel');
   if (!cid) { toast('Select a location first', 'warning'); return; }
-  const rows = [['POB — ' + locName(cid)], ['Generated', new Date().toLocaleString('en-GB')], [], ['#','Name','Employee ID','Company','Position','Phone','Medical','Sea Survival','Qualified']];
-  S.personnel.filter(p => p.current_location === cid).forEach((p, i) => rows.push([i + 1, p.name, p.employee_id, p.company, p.position, p.phone, catStatus(p, 'Medical').text, catStatus(p, 'Sea Survival').text, isQualified(p) ? 'Yes' : 'No']));
+  const rows = [['POB — ' + locName(cid)], ['Generated', new Date().toLocaleString('en-GB')], [], ['#','Name','Employee ID','Company','Position','Phone','Medical','Offshore Safety Training','Qualified']];
+  S.personnel.filter(p => p.current_location === cid).forEach((p, i) => rows.push([i + 1, p.name, p.employee_id, p.company, p.position, p.phone, catStatus(p, 'Medical').text, catStatus(p, CAT_SAFETY).text, isQualified(p) ? 'Yes' : 'No']));
   downloadCSV(rows, 'pob_' + locName(cid).replace(/[^a-zA-Z0-9]+/g, '_') + '.csv');
 }
 
@@ -1417,6 +1699,15 @@ function personAlerts() {
     });
   });
   return out.sort((a, b) => (a.sev === 'bad' ? 0 : 1) - (b.sev === 'bad' ? 0 : 1));
+}
+function vesselAlerts() {
+  const va = [];
+  S.vessels.forEach(x => {
+    const c = vesselCompliance(x.id);
+    if (c.issues.length) va.push({ sev: 'bad', title: x.name, msg: L(c.issues.length + ' mandatory issue(s): ', c.issues.length + ' 項強制證書缺失：') + c.issues.slice(0, 4).map(i => (LANG === 'zh' ? i.t.name.split(' ')[0] : i.t.name.replace(/^[^A-Za-z]+/, '')) + ' (' + tz(i.s.text) + ')').join('; ') + (c.issues.length > 4 ? ' …' : ''), vid: x.id });
+    else if (c.soon) va.push({ sev: 'warn', title: x.name, msg: L(c.soon + ' certificate(s) expiring within 30 days', c.soon + ' 張證書將於 30 天內到期'), vid: x.id });
+  });
+  return va;
 }
 function alertHtml(a) {
   const click = a.pid ? `onclick="openPersonnel('${a.pid}')"` : a.vid ? `onclick="openVessel('${a.vid}','certs')"` : '';
@@ -1443,13 +1734,162 @@ function renderCertificates() {
   }).join('');
   const pa = personAlerts();
   document.getElementById('personAlerts').innerHTML = pa.length ? pa.map(alertHtml).join('') : '<p class="muted">No personnel alerts 🎉</p>';
-  const va = [];
-  S.vessels.forEach(x => {
-    const c = vesselCompliance(x.id);
-    if (c.issues.length) va.push({ sev: 'bad', title: x.name, msg: L(c.issues.length + ' mandatory issue(s): ', c.issues.length + ' 項強制證書缺失：') + c.issues.slice(0, 4).map(i => (LANG === 'zh' ? i.t.name.split(' ')[0] : i.t.name.replace(/^[^A-Za-z]+/, '')) + ' (' + tz(i.s.text) + ')').join('; ') + (c.issues.length > 4 ? ' …' : ''), vid: x.id });
-    else if (c.soon) va.push({ sev: 'warn', title: x.name, msg: L(c.soon + ' certificate(s) expiring within 30 days', c.soon + ' 張證書將於 30 天內到期'), vid: x.id });
-  });
+  const va = vesselAlerts();
+  // Admin：人員／船舶待核准
+  const sec = document.getElementById('secApprovals');
+  const awaitP = S.personnel.filter(p => !isApproved(p)), awaitV = S.vessels.filter(x => !isApproved(x));
+  sec.classList.toggle('hidden', !(isAdmin() || awaitP.length));
+  document.getElementById('apprTitle').textContent = isAdmin()
+    ? L(`✅ Personnel & Vessels Awaiting Admin Approval (${awaitP.length + awaitV.length})`, `✅ 待 Admin 核准的人員與船舶（${awaitP.length + awaitV.length}）`)
+    : L(`✅ My personnel awaiting Admin approval (${awaitP.length})`, `✅ 等待 Admin 核准的人員（${awaitP.length}）`);
+  const rows = awaitP.map(p => ({ kind: 'Personnel', icon: '👷', rec: p, org: p.company, open: `openPersonnel('${p.id}')` }))
+    .concat((isAdmin() ? awaitV : []).map(x => ({ kind: 'Vessels', icon: '🚢', rec: x, org: x.operator, open: `openVessel('${x.id}')` })));
+  document.getElementById('apprBody').innerHTML = rows.length ? rows.map(r => `<tr><td>${r.icon} ${r.kind === 'Vessels' ? L('Vessel', '船舶') : L('Personnel', '人員')}</td>
+      <td><a href="javascript:void(0)" onclick="${r.open}"><strong>${esc(r.rec.name)}</strong></a></td><td>${esc(r.org || '—')}</td>
+      <td class="hint nowrap">${esc(r.rec.created_by || '')}<br>${fmtDT(r.rec.updated_at || r.rec.created_at)}</td><td>${approvalBadge(r.rec)}${r.rec.approval_note ? `<div class="hint">${esc(r.rec.approval_note)}</div>` : ''}</td>
+      <td>${isAdmin() ? `<div class="acts"><button class="btn btn-green btn-sm" onclick="reviewRecord('${r.kind}','${r.rec.id}','Approved')">Approve</button><button class="btn btn-danger btn-sm" onclick="reviewRecord('${r.kind}','${r.rec.id}','Rejected')">Reject</button></div>` : `<button class="btn btn-secondary btn-sm" onclick="${r.open}">Open</button>`}</td></tr>`).join('')
+    : '<tr class="empty"><td colspan="6">Nothing pending</td></tr>';
   document.getElementById('vesselAlerts').innerHTML = va.length ? va.map(alertHtml).join('') : '<p class="muted">No vessel certificate alerts 🎉</p>';
+}
+
+// ==================== MEETINGS ====================
+function jlist(s) { try { const a = JSON.parse(s || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function meetingPeople(m) { return jlist(m.attendee_info).concat(jlist(m.externals).map(x => ({ name: x.name, company: x.company, external: true }))); }
+function renderMeetings() {
+  const q = v('mtSearch').toLowerCase(), from = v('mtFrom'), to = v('mtTo');
+  const list = [...S.meetings].sort((a, b) => String(b.time).localeCompare(String(a.time))).filter(m => {
+    const d = String(m.time).slice(0, 10);
+    if (from && d < from) return false;
+    if (to && d > to) return false;
+    if (!q) return true;
+    const hay = [m.title, m.location, m.remark].concat(jlist(m.items).map(i => [i.topic, i.discussion, i.action, i.owner].join(' '))).concat(meetingPeople(m).map(x => x.name + ' ' + x.company)).join(' ').toLowerCase();
+    return hay.indexOf(q) >= 0;
+  });
+  const el = document.getElementById('mtList');
+  el.innerHTML = list.length ? list.map(m => {
+    const ppl = meetingPeople(m), items = jlist(m.items);
+    return `<div class="mt-card" onclick="viewMeeting('${m.id}')">
+      <h4>${esc(m.title)}</h4>
+      <div class="mt-meta"><span>🕒 ${fmtDT(m.time)}</span>${m.location ? `<span>📍 ${esc(m.location)}</span>` : ''}<span>👥 ${ppl.length} ${L('attendee(s)', '位參與者')}</span><span>📝 ${items.length} ${L('item(s)', '項議題')}</span><span>✍ ${esc(m.created_by)}</span></div>
+      ${items.length ? `<div class="hint" style="margin-top:6px">${items.slice(0, 3).map(i => '• ' + esc(i.topic || i.discussion)).join('<br>')}${items.length > 3 ? '<br>…' : ''}</div>` : ''}</div>`;
+  }).join('') : `<p class="muted">${L('No meeting minutes yet.', '尚無會議紀錄。')}</p>`;
+}
+function viewMeeting(id) {
+  const m = S.meetings.find(x => x.id === id);
+  if (!m) return;
+  const ppl = meetingPeople(m), items = jlist(m.items);
+  openModal(L('Meeting minutes', '會議紀錄') + ' — ' + esc(m.title), `
+    <div class="mt-meta" style="margin-bottom:12px"><span>🕒 ${fmtDT(m.time)}</span>${m.location ? `<span>📍 ${esc(m.location)}</span>` : ''}<span>✍ ${esc(m.created_by)}</span></div>
+    <h4 style="font-size:13px;color:var(--navy);margin-bottom:6px">👥 ${L('Attendees', '參與人員')} (${ppl.length})</h4>
+    <div class="chips" style="margin-bottom:16px">${ppl.map(x => `<span class="chip">${esc(x.name)} <small>${esc(x.company || '')}${x.external ? ' · ' + L('external', '外部') : ''}</small></span>`).join('') || '<span class="muted">—</span>'}</div>
+    <h4 style="font-size:13px;color:var(--navy);margin-bottom:6px">📝 ${L('Discussion items', '討論事項')}</h4>
+    <div class="table-wrap"><table><thead><tr><th>#</th><th>${L('Topic', '議題')}</th><th>${L('Discussion / decision', '討論內容／決議')}</th><th>${L('Action', '待辦事項')}</th><th>${L('Owner', '負責人')}</th><th>${L('Due', '期限')}</th></tr></thead><tbody>
+      ${items.map((i, n) => `<tr><td class="mono">${n + 1}</td><td><strong>${esc(i.topic)}</strong></td><td style="white-space:pre-wrap">${esc(i.discussion)}</td><td style="white-space:pre-wrap">${esc(i.action)}</td><td>${esc(i.owner)}</td><td class="nowrap">${fmtDate(i.due)}</td></tr>`).join('')}</tbody></table></div>
+    ${m.remark ? `<p style="margin-top:12px;white-space:pre-wrap"><b>${L('Remark', '備註')}:</b> ${esc(m.remark)}</p>` : ''}
+    <div class="acts" style="margin-top:16px"><button class="btn btn-secondary" onclick="printMeeting('${m.id}')">🖨 ${L('Print / PDF', '列印／存 PDF')}</button>
+      ${isStaff() ? `<button class="btn btn-primary" onclick="closeTop();openMeeting('${m.id}')">✏️ ${L('Edit', '編輯')}</button><button class="btn btn-danger" onclick="deleteMeeting('${m.id}')">🗑 ${L('Delete', '刪除')}</button>` : ''}</div>`, true);
+}
+function printMeeting(id) {
+  const m = S.meetings.find(x => x.id === id);
+  const ppl = meetingPeople(m), items = jlist(m.items);
+  const w = window.open('', '_blank');
+  if (!w) { toast(L('Allow pop-ups to print', '請允許彈出視窗以列印'), 'warning'); return; }
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(m.title)}</title><style>
+    body{font-family:Segoe UI,Arial,sans-serif;color:#1d2b3a;margin:28px}h1{font-size:20px;color:#002038;border-bottom:3px solid #00B050;padding-bottom:8px}
+    table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}th,td{border:1px solid #c9d3de;padding:6px 8px;text-align:left;vertical-align:top}th{background:#f2f5f8}
+    .meta{color:#6b7a8c;font-size:13px;margin-bottom:14px}h3{font-size:14px;color:#002038;margin:18px 0 4px}</style></head><body>
+    <h1>${L('Meeting Minutes', '會議紀錄')} — ${esc(m.title)}</h1>
+    <div class="meta">${L('Time', '時間')}: ${fmtDT(m.time)}${m.location ? ' · ' + L('Location', '地點') + ': ' + esc(m.location) : ''} · ${L('Recorded by', '記錄人')}: ${esc(m.created_by)}</div>
+    <h3>${L('Attendees', '參與人員')}</h3><table><tr><th>#</th><th>${L('Name', '姓名')}</th><th>${L('Company', '公司')}</th><th>${L('Signature', '簽名')}</th></tr>
+    ${ppl.map((x, n) => `<tr><td>${n + 1}</td><td>${esc(x.name)}${x.external ? ' (' + L('external', '外部') + ')' : ''}</td><td>${esc(x.company || '')}</td><td style="width:30%"></td></tr>`).join('')}</table>
+    <h3>${L('Discussion items', '討論事項')}</h3><table><tr><th>#</th><th>${L('Topic', '議題')}</th><th>${L('Discussion / decision', '討論內容／決議')}</th><th>${L('Action', '待辦事項')}</th><th>${L('Owner', '負責人')}</th><th>${L('Due', '期限')}</th></tr>
+    ${items.map((i, n) => `<tr><td>${n + 1}</td><td>${esc(i.topic)}</td><td style="white-space:pre-wrap">${esc(i.discussion)}</td><td style="white-space:pre-wrap">${esc(i.action)}</td><td>${esc(i.owner)}</td><td>${esc(i.due)}</td></tr>`).join('')}</table>
+    ${m.remark ? `<h3>${L('Remark', '備註')}</h3><p style="white-space:pre-wrap">${esc(m.remark)}</p>` : ''}
+    <script>window.onload=function(){window.print()}<\/script></body></html>`);
+  w.document.close();
+}
+let MT = null;   // 編輯中的會議狀態
+function openMeeting(id) {
+  const m = id ? S.meetings.find(x => x.id === id) : { time: nowLocal() };
+  MT = { id: id || '', items: id ? jlist(m.items) : [{ topic: '', discussion: '', action: '', owner: '', due: '' }], att: new Set(id ? jlist(m.attendees) : []), ext: id ? jlist(m.externals) : [] };
+  openModal(id ? L('Edit meeting minutes', '編輯會議紀錄') : L('New meeting minutes', '新增會議紀錄'), `
+    <div class="form-grid">
+      <div class="form-group" style="grid-column:span 2"><label>${L('Meeting title *', '會議名稱 *')}</label><input id="mt_title" value="${esc(m.title || '')}" placeholder="${L('e.g. Daily toolbox / MC coordination meeting', '例：每日工具箱會議／MC 協調會')}"></div>
+      <div class="form-group"><label>${L('Date / time *', '日期／時間 *')}</label><input id="mt_time" type="datetime-local" value="${esc(String(m.time || '').slice(0, 16))}"></div>
+      <div class="form-group"><label>${L('Location', '地點')}</label><input id="mt_loc" value="${esc(m.location || '')}" placeholder="${L('e.g. Taichung port office / SOV', '例：台中港辦公室／SOV')}"></div>
+    </div>
+    <h4 style="font-size:13px;color:var(--navy);margin:18px 0 8px">📝 ${L('Discussion items', '討論事項')}</h4>
+    <div class="item-row hint" style="margin-bottom:4px"><span></span><span>${L('Topic', '議題')}</span><span>${L('Discussion / decision', '討論內容／決議')}</span><span>${L('Action', '待辦事項')}</span><span>${L('Owner', '負責人')}</span><span>${L('Due', '期限')}</span><span></span></div>
+    <div id="mtItems"></div>
+    <button class="btn btn-secondary btn-sm" onclick="mtSync();MT.items.push({topic:'',discussion:'',action:'',owner:'',due:''});mtRenderItems()">+ ${L('Add item', '新增議題')}</button>
+    <h4 style="font-size:13px;color:var(--navy);margin:18px 0 8px">👥 ${L('Attendees from the system', '參與人員（系統人員勾選）')} <span class="b b-navy" id="mtAttCount">0</span></h4>
+    <div class="search" style="margin-bottom:6px"><span>🔍</span><input id="mtAttSearch" placeholder="${L('Search name / company…', '搜尋姓名／公司…')}" oninput="mtRenderAtt()" style="width:240px"></div>
+    <div class="att-list" id="mtAtt"></div>
+    <h4 style="font-size:13px;color:var(--navy);margin:18px 0 8px">➕ ${L('Other attendees (not in the system)', '其他參與人員（非系統人員）')}</h4>
+    <div id="mtExt"></div>
+    <button class="btn btn-secondary btn-sm" onclick="mtSync();MT.ext.push({company:'',name:''});mtRenderExt()">+ ${L('Add attendee', '新增人員')}</button>
+    <div class="form-group" style="margin-top:16px"><label>${L('Remark', '備註')}</label><textarea id="mt_remark">${esc(m.remark || '')}</textarea></div>
+    <div class="acts" style="margin-top:14px"><button class="btn btn-primary" onclick="saveMeeting(this)">💾 ${L('Save meeting minutes', '儲存會議紀錄')}</button></div>`, true);
+  mtRenderItems(); mtRenderAtt(); mtRenderExt();
+}
+function mtSync() {
+  document.querySelectorAll('#mtItems .item-row').forEach((row, n) => {
+    const it = MT.items[n]; if (!it) return;
+    ['topic', 'discussion', 'action', 'owner', 'due'].forEach(f => { const el = row.querySelector('[data-f="' + f + '"]'); if (el) it[f] = el.value; });
+  });
+  document.querySelectorAll('#mtExt .ext-row').forEach((row, n) => {
+    const x = MT.ext[n]; if (!x) return;
+    x.company = row.querySelector('[data-f="company"]').value; x.name = row.querySelector('[data-f="name"]').value;
+  });
+}
+function mtRenderItems() {
+  document.getElementById('mtItems').innerHTML = MT.items.map((i, n) => `<div class="item-row">
+    <span class="num">${n + 1}</span>
+    <div class="form-group"><input data-f="topic" value="${esc(i.topic)}"></div>
+    <div class="form-group"><textarea data-f="discussion">${esc(i.discussion)}</textarea></div>
+    <div class="form-group"><textarea data-f="action">${esc(i.action)}</textarea></div>
+    <div class="form-group"><input data-f="owner" value="${esc(i.owner)}"></div>
+    <div class="form-group"><input data-f="due" type="date" value="${esc(i.due)}"></div>
+    <button class="btn btn-danger btn-sm" title="Remove" onclick="mtSync();MT.items.splice(${n},1);mtRenderItems()">✕</button></div>`).join('');
+}
+function mtPeoplePool() { return (isStaff() && S.people.length ? S.people : S.personnel); }
+function mtRenderAtt() {
+  const q = v('mtAttSearch').toLowerCase();
+  const pool = mtPeoplePool().filter(p => !q || (p.name + ' ' + p.company + ' ' + (p.position || '')).toLowerCase().indexOf(q) >= 0)
+    .sort((a, b) => a.company.localeCompare(b.company) || a.name.localeCompare(b.name));
+  let h = '', last = null;
+  pool.forEach(p => {
+    if (p.company !== last) { h += `<div class="att-group">${esc(p.company)}</div>`; last = p.company; }
+    h += `<label class="att-row"><input type="checkbox" ${MT.att.has(p.id) ? 'checked' : ''} onchange="this.checked?MT.att.add('${p.id}'):MT.att.delete('${p.id}');document.getElementById('mtAttCount').textContent=MT.att.size"> <strong>${esc(p.name)}</strong> <span class="muted">${esc(p.position || '')}</span></label>`;
+  });
+  document.getElementById('mtAtt').innerHTML = h || '<div class="att-row muted">No personnel found</div>';
+  document.getElementById('mtAttCount').textContent = MT.att.size;
+}
+function mtRenderExt() {
+  document.getElementById('mtExt').innerHTML = MT.ext.map((x, n) => `<div class="ext-row">
+    <div class="form-group"><input data-f="company" value="${esc(x.company)}" placeholder="${L('Company', '公司')}"></div>
+    <div class="form-group"><input data-f="name" value="${esc(x.name)}" placeholder="${L('Name', '姓名')}"></div>
+    <button class="btn btn-danger btn-sm" onclick="mtSync();MT.ext.splice(${n},1);mtRenderExt()">✕</button></div>`).join('') || `<p class="hint" style="margin-bottom:8px">${L('None', '無')}</p>`;
+}
+async function saveMeeting(btn) {
+  mtSync();
+  const d = { id: MT.id, title: v('mt_title'), time: v('mt_time'), location: v('mt_loc'), remark: v('mt_remark'),
+    items: MT.items.filter(i => i.topic || i.discussion || i.action), attendees: [...MT.att], externals: MT.ext.filter(x => x.name.trim()) };
+  if (!d.title || !d.time) { toast(L('Meeting title and time are required', '會議名稱與時間為必填'), 'error'); return; }
+  if (!d.items.length) { toast(L('Add at least one discussion item', '請至少填寫一項討論事項'), 'error'); return; }
+  if (MT.ext.some(x => x.name.trim() && !x.company.trim())) { toast(L('Please fill in the company of each other attendee', '請填寫其他參與人員的公司'), 'error'); return; }
+  await withBusy(btn, async () => {
+    const rec = await api('meeting.save', d);
+    const pool = mtPeoplePool();
+    rec.attendee_info = JSON.stringify(d.attendees.map(id => { const p = pool.find(x => x.id === id); return p ? { id, name: p.name, company: p.company, position: p.position } : null; }).filter(Boolean));
+    upsert(S.meetings, rec);
+    closeTop(); refreshPage();
+    toast(L('Meeting minutes saved', '會議紀錄已儲存'), 'success');
+  });
+}
+async function deleteMeeting(id) {
+  if (!await confirmBox(L('Delete these meeting minutes?', '確定刪除這份會議紀錄？'))) return;
+  await withBusy(null, async () => { await api('meeting.delete', { id }); dropId(S.meetings, id); while (modalStack.length) closeTop(); refreshPage(); }, 'Deleting…');
 }
 
 // ==================== PTW ====================
@@ -1554,15 +1994,20 @@ function openUser(id) {
     <div class="form-group"><label>Username *</label><input id="um_user" value="${esc(u.username || '')}"></div>
     <div class="form-group"><label>Full name</label><input id="um_name" value="${esc(u.name || '')}"></div>
     <div class="form-group"><label>Email</label><input id="um_email" value="${esc(u.email || '')}"></div>
-    <div class="form-group"><label>Role *</label><select id="um_role">${['contractor','mc','admin'].map(r => `<option value="${r}" ${r === u.role ? 'selected' : ''}>${ROLE_LABEL[r]}</option>`).join('')}</select></div>
-    <div class="form-group"><label>Company * (contractors)</label><input id="um_company" list="umCompanies" value="${esc(u.company || '')}"><datalist id="umCompanies">${companyNames().map(c => `<option value="${esc(c)}">`).join('')}</datalist></div>
+    <div class="form-group"><label>Company *</label><select id="um_company"><option value="">-- Select --</option>${activeCompanies().concat(u.company && activeCompanies().indexOf(u.company) < 0 ? [u.company] : []).map(c => `<option value="${esc(c)}" ${c === u.company ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>
+      <span class="hint">${L('Not in the list? Add it under the Companies tab first.', '清單沒有？請先到「公司」分頁新增。')}</span></div>
+    <div class="form-group"><label>&nbsp;</label><label class="chk"><input type="checkbox" id="um_admin" ${u.role === 'admin' ? 'checked' : ''} onchange="document.getElementById('um_role').disabled=this.checked"> ${L('System administrator (Admin)', '系統管理員（Admin）')}</label>
+      <span class="hint">${L('Admin can do everything for all companies, approve personnel / vessels and manage accounts.', 'Admin 可操作所有公司的全部功能、核准人員與船舶、管理帳號。')}</span></div>
+    <div class="form-group"><label>Role (non-Admin)</label><select id="um_role" ${u.role === 'admin' ? 'disabled' : ''}>${['contractor','mc'].map(r => `<option value="${r}" ${r === u.role ? 'selected' : ''}>${ROLE_LABEL[r]}</option>`).join('')}</select>
+      <span class="hint">${L('MC: transfers, site log, meetings, certificate approval · Contractor: own company only. Both can only edit personnel of their own company.', 'MC：轉運、現場日誌、會議、證照核准 · 承包商：只限自家公司。兩者都只能編修自己公司的人員。')}</span></div>
     ${id ? '' : '<div class="form-group"><label>Temporary password * (min 6)</label><input id="um_pw" value="' + Math.random().toString(36).slice(2, 10) + '"></div>'}
     <div class="form-group"><label>&nbsp;</label><label class="chk"><input type="checkbox" id="um_active" ${u.active ? 'checked' : ''}> Account active</label></div>
     ${id ? '' : '<div class="note full">Give the username and temporary password to the user. They must set a new password on first sign-in.</div>'}
     <div class="form-actions"><button class="btn btn-primary" onclick="saveUser(this,'${id || ''}')">💾 Save</button></div></div>`);
 }
 async function saveUser(btn, id) {
-  const d = { id, username: v('um_user'), name: v('um_name'), email: v('um_email'), role: v('um_role'), company: v('um_company'), active: document.getElementById('um_active').checked };
+  const d = { id, username: v('um_user'), name: v('um_name'), email: v('um_email'), role: document.getElementById('um_admin').checked ? 'admin' : v('um_role'), company: v('um_company'), active: document.getElementById('um_active').checked };
+  if (!d.company) { toast(L('Please select a company', '請選擇公司'), 'error'); return; }
   if (!id) d.password = v('um_pw');
   await withBusy(btn, async () => {
     upsert(S.users, await api('user.save', d));
@@ -1626,7 +2071,7 @@ async function addVct(btn) {
 }
 function adminPct(el) {
   const list = [...S.personCertTypes].sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0));
-  const cats = [...new Set(['Medical','Sea Survival','Training','Other'].concat(list.map(t => t.category)))];
+  const cats = [...new Set(['Medical',CAT_SAFETY,'Training','Other'].concat(list.map(t => t.category)))];
   el.innerHTML = `<div class="section"><div class="section-header"><h3>Personnel certificate types</h3>
       <div class="toolbar"><input class="fi" id="newPct" placeholder="e.g. GWO First Aid" style="width:220px"><select class="fi" id="newPctCat">${cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}</select><button class="btn btn-green btn-sm" onclick="addPct(this)">+ Add</button></div></div>
     <div class="section-body note" style="margin:0;border-radius:0">${L(`A person is <b>qualified</b> for transfer when they have at least one <b>approved, unexpired</b> certificate in each required category (set in the System tab: currently <b>${esc(requiredCats().join(', ') || 'none')}</b>). Types whose name starts with “Other” let the user type the certificate name.`,
@@ -1654,13 +2099,66 @@ function adminSys(el) {
     <div class="form-group full"><label>Offshore PTW System URL (Web App /exec)</label><input id="st_ptw" value="${esc(S.settings.ptw_url || '')}"></div>
     <div class="form-group full"><label>Certificate categories required for transfer</label><div class="toolbar">${cats.map(c => `<label class="chk"><input type="checkbox" class="st_cat" value="${esc(c)}" ${req.indexOf(c) >= 0 ? 'checked' : ''}> ${esc(c)}</label>`).join('')}</div></div>
     <div class="form-actions"><button class="btn btn-primary" onclick="saveSys(this)">💾 Save settings</button></div></div></div></div>
+    <div class="section"><div class="section-header"><h3>📧 ${L('Email notifications', '通知信設定')}</h3></div><div class="section-body"><div class="form-grid">
+      <div class="form-group full"><label>${L('Recipients (one list for all notifications) — separate with commas or new lines', '收件者（所有通知共用）— 以逗號或換行分隔')}</label><textarea id="st_mails" placeholder="name@nmdc-group.com, mc@example.com">${esc(String(S.settings.notify_emails || '').split(', ').join('\n'))}</textarea></div>
+      <div class="form-group full"><label>${L('Send an email when…', '以下情況發信')}</label><div class="toolbar" style="flex-direction:column;align-items:flex-start;gap:6px">${NOTIFY_EVENTS.map(e => `<label class="chk"><input type="checkbox" class="st_ev" value="${e[0]}" ${String(S.settings.notify_events || '').split(',').indexOf(e[0]) >= 0 ? 'checked' : ''}> ${L(e[1], e[2])}</label>`).join('')}</div></div>
+      <div class="form-group full"><label>${L('System link used in emails', '信件中的系統連結')}</label><input id="st_appurl" value="${esc(S.settings.app_url || '')}"></div>
+      <div class="note full">${L('Emails are sent from the Google account that owns the system (Gmail quota ~100 emails/day). Expiry reminders run every morning at 08:00 for certificates 30 / 14 / 7 / 1 days before expiry and on the expiry day.', '信件由系統擁有者的 Google 帳號寄出（每日約 100 封上限）。到期提醒每天早上 08:00 檢查，於證照到期前 30／14／7／1 天及到期當天寄出。')}</div>
+      <div class="form-actions"><button class="btn btn-primary" onclick="saveSys(this)">💾 Save settings</button><button class="btn btn-secondary" onclick="testMail(this)">✉ ${L('Send test email', '寄測試信')}</button></div></div></div></div>
     <div class="section"><div class="section-header"><h3>Backup</h3></div><div class="section-body"><p class="hint" style="margin-bottom:10px">Data is stored in the Google Sheet “Person transfer”; files are in the Drive folder “OPTS Files (Person transfer)”. You can also download a JSON snapshot of the data (without files).</p>
-    <button class="btn btn-secondary btn-sm" onclick="exportJSON()">⬇ Download JSON snapshot</button></div></div>`;
+    <button class="btn btn-secondary btn-sm" onclick="exportJSON()">⬇ Download JSON snapshot</button></div></div>
+    <div class="section" style="border-color:#efc4c4"><div class="section-header"><h3>⚠️ ${L('Reset system data', '清空資料（回到初始狀態）')}</h3></div><div class="section-body">
+      <div class="note bad">${L('Permanently deletes the data you tick below. User accounts, companies, certificate requirement settings and system settings are always kept. This cannot be undone — download a JSON snapshot first.',
+        '永久刪除下方勾選的資料。使用者帳號、公司清單、證照要求設定與系統設定一律保留。刪除後無法復原 — 請先下載 JSON 快照備份。')}</div>
+      <div class="toolbar" style="flex-direction:column;align-items:flex-start;gap:6px;margin-bottom:12px">${RESET_GROUPS.map(g => `<label class="chk"><input type="checkbox" class="rs_grp" value="${g[0]}" checked> ${L(g[1], g[2])}</label>`).join('')}</div>
+      <p class="hint" style="margin-bottom:10px">${L('A 6-digit verification code will be emailed to', '系統會寄 6 位數驗證碼到')} <b class="notr">paul.tong@nmdc-group.com</b>${L('. The code is valid for 10 minutes.', '，驗證碼 10 分鐘內有效。')}</p>
+      <button class="btn btn-danger" onclick="resetRequest(this)">🗑 ${L('Send verification code', '寄送驗證碼')}</button></div></div>`;
+}
+const NOTIFY_EVENTS = [
+  ['personnel_pending', 'New / resubmitted personnel awaiting Admin approval', '有新增（或退件後重送）的人員待 Admin 核准'],
+  ['vessel_pending', 'New / resubmitted vessel awaiting Admin approval', '有新增（或退件後重送）的船舶待 Admin 核准'],
+  ['cert_pending', 'A contractor uploads a certificate for approval', '承包商上傳證照待核准'],
+  ['review_result', 'Personnel / vessel / certificate approved or rejected', '人員／船舶／證照被核准或退件'],
+  ['transfer', 'Personnel are transferred', '人員轉運'],
+  ['expiry', 'Certificates are about to expire (daily check)', '證照即將到期（每日檢查）'],
+  ['meeting', 'New meeting minutes are recorded', '新增會議紀錄']
+];
+async function testMail(btn) {
+  await withBusy(btn, async () => {
+    const r = await api('notify.test');
+    toast(L('Test email sent to ', '測試信已寄到 ') + r.to, 'success');
+  }, 'Sending…');
+}
+const RESET_GROUPS = [
+  ['personnel', 'Personnel (incl. their certificates and uploaded files)', '人員（含其證照與上傳檔案）'],
+  ['vessels', 'Vessels (incl. vessel certificates and uploaded files)', '船舶（含船舶證書與上傳檔案）'],
+  ['locations', 'Locations / assets', '位置／資產'],
+  ['transfers', 'Transfer history', '轉運紀錄'],
+  ['sitelog', 'Site log', '現場日誌'],
+  ['meetings', 'Meeting minutes', '會議紀錄']
+];
+async function resetRequest(btn) {
+  const groups = [...document.querySelectorAll('.rs_grp')].filter(c => c.checked).map(c => c.value);
+  if (!groups.length) { toast(L('Tick at least one item to clear', '請至少勾選一項要清空的資料'), 'error'); return; }
+  const names = RESET_GROUPS.filter(g => groups.indexOf(g[0]) >= 0).map(g => L(g[1], g[2]));
+  if (!await confirmBox(L('Send a verification code to permanently delete:', '確定要寄送驗證碼，永久刪除以下資料？') + '<br><b>' + names.map(esc).join('<br>') + '</b>', L('Send code', '寄送驗證碼'))) return;
+  let sentTo = '';
+  await withBusy(btn, async () => { sentTo = (await api('reset.request', { groups })).to; }, 'Sending…');
+  if (!sentTo) return;
+  const code = await promptBox(L('Reset system data', '清空資料'), L('Enter the 6-digit code sent to ', '請輸入寄到以下信箱的 6 位數驗證碼：') + sentTo);
+  if (!code) return;
+  await withBusy(null, async () => {
+    const r = await api('reset.confirm', { code });
+    toast(L(`System data cleared (${r.rows} records, ${r.files} files)`, `已清空系統資料（${r.rows} 筆資料、${r.files} 個檔案）`), 'success');
+    await reloadData(true);
+  }, 'Resetting…');
 }
 async function saveSys(btn) {
   const cats = [...document.querySelectorAll('.st_cat')].filter(c => c.checked).map(c => c.value);
+  const evs = [...document.querySelectorAll('.st_ev')].filter(c => c.checked).map(c => c.value);
   await withBusy(btn, async () => {
-    S.settings = await api('settings.save', { ptw_url: v('st_ptw'), required_categories: cats.join(',') });
+    S.settings = await api('settings.save', { ptw_url: v('st_ptw'), required_categories: cats.join(','),
+      notify_emails: v('st_mails'), notify_events: evs.join(','), app_url: v('st_appurl') });
     PTW.data = null; refreshPTW(true).catch(() => {});
     toast('Settings saved', 'success'); renderAdmin();
   });
@@ -1704,7 +2202,7 @@ const ZH = {
   'Open': '開啟', 'Upload profile photo': '上傳大頭照', 'Remove': '移除', 'Optional. The photo is resized automatically.': '選填，照片會自動縮小。',
   'Full name *': '姓名 *', 'Employee ID *': '員工編號 *', 'Company *': '公司 *', 'Position / Job title': '職稱', 'Mobile phone': '手機',
   'Nationality': '國籍', 'Passport No': '護照號碼', 'Emergency contact': '緊急聯絡人', 'Current location': '目前位置', 'Remark': '備註',
-  'Save personnel': '儲存人員', 'Add certificate': '新增證照', 'Certificates (medical, sea survival, training)': '證照（體檢、海上求生、訓練）',
+  'Save personnel': '儲存人員', 'Add certificate': '新增證照', 'Certificates (medical, offshore safety training, training)': '證照（體檢、海上安全訓練、其他訓練）', 'Offshore Safety Training': '海上安全訓練證書', 'Other Offshore Safety Training': '其他海上安全訓練',
   'Save the personnel record first, then add certificates.': '請先儲存人員資料，再新增證照。',
   'Name / relation / phone': '姓名／關係／電話', 'Name, ID, email…': '姓名、編號、Email…',
   'Pending approval': '待核准', 'Rejected': '已退件', 'Expired': '已過期', 'Expiring': '即將到期', 'Approved': '已核准', 'Missing': '缺少',
@@ -1801,7 +2299,18 @@ const ZH = {
   'File is larger than 10 MB': '檔案超過 10 MB', 'Missing file id': '缺少檔案代碼', 'File not found': '找不到檔案', 'Certificate type is required': '請選擇證照類型',
   'Please give a reason for rejection': '請填寫退件原因', 'Vessel not found': '找不到船舶', 'Certificate type not found': '找不到證書類型',
   'To, Time, Type and Approved By are required': '目的地、時間、方式、核准人為必填', 'Time and Detail are required': '時間與內容為必填',
-  'Network error — please check your connection': '網路錯誤，請檢查連線', 'Could not read file': '無法讀取檔案'
+  'Network error — please check your connection': '網路錯誤，請檢查連線', 'Could not read file': '無法讀取檔案',
+  // 2.1
+  'Meeting Minutes': '會議紀錄', 'New meeting': '新增會議', 'Title, item, attendee…': '會議名稱、議題、參與者…', 'Approval': '核准狀態',
+  'Awaiting approval': '待核准', 'Personnel & Vessels Awaiting Admin Approval': '待 Admin 核准的人員與船舶', 'Submitted by': '送件人',
+  'Company / Operator': '公司／營運公司', 'Vessel Certificate Alerts': '船舶缺照警示', 'Sending…': '寄送中…', 'Resetting…': '清空中…',
+  'Please select a company': '請選擇公司', 'Company is not in the company list — add it under Companies first': '公司不在清單中，請先到「公司」分頁新增',
+  'Invalid email address': 'Email 格式錯誤', 'Add at least one recipient email first': '請先填寫至少一個收件者',
+  'Meeting title and time are required': '會議名稱與時間為必填', 'Add at least one discussion item': '請至少填寫一項討論事項',
+  'Tick at least one item to clear': '請至少勾選一項要清空的資料', 'No reset request — send a new verification code': '沒有待確認的清空申請，請重新寄送驗證碼',
+  'This code was requested by another administrator': '此驗證碼是由其他管理員申請的', 'Verification code expired — send a new one': '驗證碼已過期，請重新寄送',
+  'Too many wrong codes — send a new one': '驗證碼錯誤次數過多，請重新寄送', 'Role (non-Admin)': '角色（非 Admin）', 'Last synced': '最後同步時間',
+  'Remove': '移除'
 };
 const RULES = [
   [/^(\d+) issues?$/, (m, n) => n + ' 項缺失'],
@@ -1822,7 +2331,11 @@ const RULES = [
   [/^Showing latest 500 of (\d+) entries — use the filters or export CSV for the rest\.$/, (m, a) => '僅顯示最新 500 筆（共 ' + a + ' 筆），其餘請用篩選或匯出 CSV。'],
   [/^Signed in as (.+)$/, (m, a) => '目前登入：' + a],
   [/^Could not load PTW data: (.+)$/, (m, a) => '無法載入 PTW 資料：' + a],
-  [/^Server error: (.+)$/, (m, a) => '伺服器錯誤：' + a]
+  [/^Server error: (.+)$/, (m, a) => '伺服器錯誤：' + a],
+  [/^Wrong verification code \((\d+) tries left\)$/, (m, a) => '驗證碼錯誤（還可再試 ' + a + ' 次）'],
+  [/^Invalid email address: (.+)$/, (m, a) => 'Email 格式錯誤：' + a],
+  [/^Could not send email: (.+)$/, (m, a) => '寄信失敗：' + a],
+  [/^(.+): not approved by Admin yet$/, (m, a) => a + '：尚未經 Admin 核准']
 ];
 let LANG = 'en';
 try { LANG = localStorage.getItem('opts_lang') || ((navigator.language || '').toLowerCase().indexOf('zh') === 0 ? 'zh' : 'en'); } catch (e) {}
@@ -1898,6 +2411,12 @@ function toggleLang() {
 }
 applyLang();
 trObserver.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['placeholder', 'title', 'label'] });
+
+// 登入動畫：把 <defs> 裡的 Q 版人員複製進每個 walker（不用 <use>，CSS 動畫才吃得到）
+(function () {
+  const tpl = document.getElementById('chibi');
+  if (tpl) document.querySelectorAll('.scene .walker').forEach(w => { w.innerHTML = tpl.innerHTML; });
+})();
 
 boot();
 </script>
