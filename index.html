@@ -202,8 +202,17 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
 .modal-header{background:linear-gradient(90deg,#001428,#002038 60%,#003358);border-bottom:2px solid var(--green)}
 .pob-num{font-family:'JetBrains Mono',monospace}
 
-/* KPI cards */
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:14px;margin-bottom:18px}
+/* KPI cards（分三區：登錄核准｜海上作業｜安全與合規） */
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
+.kpi-group{position:relative;background:rgba(255,255,255,.55);border:1px solid var(--border);border-radius:14px;padding:30px 12px 12px}
+.kpi-group.wide{grid-column:1/-1}
+.kpi-group-title{position:absolute;top:8px;left:14px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--gtone,var(--navy));display:flex;align-items:center;gap:6px}
+.kpi-group-title::before{content:'';width:8px;height:8px;border-radius:2px;background:var(--gtone,var(--navy));box-shadow:0 0 6px var(--gtone,var(--navy))}
+.kpi-group::after{content:'';position:absolute;left:12px;right:12px;top:0;height:2px;border-radius:2px;background:linear-gradient(90deg,var(--gtone,var(--navy)),transparent)}
+.kpi-group.g-reg{--gtone:#00994a}.kpi-group.g-ops{--gtone:#1565c0}.kpi-group.g-safe{--gtone:#c27c0e}
+.kpi-row{display:grid;grid-template-columns:repeat(var(--n,2),minmax(0,1fr));gap:12px}
+@media(max-width:1100px){.kpi-grid{grid-template-columns:1fr}}
+@media(max-width:560px){.kpi-row,.kpi-group.wide .kpi-row{grid-template-columns:1fr}}
 .kpi{position:relative;background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:15px 16px 13px;cursor:pointer;overflow:hidden;transition:transform .15s,box-shadow .15s}
 .kpi:hover{transform:translateY(-2px);box-shadow:var(--glow)}
 .kpi::before,.kpi::after{content:'';position:absolute;width:12px;height:12px;border-color:var(--tone,var(--navy));opacity:.55}
@@ -422,6 +431,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
       <div class="nav-item" data-page="ptw"><span class="ico">📝</span>PTW Monitor<span class="badge hidden" id="ptwBadge">0</span></div>
       <div class="nav-title" data-roles="admin">System</div>
       <div class="nav-item" data-page="admin" data-roles="admin"><span class="ico">⚙️</span>Administration</div>
+      <div class="nav-item" data-page="audit" data-roles="admin"><span class="ico">🕵️</span>Activity Log</div>
     </nav>
     <div class="sidebar-foot" id="sideFoot">—</div>
   </aside>
@@ -585,6 +595,26 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
         <div class="grid-2">
           <div class="section"><div class="section-header"><h3>👷 Personnel Alerts</h3></div><div class="section-body"><div class="alert-list" id="personAlerts"></div></div></div>
           <div class="section"><div class="section-header"><h3>🚢 Vessel Certificate Alerts</h3></div><div class="section-body"><div class="alert-list" id="vesselAlerts"></div></div></div>
+        </div>
+      </div>
+
+      <!-- AUDIT LOG -->
+      <div class="page" id="page-audit">
+        <div class="section">
+          <div class="section-header"><h3>Activity Log</h3>
+            <div class="toolbar">
+              <select class="fi" id="auUser"></select>
+              <select class="fi" id="auAction"></select>
+              <input type="date" class="fi" id="auFrom" title="From date">
+              <input type="date" class="fi" id="auTo" title="To date">
+              <div class="search"><span>🔍</span><input id="auQ" placeholder="Name, target, detail…"></div>
+              <label class="chk"><input type="checkbox" id="auFailed"> Failed only</label>
+              <button class="btn btn-primary btn-sm" onclick="loadAudit(this)">⟳ Search</button>
+              <button class="btn btn-secondary btn-sm" onclick="exportAuditCSV()">⬇ CSV</button>
+            </div>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Time</th><th>User</th><th>Company</th><th>Action</th><th>Target</th><th>Details</th><th>Result</th></tr></thead><tbody id="auBody"></tbody></table></div>
+          <div class="section-body hint" id="auFoot"></div>
         </div>
       </div>
 
@@ -990,7 +1020,7 @@ function vesselCertBadge(vid) {
 }
 
 // ==================== NAV ====================
-const TITLES = { dashboard:'Dashboard', personnel:'Personnel', vessels:'Vessels', locations:'Locations / Assets', transfer:'Personnel Transfer', sitelog:'Site Log', history:'Transfer History', pob:'POB Viewer', meetings:'Meeting Minutes', certificates:'Certificates', ptw:'PTW Monitor', admin:'Administration' };
+const TITLES = { dashboard:'Dashboard', personnel:'Personnel', vessels:'Vessels', locations:'Locations / Assets', transfer:'Personnel Transfer', sitelog:'Site Log', history:'Transfer History', pob:'POB Viewer', meetings:'Meeting Minutes', audit:'Activity Log', certificates:'Certificates', ptw:'PTW Monitor', admin:'Administration' };
 function go(page) {
   currentPage = page;
   document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
@@ -1002,7 +1032,7 @@ function go(page) {
 function refreshPage() {
   if (!S) return;
   ({ dashboard: renderDashboard, personnel: renderPersonnel, vessels: renderVessels, locations: renderLocations, transfer: initTransfer,
-     sitelog: initSiteLog, history: renderHistory, pob: initPOB, meetings: renderMeetings, certificates: renderCertificates, ptw: initPTW, admin: renderAdmin }[currentPage] || renderDashboard)();
+     sitelog: initSiteLog, history: renderHistory, pob: initPOB, meetings: renderMeetings, audit: initAudit, certificates: renderCertificates, ptw: initPTW, admin: renderAdmin }[currentPage] || renderDashboard)();
   updateBadges();
 }
 document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => go(n.dataset.page)));
@@ -1052,17 +1082,21 @@ function renderDashboard() {
   const pendP = people.filter(p => !isApproved(p) && p.approval !== 'Rejected').length;
   const pendV = S.vessels.filter(x => !isApproved(x) && x.approval !== 'Rejected').length;
   const pendC = S.personCerts.filter(c => c.status === 'Pending').length;
-  const cards = [
-    { ico: '👷', value: apprP, total: people.length, label: L('Approved personnel', '已核准人員'), sub: L(`of ${people.length} registered`, `共 ${people.length} 人登錄`), page: 'personnel', tone: 't-green' },
-    { ico: '🚢', value: apprV, total: S.vessels.length, label: L('Approved vessels', '已核准船舶'), sub: L(`of ${S.vessels.length} registered`, `共 ${S.vessels.length} 艘登錄`), page: 'vessels', tone: 't-navy' },
-    { ico: '🌊', value: offshore.length, total: apprP, label: L('Working offshore', '海上作業人數'), sub: L(`at ${offLocs} vessel(s) / asset(s)`, `分布於 ${offLocs} 處船舶／資產`), page: isStaff() ? 'pob' : 'personnel', tone: 't-blue' },
-    { ico: '🔄', value: tPeople, total: 0, label: L('Transferred today', '今日轉運人數'), sub: L(`${tToday.length} movement(s)`, `共 ${tToday.length} 人次`), page: 'history', tone: 't-cyan' },
-    { ico: '📝', value: ptwA, total: 0, label: L('Active PTW', '執行中 PTW'), sub: PTW.data ? L(`${ptwToday} expire today`, `今日到期 ${ptwToday} 張`) : '', page: 'ptw', tone: 't-green' },
-    { ico: '⏰', value: ptwO, total: 0, label: L('Overdue PTW', '逾期 PTW'), sub: L('not closed after validity', '超過有效期仍未關閉'), page: 'ptw', tone: ptwO ? 't-red' : 't-green' }
+  const groups = [
+    { cls: 'g-reg', title: L('Registry & Approval', '登錄核准'), cards: [
+      { ico: '👷', value: apprP, total: people.length, label: L('Approved personnel', '已核准人員'), sub: L(`of ${people.length} registered`, `共 ${people.length} 人登錄`), page: 'personnel', tone: 't-green' },
+      { ico: '🚢', value: apprV, total: S.vessels.length, label: L('Approved vessels', '已核准船舶'), sub: L(`of ${S.vessels.length} registered`, `共 ${S.vessels.length} 艘登錄`), page: 'vessels', tone: 't-navy' }] },
+    { cls: 'g-ops', title: L('Offshore Operations', '海上作業'), cards: [
+      { ico: '🌊', value: offshore.length, total: apprP, label: L('Working offshore', '海上作業人數'), sub: L(`at ${offLocs} vessel(s) / asset(s)`, `分布於 ${offLocs} 處船舶／資產`), page: isStaff() ? 'pob' : 'personnel', tone: 't-blue' },
+      { ico: '🔄', value: tPeople, total: 0, label: L('Transferred today', '今日轉運人數'), sub: L(`${tToday.length} movement(s)`, `共 ${tToday.length} 人次`), page: 'history', tone: 't-cyan' }] },
+    { cls: 'g-safe wide', title: L('Safety & Compliance', '安全與合規'), cards: [
+      { ico: '📝', value: ptwA, total: 0, label: L('Active PTW', '執行中 PTW'), sub: PTW.data ? L(`${ptwToday} expire today`, `今日到期 ${ptwToday} 張`) : '', page: 'ptw', tone: 't-green' },
+      { ico: '⏰', value: ptwO, total: 0, label: L('Overdue PTW', '逾期 PTW'), sub: L('not closed after validity', '超過有效期仍未關閉'), page: 'ptw', tone: ptwO ? 't-red' : 't-green' },
+      ].concat(isAdmin() ? [{ ico: '⏳', value: pendP + pendV + pendC, total: 0, label: L('Awaiting approval', '待核准'),
+        sub: L(`${pendP} personnel · ${pendV} vessels · ${pendC} certs`, `人員 ${pendP} · 船舶 ${pendV} · 證照 ${pendC}`), page: 'certificates', tone: (pendP + pendV + pendC) ? 't-amber' : 't-green' }] : []) }
   ];
-  if (isAdmin()) cards.push({ ico: '⏳', value: pendP + pendV + pendC, total: 0, label: L('Awaiting approval', '待核准'),
-    sub: L(`${pendP} personnel · ${pendV} vessels · ${pendC} certs`, `人員 ${pendP} · 船舶 ${pendV} · 證照 ${pendC}`), page: 'certificates', tone: (pendP + pendV + pendC) ? 't-amber' : 't-green' });
-  document.getElementById('dashStats').innerHTML = cards.map(kpiCard).join('');
+  document.getElementById('dashStats').innerHTML = groups.map(g => `<div class="kpi-group ${g.cls}"><div class="kpi-group-title">${esc(g.title)}</div>
+    <div class="kpi-row" style="--n:${g.cards.length}">${g.cards.map(kpiCard).join('')}</div></div>`).join('');
   animateKPIs();
 
   const al = personAlerts().slice(0, 6);
@@ -1752,6 +1786,73 @@ function renderCertificates() {
   document.getElementById('vesselAlerts').innerHTML = va.length ? va.map(alertHtml).join('') : '<p class="muted">No vessel certificate alerts 🎉</p>';
 }
 
+// ==================== AUDIT LOG ====================
+const AUDIT_ACTIONS = {
+  'auth.login': ['Sign in', '登入'], 'auth.logout': ['Sign out', '登出'], 'auth.setup': ['First-time setup', '首次設定'], 'auth.changePassword': ['Change password', '變更密碼'],
+  'personnel.save': ['Save personnel', '新增／修改人員'], 'personnel.delete': ['Delete personnel', '刪除人員'], 'personnel.review': ['Approve / reject personnel', '核准／退件人員'],
+  'pcert.save': ['Upload / edit personnel certificate', '上傳／修改人員證照'], 'pcert.delete': ['Delete personnel certificate', '刪除人員證照'], 'pcert.review': ['Approve / reject certificate', '核准／退件證照'],
+  'vessel.save': ['Save vessel', '新增／修改船舶'], 'vessel.delete': ['Delete vessel', '刪除船舶'], 'vessel.review': ['Approve / reject vessel', '核准／退件船舶'],
+  'vcert.save': ['Upload / edit vessel certificate', '上傳／修改船舶證書'], 'vcert.delete': ['Delete vessel certificate', '刪除船舶證書'],
+  'location.save': ['Save location', '新增／修改位置'], 'location.delete': ['Delete location', '刪除位置'],
+  'transfer.execute': ['Execute transfer', '執行轉運'], 'transfer.delete': ['Delete transfer record', '刪除轉運紀錄'],
+  'sitelog.save': ['Save site log entry', '新增／修改現場日誌'], 'sitelog.delete': ['Delete site log entry', '刪除現場日誌'],
+  'meeting.save': ['Save meeting minutes', '新增／修改會議紀錄'], 'meeting.delete': ['Delete meeting minutes', '刪除會議紀錄'],
+  'file.get': ['Open file', '開啟檔案'],
+  'user.save': ['Save user account', '新增／修改帳號'], 'user.delete': ['Delete user account', '刪除帳號'], 'user.resetPassword': ['Reset user password', '重設密碼'],
+  'company.save': ['Save company', '新增／修改公司'], 'company.delete': ['Delete company', '刪除公司'],
+  'vcerttype.save': ['Change vessel certificate requirement', '修改船舶證書要求'], 'pcerttype.save': ['Change personnel certificate type', '修改人員證照類型'],
+  'settings.save': ['Change system settings', '修改系統設定'], 'notify.test': ['Send test email', '寄測試信'],
+  'reset.request': ['Request data reset code', '申請清空資料驗證碼'], 'reset.confirm': ['RESET SYSTEM DATA', '清空系統資料']
+};
+const AUDIT_GROUPS = [['', 'All actions', '所有動作'], ['auth.', 'Sign in / account', '登入／帳號'], ['personnel.', 'Personnel', '人員'], ['pcert.', 'Personnel certificates', '人員證照'],
+  ['vessel.', 'Vessels', '船舶'], ['vcert.', 'Vessel certificates', '船舶證書'], ['location.', 'Locations', '位置'], ['transfer.', 'Transfers', '轉運'], ['sitelog.', 'Site log', '現場日誌'],
+  ['meeting.', 'Meetings', '會議紀錄'], ['file.', 'Files', '檔案'], ['user.', 'User accounts', '使用者帳號'], ['company.', 'Companies', '公司'], ['settings.', 'Settings', '系統設定'], ['reset.', 'Data reset', '清空資料']];
+let AUDIT = { rows: [], total: 0 };
+function auditLabel(a) { const x = AUDIT_ACTIONS[a]; return x ? L(x[0], x[1]) : a; }
+function initAudit() {
+  const u = v('auUser'), a = v('auAction');
+  document.getElementById('auUser').innerHTML = `<option value="">${L('All users', '所有使用者')}</option>` + S.users.map(x => `<option value="${esc(x.username)}" ${x.username === u ? 'selected' : ''}>${esc(x.username)}${x.name ? ' — ' + esc(x.name) : ''}</option>`).join('');
+  document.getElementById('auAction').innerHTML = AUDIT_GROUPS.map(g => `<option value="${g[0]}" ${g[0] === a ? 'selected' : ''}>${L(g[1], g[2])}</option>`).join('');
+  if (!v('auFrom')) document.getElementById('auFrom').value = addDays(todayStr(), -30);
+  loadAudit();
+}
+async function loadAudit(btn) {
+  if (btn) btn.disabled = true;
+  document.getElementById('auFoot').textContent = L('Loading…', '載入中…');
+  try {
+    AUDIT = await api('audit.list', { username: v('auUser'), action: v('auAction'), from: v('auFrom'), to: v('auTo'), q: v('auQ'), failedOnly: document.getElementById('auFailed').checked, limit: 1000 });
+    renderAudit();
+  } catch (e) { document.getElementById('auFoot').textContent = e.message; }
+  finally { if (btn) btn.disabled = false; }
+}
+function auditDetailText(s) {
+  if (!s) return '';
+  try {
+    const o = JSON.parse(s);
+    return Object.keys(o).filter(k => k !== 'id').map(k => k + ': ' + (typeof o[k] === 'object' ? JSON.stringify(o[k]) : o[k])).join(' · ');
+  } catch (e) { return s; }
+}
+function renderAudit() {
+  const tb = document.getElementById('auBody');
+  tb.innerHTML = AUDIT.rows.length ? AUDIT.rows.map(r => `<tr>
+    <td class="mono nowrap">${fmtDT(r.time)}</td>
+    <td class="nowrap"><strong>${esc(r.username || '—')}</strong>${r.name ? `<div class="hint">${esc(r.name)}</div>` : ''}</td>
+    <td>${esc(r.company)}${r.role ? `<div class="hint">${esc(ROLE_LABEL[r.role] || r.role)}</div>` : ''}</td>
+    <td><span class="b ${r.action.indexOf('delete') >= 0 || r.action === 'reset.confirm' ? 'b-bad' : r.action.indexOf('review') >= 0 ? 'b-warn' : r.action.indexOf('auth.') === 0 ? 'b-na' : 'b-info'}">${esc(auditLabel(r.action))}</span></td>
+    <td>${esc(r.target_name || '')}</td>
+    <td class="hint notr" style="max-width:380px;white-space:normal;word-break:break-word">${esc(auditDetailText(r.detail))}</td>
+    <td>${r.result === 'OK' ? '<span class="b b-ok">OK</span>' : `<span class="b b-bad" title="${esc(r.error)}">Failed</span><div class="hint">${esc(r.error)}</div>`}</td></tr>`).join('')
+    : `<tr class="empty"><td colspan="7">${L('No activity found', '沒有符合的紀錄')}</td></tr>`;
+  document.getElementById('auFoot').textContent = AUDIT.total > AUDIT.rows.length
+    ? L(`Showing latest ${AUDIT.rows.length} of ${AUDIT.total} records — narrow the filters to see older ones.`, `顯示最新 ${AUDIT.rows.length} 筆（共 ${AUDIT.total} 筆），請縮小篩選範圍查看更早的紀錄。`)
+    : L(`${AUDIT.total} record(s)`, `共 ${AUDIT.total} 筆`);
+}
+function exportAuditCSV() {
+  const rows = [['Time', 'Username', 'Name', 'Role', 'Company', 'Action', 'Target', 'Details', 'Result', 'Error']];
+  AUDIT.rows.forEach(r => rows.push([fmtDT(r.time), r.username, r.name, r.role, r.company, auditLabel(r.action), r.target_name, auditDetailText(r.detail), r.result, r.error]));
+  downloadCSV(rows, 'opts_activity_log_' + todayStr() + '.csv');
+}
+
 // ==================== MEETINGS ====================
 function jlist(s) { try { const a = JSON.parse(s || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
 function meetingPeople(m) { return jlist(m.attendee_info).concat(jlist(m.externals).map(x => ({ name: x.name, company: x.company, external: true }))); }
@@ -2310,7 +2411,9 @@ const ZH = {
   'Tick at least one item to clear': '請至少勾選一項要清空的資料', 'No reset request — send a new verification code': '沒有待確認的清空申請，請重新寄送驗證碼',
   'This code was requested by another administrator': '此驗證碼是由其他管理員申請的', 'Verification code expired — send a new one': '驗證碼已過期，請重新寄送',
   'Too many wrong codes — send a new one': '驗證碼錯誤次數過多，請重新寄送', 'Role (non-Admin)': '角色（非 Admin）', 'Last synced': '最後同步時間',
-  'Remove': '移除'
+  'Remove': '移除',
+  'Activity Log': '操作紀錄', 'User': '使用者', 'Action': '動作', 'Target': '對象', 'Details': '內容', 'Result': '結果', 'Failed only': '只看失敗',
+  'Search': '查詢', 'Failed': '失敗', 'Name, target, detail…': '姓名、對象、內容…'
 };
 const RULES = [
   [/^(\d+) issues?$/, (m, n) => n + ' 項缺失'],

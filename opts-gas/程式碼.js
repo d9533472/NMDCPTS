@@ -10,7 +10,7 @@
 // 通知信：Settings.notify_emails（共用收件者）＋ notify_events（啟用的事件）；每日到期提醒由 setup() 建立的觸發器執行。
 // ============================================================
 
-const VERSION = '2.1';
+const VERSION = '2.2';
 const CAT_SAFETY = 'Offshore Safety Training';   // 原 'Sea Survival'（2.1 改名，ensureSchema_ 會遷移舊資料）
 
 const SCHEMAS = {
@@ -20,6 +20,7 @@ const SCHEMAS = {
   Vessels: ['id','name','mmsi','imo','type','flag','operator','contact_person','phone','whatsapp','email','remark','approval','approval_note','approved_by','approved_at','created_by','created_at','updated_at'],
   Personnel: ['id','name','employee_id','company','nationality','position','email','phone','passport','emergency','photo','remark','current_location','approval','approval_note','approved_by','approved_at','created_by','created_at','updated_at'],
   Meetings: ['id','title','time','location','items','attendees','externals','remark','created_by','created_at','updated_at'],
+  AuditLog: ['id','time','username','name','role','company','action','target_id','target_name','detail','result','error'],
   Locations: ['id','name','type','linked_vessel','remark','created_at','updated_at'],
   Transfers: ['id','personnel_id','personnel_name','company','from_location','to_location','time','type','transport','approved_by','reason','remark','logged_by','created_at'],
   SiteLog: ['id','time','activity','source','detail','asset','transport','personnel','logged_by','created_at'],
@@ -94,17 +95,91 @@ function handle_(req) {
   const action = String(req.action || '');
   const fn = ROUTES[action];
   if (!fn) return { ok: false, error: 'Unknown action: ' + action };
+  let user = null;
+  const payload = req.payload || {};
   try {
     ensureSchema_();
-    let user = null;
     if (!PUBLIC[action]) user = verifySession_(req.token);
-    const data = fn(user, req.payload || {});
+    const before = deletedName_(action, payload);
+    const data = fn(user, payload);
+    audit_(action, user, payload, before ? { name: before } : data, true, '');
     return { ok: true, data: data === undefined ? null : data };
   } catch (err) {
+    // 登入逾時（AUTH）不記，其餘失敗的操作也記下來（含登入失敗、權限不足）
+    if (!(err && err.code === 'AUTH')) audit_(action, user, payload, null, false, err && err.message);
     if (err && err.code) return { ok: false, error: err.message, code: err.code };
     console.error(action + ': ' + err.message + '\n' + err.stack);
     return { ok: false, error: 'Server error: ' + err.message };
   }
+}
+
+// ============ Audit log（操作紀錄：誰在何時做了什麼；只增不改，清空資料也保留） ============
+const AUDIT_SKIP = { 'ping': 1, 'auth.status': 1, 'data.load': 1, 'audit.list': 1 };
+const AUDIT_SECRET = { password: 1, oldPassword: 1, newPassword: 1, code: 1, photo: 1 };
+function auditDetail_(payload) {
+  const o = {};
+  Object.keys(payload || {}).forEach(k => {
+    const v = payload[k];
+    if (AUDIT_SECRET[k]) { if (v) o[k] = k === 'photo' ? '(photo)' : '***'; return; }
+    if (k === 'file') { if (v && v.name) o.file = v.name; return; }
+    if (v === '' || v === null || v === undefined) return;
+    o[k] = (typeof v === 'object') ? v : String(v);
+  });
+  let s = JSON.stringify(o);
+  if (s.length > 1500) s = s.slice(0, 1500) + '…';
+  return s === '{}' ? '' : s;
+}
+function auditTarget_(action, payload, data) {
+  const r = (data && typeof data === 'object') ? data : {};
+  const rec = r.user || r;
+  const name = rec.name || rec.title || rec.username || (r.siteLog && r.siteLog.detail) || payload.name || payload.title || payload.username || '';
+  let id = rec.id || payload.id || payload.personnel_id || payload.vessel_id || '';
+  if (action === 'transfer.execute' && r.transfers) id = r.transfers.map(t => t.personnel_id).join(',');
+  return { id: String(id || ''), name: String(name || '') };
+}
+/** 刪除類動作：刪之前先記下對象名稱，紀錄才看得出刪了什麼 */
+const DELETE_SHEETS = { 'personnel.delete': 'Personnel', 'vessel.delete': 'Vessels', 'location.delete': 'Locations', 'transfer.delete': 'Transfers',
+  'sitelog.delete': 'SiteLog', 'meeting.delete': 'Meetings', 'user.delete': 'Users', 'company.delete': 'Companies', 'pcert.delete': 'PersonCerts', 'vcert.delete': 'VesselCerts' };
+function deletedName_(action, p) {
+  const sheet = DELETE_SHEETS[action];
+  if (!sheet || !p.id) return '';
+  try {
+    const r = Repo.get(sheet, p.id);
+    if (!r) return '';
+    if (sheet === 'PersonCerts') { const x = Repo.get('Personnel', r.personnel_id) || {}, t = Repo.get('PersonCertTypes', r.type_id) || {}; return (x.name || '') + ' — ' + (t.name || ''); }
+    if (sheet === 'VesselCerts') { const x = Repo.get('Vessels', r.vessel_id) || {}, t = Repo.get('VesselCertTypes', r.type_id) || {}; return (x.name || '') + ' — ' + (t.name || ''); }
+    if (sheet === 'Transfers') return r.personnel_name + ' (' + String(r.time).replace('T', ' ') + ')';
+    if (sheet === 'SiteLog') return String(r.detail).slice(0, 120);
+    return r.name || r.title || r.username || '';
+  } catch (e) { return ''; }
+}
+function audit_(action, user, payload, data, ok, err) {
+  if (AUDIT_SKIP[action]) return;
+  try {
+    const t = auditTarget_(action, payload, data);
+    let who = user;
+    if (!who && action === 'auth.login') who = { username: str_(payload.username).toLowerCase(), name: '', role: '', company: '' };
+    if (!who && data && data.user) who = data.user;
+    Repo.append('AuditLog', { id: genId_(), time: nowIso_(), username: who ? who.username : '', name: who ? (who.name || '') : '', role: who ? (who.role || '') : '',
+      company: who ? (who.company || '') : '', action: action, target_id: t.id, target_name: t.name.slice(0, 200), detail: auditDetail_(payload),
+      result: ok ? 'OK' : 'FAILED', error: ok ? '' : String(err || '').slice(0, 300) });
+  } catch (e) { console.warn('audit failed: ' + e.message); }
+}
+function auditList_(u, p) {
+  requireRole_(u, ['admin']);
+  const from = str_(p.from), to = str_(p.to), who = str_(p.username).toLowerCase(), act = str_(p.action), q = str_(p.q).toLowerCase();
+  const limit = Math.min(Number(p.limit) || 500, 3000);
+  const rows = Repo.all('AuditLog').filter(r => {
+    const d = r.time.slice(0, 10);
+    if (from && d < from) return false;
+    if (to && d > to) return false;
+    if (who && r.username !== who) return false;
+    if (act && r.action.indexOf(act) !== 0) return false;
+    if (p.failedOnly && r.result !== 'FAILED') return false;
+    if (q && [r.username, r.name, r.company, r.target_name, r.detail, r.error].join(' ').toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  }).sort((a, b) => b.time.localeCompare(a.time));
+  return { total: rows.length, rows: rows.slice(0, limit) };
 }
 
 function fail_(msg, code) { const e = new Error(msg); e.code = code || 'ERROR'; throw e; }
@@ -126,6 +201,7 @@ const ROUTES = {
   'meeting.save': (u, p) => { requireRole_(u, ['admin','mc']); return saveMeeting_(u, p); },
   'meeting.delete': (u, p) => { requireRole_(u, ['admin','mc']); withLock_(() => Repo.remove('Meetings', p.id)); return { id: p.id }; },
   'notify.test': (u, p) => { requireRole_(u, ['admin']); return notifyTest_(u); },
+  'audit.list': (u, p) => auditList_(u, p),
   'reset.request': (u, p) => { requireRole_(u, ['admin']); return resetRequest_(u, p); },
   'reset.confirm': (u, p) => { requireRole_(u, ['admin']); return resetConfirm_(u, p); },
   'vessel.delete': (u, p) => { requireRole_(u, ['admin','mc']); return deleteVessel_(p.id); },
@@ -200,6 +276,12 @@ const Repo = (function () {
       t.sh.getRange(t.sh.getLastRow() + 1, 1, 1, row.length).setNumberFormat('@').setValues([row]);
       delete cache[name];
       return obj;
+    },
+    /** appendRow 是原子操作，不需鎖（操作紀錄用，避免多人同時寫入互相覆蓋） */
+    append: function (name, obj) {
+      const t = load_(name);
+      t.sh.appendRow(rowOf_(t, obj).map(v => (v !== '' && /^[=+\-@]/.test(v)) ? "'" + v : v));
+      delete cache[name];
     },
     insertMany: function (name, objs) {
       if (!objs.length) return;
