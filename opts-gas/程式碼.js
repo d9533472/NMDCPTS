@@ -158,8 +158,8 @@ function audit_(action, user, payload, data, ok, err) {
   try {
     const t = auditTarget_(action, payload, data);
     let who = user;
+    if (!who && data && data.user) who = data.user;   // 登入成功：帶出姓名／公司／角色
     if (!who && action === 'auth.login') who = { username: str_(payload.username).toLowerCase(), name: '', role: '', company: '' };
-    if (!who && data && data.user) who = data.user;
     Repo.append('AuditLog', { id: genId_(), time: nowIso_(), username: who ? who.username : '', name: who ? (who.name || '') : '', role: who ? (who.role || '') : '',
       company: who ? (who.company || '') : '', action: action, target_id: t.id, target_name: t.name.slice(0, 200), detail: auditDetail_(payload),
       result: ok ? 'OK' : 'FAILED', error: ok ? '' : String(err || '').slice(0, 300) });

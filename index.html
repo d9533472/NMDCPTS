@@ -440,9 +440,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
       <div class="nav-item" data-page="certificates"><span class="ico">🪪</span>Certificates<span class="badge hidden" id="certBadge">0</span></div>
       <div class="nav-item" data-page="ptw"><span class="ico">📝</span>PTW Monitor<span class="badge hidden" id="ptwBadge">0</span></div>
       <div class="nav-title" data-roles="admin">System</div>
-      <div class="nav-item" data-page="admin" data-roles="admin"><span class="ico">⚙️</span>Administration</div>
-      <div class="nav-item" data-page="audit" data-roles="admin"><span class="ico">🕵️</span>Activity Log</div>
-    </nav>
+      <div class="nav-item" data-page="admin" data-roles="admin"><span class="ico">⚙️</span>Administration</div>    </nav>
     <div class="sidebar-foot" id="sideFoot">—</div>
   </aside>
 
@@ -614,7 +612,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
 
       <!-- AUDIT LOG -->
       <div class="page" id="page-audit">
-        <div class="section">
+        <div class="section" id="auditSection">
           <div class="section-header"><h3>Activity Log</h3>
             <div class="toolbar">
               <select class="fi" id="auUser"></select>
@@ -627,6 +625,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
               <button class="btn btn-secondary btn-sm" onclick="exportAuditCSV()">⬇ CSV</button>
             </div>
           </div>
+          <div class="section-body note" style="margin:0;border-radius:0">Every action by every user is recorded automatically (sign in / out incl. failed attempts, adding users, approvals, transfers, uploads, deletions, setting changes…). Records are kept permanently and cannot be edited or deleted.</div>
           <div class="table-wrap"><table><thead><tr><th>Time</th><th>User</th><th>Company</th><th>Action</th><th>Target</th><th>Details</th><th>Result</th></tr></thead><tbody id="auBody"></tbody></table></div>
           <div class="section-body hint" id="auFoot"></div>
         </div>
@@ -678,6 +677,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
           <div class="tab" data-t="vct">Vessel Certificate Requirements</div>
           <div class="tab" data-t="pct">Personnel Certificate Types</div>
           <div class="tab" data-t="sys">System</div>
+          <div class="tab" data-t="audit">🕵️ Activity Log</div>
         </div>
         <div id="adminBody"></div>
       </div>
@@ -2110,6 +2110,10 @@ function renderAdmin() {
   if (!isAdmin()) return;
   document.querySelectorAll('#adminTabs .tab').forEach(t => t.classList.toggle('active', t.dataset.t === adminTab));
   const el = document.getElementById('adminBody');
+  // 操作紀錄的版面放在隱藏的 #page-audit 裡；切到這個分頁時搬進來，切走前先搬回去（避免被 innerHTML 清掉）
+  const auditSec = document.getElementById('auditSection');
+  if (auditSec && auditSec.parentNode !== document.getElementById('page-audit')) document.getElementById('page-audit').appendChild(auditSec);
+  if (adminTab === 'audit') { el.innerHTML = ''; el.appendChild(auditSec); initAudit(); return; }
   ({ users: adminUsers, companies: adminCompanies, vct: adminVct, pct: adminPct, sys: adminSys }[adminTab])(el);
 }
 function adminUsers(el) {
@@ -2458,6 +2462,8 @@ const ZH = {
   'Activity Log': '操作紀錄', 'User': '使用者', 'Action': '動作', 'Target': '對象', 'Details': '內容', 'Result': '結果', 'Failed only': '只看失敗',
   'Search': '查詢', 'Failed': '失敗', 'Name, target, detail…': '姓名、對象、內容…', 'Awaiting Approval': '待核准',
   'This page is linked to the Offshore PTW System': '此頁面係連結至 Offshore PTW System',
+  'Every action by every user is recorded automatically (sign in / out incl. failed attempts, adding users, approvals, transfers, uploads, deletions, setting changes…). Records are kept permanently and cannot be edited or deleted.':
+    '系統自動記錄所有使用者的每一個動作（登入／登出含失敗嘗試、新增使用者、核准、轉運、上傳、刪除、修改設定…）。紀錄永久保存，無法修改或刪除。',
   'All permits shown here are read live from the Offshore PTW System and cannot be edited in OPTS. Click a PTW number to open its details in the PTW System.':
     '本頁的工作許可皆即時讀取自 Offshore PTW System，無法在 OPTS 內修改。點選 PTW 編號即可開啟 PTW 系統中的詳細內容。'
 };
