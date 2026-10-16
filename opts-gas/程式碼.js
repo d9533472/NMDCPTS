@@ -1,0 +1,729 @@
+// ============================================================
+// OPTS — Offshore Personnel Transfer System · Google Apps Script backend
+// 綁定試算表「Person transfer」；前端 https://d9533472.github.io/NMDCPTS/
+// 原始碼：E:\NMDCPTS\opts-gas\程式碼.js（clasp push + deploy -i <prod id>）
+//
+// 協定：POST text/plain JSON {action, token, payload} → {ok:true, data} / {ok:false, error}
+//       GET ?action=ping 僅供健康檢查（GET 不做任何寫入）
+// 角色：admin（MC 管理員，含帳號／設定）、mc（MC 作業）、contractor（只管自家公司人員）
+// ============================================================
+
+const VERSION = '2.0';
+
+const SCHEMAS = {
+  Users: ['id','username','name','email','role','company','password_hash','password_salt','active','must_change','last_login','created_at','updated_at'],
+  Sessions: ['token','user_id','expires_at','created_at'],
+  Companies: ['id','name','active','created_at'],
+  Vessels: ['id','name','mmsi','imo','type','flag','operator','contact_person','phone','whatsapp','email','remark','created_at','updated_at'],
+  Personnel: ['id','name','employee_id','company','nationality','position','email','phone','passport','emergency','photo','remark','current_location','created_by','created_at','updated_at'],
+  Locations: ['id','name','type','linked_vessel','remark','created_at','updated_at'],
+  Transfers: ['id','personnel_id','personnel_name','company','from_location','to_location','time','type','transport','approved_by','reason','remark','logged_by','created_at'],
+  SiteLog: ['id','time','activity','source','detail','asset','transport','personnel','logged_by','created_at'],
+  VesselCertTypes: ['id','code','name','mandatory','active','sort'],
+  VesselCerts: ['id','vessel_id','type_id','issue_date','expiry_date','description','file_id','file_name','updated_by','updated_at'],
+  PersonCertTypes: ['id','name','category','has_expiry','active','sort'],
+  PersonCerts: ['id','personnel_id','type_id','other_name','cert_no','issue_date','expiry_date','file_id','file_name','status','review_note','reviewed_by','reviewed_at','submitted_by','created_at','updated_at'],
+  Settings: ['key','value']
+};
+
+const DEFAULT_SETTINGS = {
+  ptw_url: 'https://script.google.com/macros/s/AKfycbyhOITKpUPZDcvL-jZx52H-ZNX-tGTvCjFXYY3-J_XrBfj7PRwzZE7fDYnu9vG8_z8/exec',
+  required_categories: 'Medical,Sea Survival'
+};
+
+// SeaPlanner Vessel Certs Matrix（44 項）
+const VESSEL_CERT_SEED = [
+  [20,'船籍證明 Certificate of Registry'],[21,'國籍證明 Certificate of Nationality'],[22,'中國驗船中心 CR Classification Society'],
+  [23,'船級證書 Certificate of Class'],[24,'國際噸位證書 Int. Tonnage'],[25,'國際載重線證書 International Load Line'],
+  [26,'載重線豁免證書 Exemption Load Line'],[27,'最低安全配員證書 Minimum Safe Manning'],[28,'貨船無線電安全證書 Cargo Ship Radio Certificate'],
+  [29,'貨船安全結構證書 Cargo Ship Safety Construction'],[30,'貨船安全設備證書 Cargo Ship Safety Equipment'],[31,'符合證書 Document of Compliance'],
+  [32,'安全管理證書 Safety Management Certificate'],[33,'交通部航港局小船執照 MPB Small Boat Certificate'],[34,'保險證書 (P&I) Insurance (P&I)'],
+  [35,'保險證書 (船體&機械) Insurance (Hull & Machinery)'],[36,'保險證書 (船員) Insurance (Crew)'],[37,'國際防污系統證書 International Anti-Fouling System Certificate'],
+  [38,'國際防止油污染證書 International Oil Pollution Prevention Certificate (IOPP)'],[39,'國際防止污水污染證書 International Sewage Pollution Prevention Certificate (ISPP)'],
+  [40,'國際防止空氣污染證書 International Air Pollution Prevention Certificate (IAPP)'],[41,'柴油機國際防止空氣污染證書 Engine International Air Pollution Prevention Certificate (EIAPP)'],
+  [42,'國際船舶保全證書 International Ship Security Certificate'],[43,'貨船搭客證書 Certificate of Fitness for Cargo Ship Carrying Passengers'],
+  [44,'IMCA 一般船舶檢驗文件 IMCA Common Marine Inspection Document (CMID)'],[45,'防止垃圾污染證明 Garbage Pollution Prevention Attestation'],
+  [46,'船舶試航證書 Certificate of Seaworthiness'],[47,'機械級別 Class Machinery'],[48,'船體級別 Class Hull'],[49,'船舶無線電台執照 Ship Station License'],
+  [50,'海上基地維修 GMDSS Shore Based Maintenance GMDSS'],[51,'除鼠證書 De-ratting Certificate'],[52,'船舶焚化爐之型式認可證書 Shipboard Incinerator Type Approval'],
+  [53,'救難艇 Rescue Boat'],[54,'救生筏 Life Raft(s)'],[55,'救生艇 Lifeboat(s)'],[56,'安裝證書 CO2 (Halon) Installation'],[57,'滅火器 Fire Extinguishers'],
+  [58,'空氣呼吸器證書 Breathing Apparatus Certificate'],[59,'緊急逃生呼吸裝置 Emergency Escape Breathing Device (EEBD)'],[60,'藥品 Medicine'],
+  [61,'吊車裝備證書 Hoisting Equipment'],[62,'貨船設備證書 Cargo Equipment'],[63,'起重機測試證書 Crane Test Certificate']
+];
+
+const PERSON_CERT_SEED = [
+  ['OEUK Medical','Medical'],['ADNOC Medical','Medical'],['Other Medical','Medical'],
+  ['BOSIET','Sea Survival'],['FOET','Sea Survival'],['STCW95 Basic Safety Training','Sea Survival'],
+  ['GWO Basic Safety Training (Sea Survival)','Sea Survival'],['Other Sea Survival','Sea Survival'],
+  ['HUET / CA-EBS','Training'],['GWO Working at Heights','Training'],['H2S Awareness','Training'],['Other Certificate','Other']
+];
+
+const ROLES = ['admin','mc','contractor'];
+const SESSION_DAYS = 7;
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_PHOTO_CHARS = 45000;
+
+// ============ HTTP ============
+function doGet(e) {
+  const action = (e && e.parameter && e.parameter.action) || '';
+  if (action === 'ping') return json_({ ok: true, data: { service: 'OPTS API', version: VERSION, time: new Date().toISOString() } });
+  // POST 偶爾在部署切換時被轉成 GET → 回 RETRY，前端會重送一次（此時沒有任何寫入發生）
+  return json_({ ok: false, error: 'Use POST', code: 'RETRY' });
+}
+
+function doPost(e) {
+  let req = {};
+  try { req = JSON.parse((e && e.postData && e.postData.contents) || '{}'); }
+  catch (err) { return json_({ ok: false, error: 'Bad JSON' }); }
+  return json_(handle_(req));
+}
+
+function json_(o) {
+  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function handle_(req) {
+  const action = String(req.action || '');
+  const fn = ROUTES[action];
+  if (!fn) return { ok: false, error: 'Unknown action: ' + action };
+  try {
+    ensureSchema_();
+    let user = null;
+    if (!PUBLIC[action]) user = verifySession_(req.token);
+    const data = fn(user, req.payload || {});
+    return { ok: true, data: data === undefined ? null : data };
+  } catch (err) {
+    if (err && err.code) return { ok: false, error: err.message, code: err.code };
+    console.error(action + ': ' + err.message + '\n' + err.stack);
+    return { ok: false, error: 'Server error: ' + err.message };
+  }
+}
+
+function fail_(msg, code) { const e = new Error(msg); e.code = code || 'ERROR'; throw e; }
+
+const PUBLIC = { 'ping': true, 'auth.status': true, 'auth.setup': true, 'auth.login': true };
+
+const ROUTES = {
+  'ping': () => ({ version: VERSION, time: new Date().toISOString() }),
+  'auth.status': () => ({ needsSetup: Repo.all('Users').length === 0 }),
+  'auth.setup': (u, p) => authSetup_(p),
+  'auth.login': (u, p) => authLogin_(p),
+  'auth.logout': (u, p) => authLogout_(u),
+  'auth.changePassword': (u, p) => changePassword_(u, p),
+  'data.load': (u) => loadData_(u),
+
+  'vessel.save': (u, p) => { requireRole_(u, ['admin','mc']); return saveSimple_('Vessels', p, ['name','mmsi','imo','type','flag','operator','contact_person','phone','whatsapp','email','remark'], ['name']); },
+  'vessel.delete': (u, p) => { requireRole_(u, ['admin','mc']); return deleteVessel_(p.id); },
+  'location.save': (u, p) => { requireRole_(u, ['admin','mc']); return saveSimple_('Locations', p, ['name','type','linked_vessel','remark'], ['name','type']); },
+  'location.delete': (u, p) => { requireRole_(u, ['admin','mc']); return deleteLocation_(p.id); },
+
+  'personnel.save': (u, p) => savePersonnel_(u, p),
+  'personnel.delete': (u, p) => deletePersonnel_(u, p.id),
+  'pcert.save': (u, p) => savePersonCert_(u, p),
+  'pcert.delete': (u, p) => deletePersonCert_(u, p.id),
+  'pcert.review': (u, p) => reviewPersonCert_(u, p),
+  'vcert.save': (u, p) => { requireRole_(u, ['admin','mc']); return saveVesselCert_(u, p); },
+  'vcert.delete': (u, p) => { requireRole_(u, ['admin','mc']); return deleteVesselCert_(p.id); },
+  'file.get': (u, p) => getFile_(u, p.id),
+
+  'transfer.execute': (u, p) => { requireRole_(u, ['admin','mc']); return executeTransfer_(u, p); },
+  'sitelog.save': (u, p) => { requireRole_(u, ['admin','mc']); return saveSiteLog_(u, p); },
+  'sitelog.delete': (u, p) => { requireRole_(u, ['admin','mc']); withLock_(() => Repo.remove('SiteLog', p.id)); return { id: p.id }; },
+
+  'vcerttype.save': (u, p) => { requireRole_(u, ['admin']); return saveCertType_('VesselCertTypes', p, ['code','name','mandatory','active','sort']); },
+  'pcerttype.save': (u, p) => { requireRole_(u, ['admin']); return saveCertType_('PersonCertTypes', p, ['name','category','has_expiry','active','sort']); },
+  'company.save': (u, p) => { requireRole_(u, ['admin']); return saveSimple_('Companies', p, ['name','active'], ['name']); },
+  'company.delete': (u, p) => { requireRole_(u, ['admin']); return deleteCompany_(p.id); },
+  'transfer.delete': (u, p) => { requireRole_(u, ['admin']); withLock_(() => Repo.remove('Transfers', p.id)); return { id: p.id }; },
+  'user.save': (u, p) => saveUser_(u, p),
+  'user.resetPassword': (u, p) => resetPassword_(u, p),
+  'user.delete': (u, p) => deleteUser_(u, p.id),
+  'settings.save': (u, p) => saveSettings_(u, p)
+};
+
+// ============ Repo（依表頭名稱讀寫，欄位順序不拘） ============
+const Repo = (function () {
+  const cache = {};
+  function sheet_(name) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    return ss.getSheetByName(name) || ss.insertSheet(name);
+  }
+  function load_(name) {
+    if (cache[name]) return cache[name];
+    const sh = sheet_(name);
+    const values = sh.getDataRange().getValues();
+    const headers = (values[0] || []).map(String);
+    const rows = [];
+    for (let i = 1; i < values.length; i++) {
+      const o = {};
+      headers.forEach((h, j) => { if (h) o[h] = cell_(values[i][j]); });
+      o.__row = i + 1;
+      rows.push(o);
+    }
+    cache[name] = { sh: sh, headers: headers, rows: rows };
+    return cache[name];
+  }
+  function cell_(v) {
+    if (v instanceof Date) return Utilities.formatDate(v, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss");
+    if (v === null || v === undefined) return '';
+    return String(v);
+  }
+  function key_(name) { return name === 'Sessions' ? 'token' : (name === 'Settings' ? 'key' : 'id'); }
+  function clean_(o) { const c = {}; Object.keys(o).forEach(k => { if (k !== '__row') c[k] = o[k]; }); return c; }
+  function rowOf_(t, obj) { return t.headers.map(h => (h && obj[h] !== undefined && obj[h] !== null) ? String(obj[h]) : ''); }
+
+  return {
+    all: function (name) { return load_(name).rows.filter(r => r[key_(name)]).map(clean_); },
+    get: function (name, id) {
+      const k = key_(name);
+      const r = load_(name).rows.find(x => String(x[k]) === String(id));
+      return r ? clean_(r) : null;
+    },
+    insert: function (name, obj) {
+      const t = load_(name);
+      const row = rowOf_(t, obj);
+      t.sh.getRange(t.sh.getLastRow() + 1, 1, 1, row.length).setNumberFormat('@').setValues([row]);
+      delete cache[name];
+      return obj;
+    },
+    insertMany: function (name, objs) {
+      if (!objs.length) return;
+      const t = load_(name);
+      const rows = objs.map(o => rowOf_(t, o));
+      t.sh.getRange(t.sh.getLastRow() + 1, 1, rows.length, rows[0].length).setNumberFormat('@').setValues(rows);
+      delete cache[name];
+    },
+    update: function (name, id, patch) {
+      const t = load_(name);
+      const k = key_(name);
+      const r = t.rows.find(x => String(x[k]) === String(id));
+      if (!r) fail_('Record not found', 'NOT_FOUND');
+      const merged = Object.assign({}, clean_(r), patch);
+      const row = rowOf_(t, merged);
+      t.sh.getRange(r.__row, 1, 1, row.length).setNumberFormat('@').setValues([row]);
+      delete cache[name];
+      return merged;
+    },
+    remove: function (name, id) {
+      const t = load_(name);
+      const k = key_(name);
+      const r = t.rows.find(x => String(x[k]) === String(id));
+      if (!r) return false;
+      t.sh.deleteRow(r.__row);
+      delete cache[name];
+      return true;
+    },
+    removeWhere: function (name, pred) {
+      const t = load_(name);
+      const rows = t.rows.filter(r => r[key_(name)] && pred(clean_(r))).map(r => r.__row).sort((a, b) => b - a);
+      rows.forEach(n => t.sh.deleteRow(n));
+      delete cache[name];
+      return rows.length;
+    },
+    flush: function () { Object.keys(cache).forEach(k => delete cache[k]); }
+  };
+})();
+
+// 確保每張表都有需要的欄位（只「補」缺的欄位，不刪任何既有資料）
+function ensureSchema_() {
+  const props = PropertiesService.getScriptProperties();
+  if (props.getProperty('schema_version') === VERSION) return;
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    if (props.getProperty('schema_version') === VERSION) return;
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    Object.keys(SCHEMAS).forEach(name => {
+      let sh = ss.getSheetByName(name);
+      if (!sh) sh = ss.insertSheet(name);
+      const lastCol = sh.getLastColumn();
+      const existing = lastCol ? sh.getRange(1, 1, 1, lastCol).getValues()[0].map(String) : [];
+      const missing = SCHEMAS[name].filter(h => existing.indexOf(h) < 0);
+      if (missing.length) {
+        sh.getRange(1, existing.length + 1, 1, missing.length).setValues([missing]);
+      }
+      sh.getRange(1, 1, 1, sh.getLastColumn()).setFontWeight('bold');
+      sh.setFrozenRows(1);
+    });
+    Repo.flush();
+    if (!Repo.all('VesselCertTypes').length) {
+      Repo.insertMany('VesselCertTypes', VESSEL_CERT_SEED.map((c, i) => ({
+        id: genId_(), code: String(c[0]), name: c[1], mandatory: 'TRUE', active: 'TRUE', sort: String(i + 1) })));
+    }
+    if (!Repo.all('PersonCertTypes').length) {
+      Repo.insertMany('PersonCertTypes', PERSON_CERT_SEED.map((c, i) => ({
+        id: genId_(), name: c[0], category: c[1], has_expiry: 'TRUE', active: 'TRUE', sort: String(i + 1) })));
+    }
+    const st = Repo.all('Settings');
+    Object.keys(DEFAULT_SETTINGS).forEach(k => {
+      if (!st.find(s => s.key === k)) Repo.insert('Settings', { key: k, value: DEFAULT_SETTINGS[k] });
+    });
+    props.setProperty('schema_version', VERSION);
+  } finally { lock.releaseLock(); }
+}
+
+/** 在 GAS 編輯器手動執行一次：授權 Drive 權限並建立附件資料夾 */
+function setup() {
+  PropertiesService.getScriptProperties().deleteProperty('schema_version');
+  ensureSchema_();
+  const f = filesFolder_();
+  Logger.log('OK — files folder: ' + f.getUrl());
+}
+
+// ============ Utility ============
+function genId_() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function nowIso_() { return new Date().toISOString(); }
+function bool_(v) { return v === true || v === 'TRUE' || v === 'true' || v === 1 || v === '1'; }
+function str_(v) { return v === undefined || v === null ? '' : String(v).trim(); }
+function withLock_(fn) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(25000);
+  try { return fn(); } finally { lock.releaseLock(); }
+}
+function settings_() {
+  const o = Object.assign({}, DEFAULT_SETTINGS);
+  Repo.all('Settings').forEach(s => { o[s.key] = s.value; });
+  return o;
+}
+function requireRole_(u, roles) {
+  if (!u || roles.indexOf(u.role) < 0) fail_('Permission denied', 'FORBIDDEN');
+}
+function isStaff_(u) { return u && (u.role === 'admin' || u.role === 'mc'); }
+function sameCompany_(a, b) { return str_(a).toLowerCase() === str_(b).toLowerCase(); }
+
+// ============ Auth ============
+function hash_(password, salt) {
+  let h = salt + '|' + password;
+  for (let i = 0; i < 500; i++) {
+    h = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, h + salt, Utilities.Charset.UTF_8));
+  }
+  return h;
+}
+function publicUser_(u) {
+  return { id: u.id, username: u.username, name: u.name, email: u.email, role: u.role, company: u.company,
+    active: bool_(u.active), must_change: bool_(u.must_change), last_login: u.last_login };
+}
+function checkPassword_(pw) {
+  if (str_(pw).length < 6) fail_('Password must be at least 6 characters', 'WEAK_PASSWORD');
+}
+function newSession_(user) {
+  const token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+  const exp = new Date(Date.now() + SESSION_DAYS * 864e5).toISOString();
+  Repo.insert('Sessions', { token: token, user_id: user.id, expires_at: exp, created_at: nowIso_() });
+  CacheService.getScriptCache().put('s_' + token, user.id + '|' + exp, 21600);
+  return token;
+}
+function verifySession_(token) {
+  token = str_(token);
+  if (!token) fail_('Please log in', 'AUTH');
+  const cache = CacheService.getScriptCache();
+  let userId = '', exp = '';
+  const c = cache.get('s_' + token);
+  if (c) { const parts = c.split('|'); userId = parts[0]; exp = parts[1]; }
+  else {
+    const s = Repo.get('Sessions', token);
+    if (!s) fail_('Session expired, please log in again', 'AUTH');
+    userId = s.user_id; exp = s.expires_at;
+    cache.put('s_' + token, userId + '|' + exp, 21600);
+  }
+  if (exp < nowIso_()) fail_('Session expired, please log in again', 'AUTH');
+  const u = Repo.get('Users', userId);
+  if (!u || !bool_(u.active)) fail_('Account disabled', 'AUTH');
+  u.token = token;
+  return u;
+}
+function killSessions_(userId) {
+  const tokens = Repo.all('Sessions').filter(x => x.user_id === userId).map(x => 's_' + x.token);
+  if (tokens.length) CacheService.getScriptCache().removeAll(tokens);
+  Repo.removeWhere('Sessions', x => x.user_id === userId);
+}
+function authSetup_(p) {
+  return withLock_(() => {
+    if (Repo.all('Users').length) fail_('System already set up', 'FORBIDDEN');
+    const username = str_(p.username).toLowerCase();
+    if (!username) fail_('Username required');
+    checkPassword_(p.password);
+    const salt = Utilities.getUuid();
+    const u = { id: genId_(), username: username, name: str_(p.name) || username, email: str_(p.email), role: 'admin',
+      company: str_(p.company) || 'NMDC', password_salt: salt, password_hash: hash_(p.password, salt), active: 'TRUE',
+      must_change: 'FALSE', last_login: nowIso_(), created_at: nowIso_(), updated_at: nowIso_() };
+    Repo.insert('Users', u);
+    return { token: newSession_(u), user: publicUser_(u) };
+  });
+}
+function authLogin_(p) {
+  const username = str_(p.username).toLowerCase();
+  const u = Repo.all('Users').find(x => str_(x.username).toLowerCase() === username || (x.email && str_(x.email).toLowerCase() === username));
+  if (!u || !bool_(u.active) || hash_(str_(p.password), u.password_salt) !== u.password_hash) fail_('Wrong username or password', 'LOGIN');
+  Repo.update('Users', u.id, { last_login: nowIso_() });
+  try { Repo.removeWhere('Sessions', s => s.expires_at < nowIso_()); } catch (e) {}
+  return { token: newSession_(u), user: publicUser_(u) };
+}
+function authLogout_(u) {
+  CacheService.getScriptCache().remove('s_' + u.token);
+  Repo.remove('Sessions', u.token);
+  return true;
+}
+function changePassword_(u, p) {
+  if (hash_(str_(p.oldPassword), u.password_salt) !== u.password_hash) fail_('Current password is wrong', 'LOGIN');
+  checkPassword_(p.newPassword);
+  const salt = Utilities.getUuid();
+  Repo.update('Users', u.id, { password_salt: salt, password_hash: hash_(p.newPassword, salt), must_change: 'FALSE', updated_at: nowIso_() });
+  return true;
+}
+function saveUser_(u, p) {
+  requireRole_(u, ['admin']);
+  return withLock_(() => {
+    const username = str_(p.username).toLowerCase();
+    if (!username) fail_('Username required');
+    const role = ROLES.indexOf(p.role) >= 0 ? p.role : 'contractor';
+    const company = str_(p.company);
+    if (role === 'contractor' && !company) fail_('Contractor accounts need a company');
+    const dup = Repo.all('Users').find(x => str_(x.username).toLowerCase() === username && x.id !== p.id);
+    if (dup) fail_('Username already exists');
+    const patch = { username: username, name: str_(p.name), email: str_(p.email), role: role, company: company,
+      active: bool_(p.active) ? 'TRUE' : 'FALSE', updated_at: nowIso_() };
+    if (p.id) {
+      if (p.id === u.id && (role !== 'admin' || patch.active !== 'TRUE')) fail_('You cannot demote or disable your own account');
+      const saved = Repo.update('Users', p.id, patch);
+      if (patch.active !== 'TRUE') killSessions_(p.id);
+      return publicUser_(saved);
+    }
+    checkPassword_(p.password);
+    const salt = Utilities.getUuid();
+    const rec = Object.assign({ id: genId_(), password_salt: salt, password_hash: hash_(p.password, salt), must_change: 'TRUE',
+      last_login: '', created_at: nowIso_() }, patch);
+    Repo.insert('Users', rec);
+    return publicUser_(rec);
+  });
+}
+function resetPassword_(u, p) {
+  requireRole_(u, ['admin']);
+  checkPassword_(p.password);
+  const salt = Utilities.getUuid();
+  return withLock_(() => {
+    Repo.update('Users', p.id, { password_salt: salt, password_hash: hash_(p.password, salt), must_change: 'TRUE', updated_at: nowIso_() });
+    killSessions_(p.id);
+    return true;
+  });
+}
+function deleteUser_(u, id) {
+  requireRole_(u, ['admin']);
+  if (id === u.id) fail_('You cannot delete your own account');
+  return withLock_(() => {
+    killSessions_(id);
+    Repo.remove('Users', id);
+    return { id: id };
+  });
+}
+function saveSettings_(u, p) {
+  requireRole_(u, ['admin']);
+  return withLock_(() => {
+    Object.keys(DEFAULT_SETTINGS).forEach(k => {
+      if (p[k] === undefined) return;
+      if (Repo.get('Settings', k)) Repo.update('Settings', k, { value: str_(p[k]) });
+      else Repo.insert('Settings', { key: k, value: str_(p[k]) });
+    });
+    return settings_();
+  });
+}
+
+// ============ Load ============
+function loadData_(u) {
+  const personnelAll = Repo.all('Personnel');
+  const personnel = isStaff_(u) ? personnelAll : personnelAll.filter(p => sameCompany_(p.company, u.company));
+  const ids = {};
+  personnel.forEach(p => { ids[p.id] = true; });
+  return {
+    user: publicUser_(u),
+    settings: settings_(),
+    companies: Repo.all('Companies'),
+    vessels: Repo.all('Vessels'),
+    locations: Repo.all('Locations'),
+    personnel: personnel,
+    transfers: Repo.all('Transfers').filter(t => isStaff_(u) || ids[t.personnel_id]),
+    siteLog: Repo.all('SiteLog'),
+    vesselCertTypes: Repo.all('VesselCertTypes'),
+    vesselCerts: Repo.all('VesselCerts'),
+    personCertTypes: Repo.all('PersonCertTypes'),
+    personCerts: Repo.all('PersonCerts').filter(c => ids[c.personnel_id]),
+    users: u.role === 'admin' ? Repo.all('Users').map(publicUser_) : []
+  };
+}
+
+// ============ Generic save ============
+function saveSimple_(sheet, p, fields, required) {
+  return withLock_(() => {
+    const d = {};
+    fields.forEach(f => { if (p[f] !== undefined) d[f] = str_(p[f]); });
+    if (sheet === 'Companies' && p.active !== undefined) d.active = bool_(p.active) ? 'TRUE' : 'FALSE';
+    required.forEach(f => { if (!d[f] && !(p.id && d[f] === undefined)) fail_(f + ' is required'); });
+    const hasUpdated = SCHEMAS[sheet].indexOf('updated_at') >= 0;
+    if (p.id) {
+      if (hasUpdated) d.updated_at = nowIso_();
+      return Repo.update(sheet, p.id, d);
+    }
+    d.id = genId_();
+    d.created_at = nowIso_();
+    if (hasUpdated) d.updated_at = d.created_at;
+    if (sheet === 'Companies' && d.active === undefined) d.active = 'TRUE';
+    return Repo.insert(sheet, d);
+  });
+}
+function saveCertType_(sheet, p, fields) {
+  const d = {};
+  fields.forEach(f => {
+    if (p[f] === undefined) return;
+    d[f] = (f === 'mandatory' || f === 'active' || f === 'has_expiry') ? (bool_(p[f]) ? 'TRUE' : 'FALSE') : str_(p[f]);
+  });
+  return withLock_(() => {
+    if (p.id) return Repo.update(sheet, p.id, d);
+    if (!d.name) fail_('Name is required');
+    d.id = genId_();
+    if (d.active === undefined) d.active = 'TRUE';
+    if (d.sort === undefined) d.sort = String(Repo.all(sheet).length + 1);
+    if (sheet === 'PersonCertTypes' && d.has_expiry === undefined) d.has_expiry = 'TRUE';
+    if (sheet === 'VesselCertTypes' && d.mandatory === undefined) d.mandatory = 'FALSE';
+    return Repo.insert(sheet, d);
+  });
+}
+function deleteCompany_(id) {
+  const c = Repo.get('Companies', id);
+  if (!c) return { id: id };
+  if (Repo.all('Personnel').some(p => sameCompany_(p.company, c.name)) || Repo.all('Users').some(x => sameCompany_(x.company, c.name))) {
+    fail_('Company still has personnel or user accounts — deactivate it instead');
+  }
+  withLock_(() => Repo.remove('Companies', id));
+  return { id: id };
+}
+function locationInUse_(cid) {
+  return Repo.all('Personnel').some(p => p.current_location === cid);
+}
+function deleteVessel_(id) {
+  if (locationInUse_('vessel_' + id)) fail_('Cannot delete: personnel are on board this vessel');
+  return withLock_(() => {
+    Repo.all('VesselCerts').filter(c => c.vessel_id === id).forEach(c => trashFile_(c.file_id));
+    Repo.removeWhere('VesselCerts', c => c.vessel_id === id);
+    Repo.remove('Vessels', id);
+    return { id: id };
+  });
+}
+function deleteLocation_(id) {
+  if (locationInUse_('loc_' + id)) fail_('Cannot delete: personnel are at this location');
+  withLock_(() => Repo.remove('Locations', id));
+  return { id: id };
+}
+
+// ============ Personnel ============
+const PERSON_FIELDS = ['name','employee_id','company','nationality','position','email','phone','passport','emergency','photo','remark','current_location'];
+function savePersonnel_(u, p) {
+  return withLock_(() => {
+    const d = {};
+    PERSON_FIELDS.forEach(f => { if (p[f] !== undefined) d[f] = str_(p[f]); });
+    if (d.photo && d.photo.length > MAX_PHOTO_CHARS) fail_('Photo is too large');
+    if (d.photo && d.photo.indexOf('data:image/') !== 0) d.photo = '';
+    if (!isStaff_(u)) {
+      d.company = u.company;              // 承包商只能建自家公司的人
+      delete d.current_location;          // 位置只由 MC 轉運變更
+    }
+    let existing = null;
+    if (p.id) {
+      existing = Repo.get('Personnel', p.id);
+      if (!existing) fail_('Record not found', 'NOT_FOUND');
+      if (!isStaff_(u) && !sameCompany_(existing.company, u.company)) fail_('Permission denied', 'FORBIDDEN');
+    }
+    const merged = Object.assign({}, existing || {}, d);
+    if (!merged.name || !merged.employee_id || !merged.company) fail_('Name, Employee ID and Company are required');
+    const dup = Repo.all('Personnel').find(x => x.id !== p.id && sameCompany_(x.company, merged.company) &&
+      str_(x.employee_id).toLowerCase() === merged.employee_id.toLowerCase());
+    if (dup) fail_('Employee ID ' + merged.employee_id + ' already exists in ' + merged.company);
+    if (existing) {
+      d.updated_at = nowIso_();
+      return Repo.update('Personnel', p.id, d);
+    }
+    d.id = genId_();
+    d.created_by = u.username;
+    d.created_at = d.updated_at = nowIso_();
+    return Repo.insert('Personnel', d);
+  });
+}
+function personFor_(u, personnelId) {
+  const p = Repo.get('Personnel', personnelId);
+  if (!p) fail_('Personnel not found', 'NOT_FOUND');
+  if (!isStaff_(u) && !sameCompany_(p.company, u.company)) fail_('Permission denied', 'FORBIDDEN');
+  return p;
+}
+function deletePersonnel_(u, id) {
+  const p = personFor_(u, id);
+  if (!isStaff_(u) && p.current_location) fail_('This person is currently assigned to a location — ask MC to transfer them out first');
+  return withLock_(() => {
+    Repo.all('PersonCerts').filter(c => c.personnel_id === id).forEach(c => trashFile_(c.file_id));
+    Repo.removeWhere('PersonCerts', c => c.personnel_id === id);
+    Repo.remove('Personnel', id);
+    return { id: id };
+  });
+}
+
+// ============ Files（Drive，私有；只能透過 file.get 依權限取回） ============
+function filesFolder_() {
+  const props = PropertiesService.getScriptProperties();
+  const id = props.getProperty('files_folder_id');
+  if (id) { try { return DriveApp.getFolderById(id); } catch (e) {} }
+  const f = DriveApp.createFolder('OPTS Files (Person transfer)');
+  props.setProperty('files_folder_id', f.getId());
+  return f;
+}
+function saveFile_(file, prefix) {
+  if (!file || !file.data) return null;
+  const bytes = Utilities.base64Decode(String(file.data));
+  if (bytes.length > MAX_FILE_BYTES) fail_('File is larger than 10 MB');
+  const name = (prefix ? prefix + ' - ' : '') + str_(file.name || 'file');
+  const blob = Utilities.newBlob(bytes, str_(file.mime) || 'application/octet-stream', name);
+  const f = filesFolder_().createFile(blob);
+  return { id: f.getId(), name: str_(file.name || 'file') };
+}
+function trashFile_(id) {
+  if (!id) return;
+  try { DriveApp.getFileById(id).setTrashed(true); } catch (e) {}
+}
+function getFile_(u, id) {
+  id = str_(id);
+  if (!id) fail_('Missing file id');
+  let allowed = Repo.all('VesselCerts').some(c => c.file_id === id);
+  if (!allowed) {
+    const pc = Repo.all('PersonCerts').find(c => c.file_id === id);
+    if (pc) { personFor_(u, pc.personnel_id); allowed = true; }
+  }
+  if (!allowed) fail_('File not found', 'NOT_FOUND');
+  const f = DriveApp.getFileById(id);
+  const blob = f.getBlob();
+  return { name: f.getName(), mime: blob.getContentType(), data: Utilities.base64Encode(blob.getBytes()) };
+}
+
+// ============ Personnel certificates ============
+function savePersonCert_(u, p) {
+  const person = personFor_(u, p.personnel_id);
+  const type = Repo.get('PersonCertTypes', p.type_id);
+  if (!type) fail_('Certificate type is required');
+  const d = { personnel_id: person.id, type_id: type.id, other_name: str_(p.other_name), cert_no: str_(p.cert_no),
+    issue_date: str_(p.issue_date), expiry_date: str_(p.expiry_date) };
+  if (bool_(type.has_expiry) && !d.expiry_date) fail_('Expiry date is required for ' + type.name);
+  let existing = null;
+  if (p.id) {
+    existing = Repo.get('PersonCerts', p.id);
+    if (!existing || existing.personnel_id !== person.id) fail_('Record not found', 'NOT_FOUND');
+  }
+  if (!existing && !(p.file && p.file.data)) fail_('Please attach the certificate file');
+  const saved = saveFile_(p.file, person.name + ' - ' + type.name);
+  return withLock_(() => {
+    if (saved) {
+      if (existing) trashFile_(existing.file_id);
+      d.file_id = saved.id; d.file_name = saved.name;
+    }
+    // 承包商上傳或修改 → 送 MC 核准；MC 自己建的直接核准
+    if (isStaff_(u)) {
+      d.status = 'Approved'; d.reviewed_by = u.username; d.reviewed_at = nowIso_(); d.review_note = '';
+    } else {
+      d.status = 'Pending'; d.reviewed_by = ''; d.reviewed_at = ''; d.review_note = '';
+    }
+    d.submitted_by = u.username;
+    d.updated_at = nowIso_();
+    if (existing) return Repo.update('PersonCerts', existing.id, d);
+    d.id = genId_();
+    d.created_at = d.updated_at;
+    return Repo.insert('PersonCerts', d);
+  });
+}
+function deletePersonCert_(u, id) {
+  const c = Repo.get('PersonCerts', id);
+  if (!c) return { id: id };
+  personFor_(u, c.personnel_id);
+  withLock_(() => { trashFile_(c.file_id); Repo.remove('PersonCerts', id); });
+  return { id: id };
+}
+function reviewPersonCert_(u, p) {
+  requireRole_(u, ['admin','mc']);
+  const status = p.status === 'Approved' ? 'Approved' : 'Rejected';
+  if (status === 'Rejected' && !str_(p.note)) fail_('Please give a reason for rejection');
+  return withLock_(() => Repo.update('PersonCerts', p.id, { status: status, review_note: str_(p.note), reviewed_by: u.username, reviewed_at: nowIso_() }));
+}
+
+// ============ Vessel certificates ============
+function saveVesselCert_(u, p) {
+  const vessel = Repo.get('Vessels', p.vessel_id);
+  if (!vessel) fail_('Vessel not found', 'NOT_FOUND');
+  const type = Repo.get('VesselCertTypes', p.type_id);
+  if (!type) fail_('Certificate type not found');
+  const saved = saveFile_(p.file, vessel.name + ' - ' + type.name);
+  return withLock_(() => {
+    const existing = Repo.all('VesselCerts').find(c => c.vessel_id === vessel.id && c.type_id === type.id);
+    const d = { vessel_id: vessel.id, type_id: type.id, issue_date: str_(p.issue_date), expiry_date: str_(p.expiry_date),
+      description: str_(p.description), updated_by: u.username, updated_at: nowIso_() };
+    if (saved) {
+      if (existing) trashFile_(existing.file_id);
+      d.file_id = saved.id; d.file_name = saved.name;
+    } else if (p.removeFile && existing) {
+      trashFile_(existing.file_id);
+      d.file_id = ''; d.file_name = '';
+    }
+    if (existing) return Repo.update('VesselCerts', existing.id, d);
+    d.id = genId_();
+    return Repo.insert('VesselCerts', d);
+  });
+}
+function deleteVesselCert_(id) {
+  const c = Repo.get('VesselCerts', id);
+  if (c) withLock_(() => { trashFile_(c.file_id); Repo.remove('VesselCerts', id); });
+  return { id: id };
+}
+
+// ============ Transfer & Site Log ============
+function locName_(cid, vessels, locations) {
+  if (!cid) return 'Not assigned';
+  if (cid.indexOf('vessel_') === 0) { const v = vessels.find(x => x.id === cid.slice(7)); return v ? v.name : 'Unknown vessel'; }
+  if (cid.indexOf('loc_') === 0) { const l = locations.find(x => x.id === cid.slice(4)); return l ? l.name : 'Unknown location'; }
+  return cid;
+}
+function executeTransfer_(u, p) {
+  const ids = Array.isArray(p.personnel_ids) ? p.personnel_ids : [];
+  const to = str_(p.to_location), from = str_(p.from_location);
+  if (!ids.length) fail_('Select at least one person');
+  if (!to || !str_(p.time) || !str_(p.type) || !str_(p.approved_by)) fail_('To, Time, Type and Approved By are required');
+  return withLock_(() => {
+    const vessels = Repo.all('Vessels'), locations = Repo.all('Locations');
+    const now = nowIso_();
+    const transfers = [], updated = [], skipped = [];
+    ids.forEach(id => {
+      const person = Repo.get('Personnel', id);
+      if (!person) { skipped.push(id + ': not found'); return; }
+      const cur = person.current_location || '';
+      if (from && from !== cur) { skipped.push(person.name + ': not at the selected From location'); return; }
+      if (cur === to) { skipped.push(person.name + ': already at destination'); return; }
+      transfers.push({ id: genId_(), personnel_id: person.id, personnel_name: person.name, company: person.company,
+        from_location: cur, to_location: to, time: str_(p.time), type: str_(p.type), transport: str_(p.transport),
+        approved_by: str_(p.approved_by), reason: str_(p.reason), remark: str_(p.remark), logged_by: u.username, created_at: now });
+      updated.push(Repo.update('Personnel', person.id, { current_location: to, updated_at: now }));
+    });
+    Repo.insertMany('Transfers', transfers);
+    let log = null;
+    if (transfers.length) {
+      const transportName = p.transport ? locName_('vessel_' + p.transport, vessels, locations) : '';
+      const fromNames = transfers.map(t => locName_(t.from_location, vessels, locations)).filter((v, i, a) => a.indexOf(v) === i);
+      const detail = (transportName ? transportName + ' ' : '') + transfers.length + 'pax ' + fromNames.join('/') + ' → ' +
+        locName_(to, vessels, locations) + ' (' + str_(p.type) + ')' + (str_(p.remark) ? ' // ' + str_(p.remark) : '');
+      log = { id: genId_(), time: str_(p.time), activity: 'TRANSFER', source: 'System', detail: detail, asset: to,
+        transport: str_(p.transport), personnel: transfers.map(t => t.personnel_name).join(', '), logged_by: u.username, created_at: now };
+      Repo.insert('SiteLog', log);
+    }
+    return { transfers: transfers, personnel: updated, siteLog: log, skipped: skipped };
+  });
+}
+function saveSiteLog_(u, p) {
+  const d = { time: str_(p.time), activity: str_(p.activity) || 'INFO', detail: str_(p.detail), asset: str_(p.asset),
+    transport: str_(p.transport), personnel: str_(p.personnel) };
+  if (!d.time || !d.detail) fail_('Time and Detail are required');
+  return withLock_(() => {
+    if (p.id) return Repo.update('SiteLog', p.id, d);
+    d.id = genId_(); d.source = 'Manual'; d.logged_by = u.username; d.created_at = nowIso_();
+    return Repo.insert('SiteLog', d);
+  });
+}
