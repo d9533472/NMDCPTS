@@ -590,7 +590,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
       <div class="nav-item" data-page="certificates"><span class="ico">🪪</span>Certificates<span class="badge hidden" id="certBadge">0</span></div>
       <div class="nav-item" data-page="ptw"><span class="ico">📝</span>PTW Monitor<span class="badge hidden" id="ptwBadge">0</span></div>
       <div class="nav-title" data-roles="admin">System</div>
-      <div class="nav-item" data-page="admin" data-roles="admin"><span class="ico">⚙️</span>Administration</div>    </nav>
+      <div class="nav-item" data-page="admin" data-roles="admin,mc"><span class="ico">⚙️</span>Administration</div>    </nav>
     <div class="sidebar-foot" id="sideFoot">—</div>
   </aside>
 
@@ -1036,6 +1036,7 @@ function enterApp() {
   document.getElementById('umInfo').innerHTML = `${esc(u.username)}<br>${esc(u.company || '')} · ${esc(ROLE_LABEL[u.role] || u.role)}`;
   document.getElementById('sideFoot').textContent = 'Signed in as ' + (u.name || u.username) + (u.role === 'contractor' ? ' · ' + u.company : '');
   document.querySelectorAll('[data-roles]').forEach(el => el.classList.toggle('hidden', el.dataset.roles.split(',').indexOf(u.role) < 0));
+  document.querySelector('.nav-item[data-page="admin"]').classList.toggle('hidden', !canAdminArea());
   const pageEl = document.querySelector(`.nav-item[data-page="${currentPage}"]`);
   if (!pageEl || pageEl.classList.contains('hidden')) currentPage = 'dashboard';
   go(currentPage);
@@ -1043,6 +1044,13 @@ function enterApp() {
 }
 const isStaff = () => S && (S.user.role === 'admin' || S.user.role === 'mc');
 const isAdmin = () => S && S.user.role === 'admin';
+// MC 可用的系統管理項目（Admin 在 系統設定 → MC 權限 勾選）
+const MC_PERMS = [['users', 'User accounts (contractor / MC only)', '使用者帳號（僅限承包商／MC 帳號）'], ['companies', 'Companies', '公司'],
+  ['vct', 'Vessel certificate requirements', '船舶證書要求'], ['pct', 'Personnel certificate types', '人員證照類型'], ['ann', 'Announcements', '公告'],
+  ['basic', 'Basic settings (meeting title, project name, vessel types, sea-state points)', '基本設定（會議名稱、專案名稱、船型、海象座標）'], ['audit', 'Activity log (view)', '操作紀錄（檢視）']];
+const can = perm => !!S && (S.user.role === 'admin' || (S.user.role === 'mc' && String(S.settings.mc_permissions || '').split(',').indexOf(perm) >= 0));
+const canAdminArea = () => MC_PERMS.some(p => can(p[0]));
+const ADMIN_TAB_PERM = { users: 'users', companies: 'companies', vct: 'vct', pct: 'pct', ann: 'ann', sys: 'basic', audit: 'audit' };
 // 人員編修權：Admin 全部；MC／承包商只限自家公司
 const canEditPerson = p => isAdmin() || (S && String(p.company || '').toLowerCase() === String(S.user.company || '').toLowerCase());
 const isApproved = r => r.approval === 'Approved';
@@ -1488,7 +1496,7 @@ function renderWeather() {
   const c = wxCfg();
   if (!c) {
     WX.built = ''; if (WX.map) { WX.map.remove(); WX.map = null; }
-    el.innerHTML = isAdmin() ? `<div class="wx-empty">🌊 ${L('Sea-state panel: add the pipeline coordinate points under Administration → System.', '海象天氣欄：請到「系統管理 → 系統設定」填入沿管線的座標點後就會顯示。')}</div>` : '';
+    el.innerHTML = can('basic') ? `<div class="wx-empty">🌊 ${L('Sea-state panel: add the pipeline coordinate points under Administration → System.', '海象天氣欄：請到「系統管理 → 系統設定」填入沿管線的座標點後就會顯示。')}</div>` : '';
     return;
   }
   const buildKey = c.key + '|' + LANG;
@@ -1519,7 +1527,7 @@ function renderWeather() {
   const $ = id => document.getElementById(id);
   const wins = wxWins(), win = wins.find(w => w[0] === WX.win) || wins[1];
   // 標題（Admin 可按 ✏️ 修改）
-  if (!WX.editing) $('wxTitle').innerHTML = `🌊 ${c.name ? esc(c.name) : L('Sea state along the pipeline', '沿線海象')}${isAdmin() ? ` <button type="button" class="btn btn-secondary btn-sm" style="padding:0 6px;font-size:11px" title="${L('Edit title', '修改標題')}" onclick="wxEditTitle()">✏️</button>` : ''}`;
+  if (!WX.editing) $('wxTitle').innerHTML = `🌊 ${c.name ? esc(c.name) : L('Sea state along the pipeline', '沿線海象')}${can('basic') ? ` <button type="button" class="btn btn-secondary btn-sm" style="padding:0 6px;font-size:11px" title="${L('Edit title', '修改標題')}" onclick="wxEditTitle()">✏️</button>` : ''}`;
   // 收合／展開
   const fold = $('wxFold');
   fold.classList.toggle('closed', WX.collapsed);
@@ -2712,7 +2720,11 @@ function renderPTW() {
 let adminTab = 'users';
 document.querySelectorAll('#adminTabs .tab').forEach(t => t.onclick = () => { adminTab = t.dataset.t; renderAdmin(); });
 function renderAdmin() {
-  if (!isAdmin()) return;
+  if (!canAdminArea()) return;
+  // MC 只看得到 Admin 開放的分頁
+  const tabs = [...document.querySelectorAll('#adminTabs .tab')];
+  tabs.forEach(t => t.classList.toggle('hidden', !can(ADMIN_TAB_PERM[t.dataset.t])));
+  if (!can(ADMIN_TAB_PERM[adminTab])) adminTab = (tabs.find(t => can(ADMIN_TAB_PERM[t.dataset.t])) || {}).dataset.t;
   document.querySelectorAll('#adminTabs .tab').forEach(t => t.classList.toggle('active', t.dataset.t === adminTab));
   const el = document.getElementById('adminBody');
   // 操作紀錄的版面放在隱藏的 #page-audit 裡；切到這個分頁時搬進來，切走前先搬回去（避免被 innerHTML 清掉）
@@ -2729,7 +2741,7 @@ function adminUsers(el) {
     <div class="table-wrap"><table><thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Company</th><th>Email</th><th>Status</th><th>Last login</th><th></th></tr></thead><tbody>${list.map(u => `<tr>
       <td class="mono">${esc(u.username)}</td><td>${esc(u.name)}</td><td><span class="b ${u.role === 'contractor' ? 'b-info' : 'b-navy'}">${ROLE_LABEL[u.role] || u.role}</span></td><td>${esc(u.company)}</td><td>${esc(u.email)}</td>
       <td>${u.active ? '<span class="b b-ok">Active</span>' : '<span class="b b-na">Disabled</span>'}${u.must_change ? ' <span class="b b-warn">Temp password</span>' : ''}</td><td class="hint">${fmtDT(u.last_login)}</td>
-      <td><div class="acts"><button class="btn btn-secondary btn-sm" onclick="openUser('${u.id}')">Edit</button><button class="btn btn-secondary btn-sm" onclick="resetUserPw('${u.id}')">Reset password</button>${u.id !== S.user.id ? `<button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">🗑</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div></div>`;
+      <td>${!isAdmin() && u.role === 'admin' ? '<span class="hint">' + L('Admin only', '僅 Admin 可修改') + '</span>' : `<div class="acts"><button class="btn btn-secondary btn-sm" onclick="openUser('${u.id}')">Edit</button><button class="btn btn-secondary btn-sm" onclick="resetUserPw('${u.id}')">Reset password</button>${u.id !== S.user.id ? `<button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">🗑</button>` : ''}</div>`}</td></tr>`).join('')}</tbody></table></div></div>`;
 }
 async function deleteUser(id) {
   const u = S.users.find(x => x.id === id);
@@ -2753,7 +2765,7 @@ function openUser(id) {
     <div class="form-group"><label>${id ? 'Email' : L('Email * (sign-in details are sent here)', 'Email *（帳號與臨時密碼會寄到這裡）')}</label><input id="um_email" type="email" value="${esc(u.email || '')}"></div>
     <div class="form-group"><label>Company *</label><select id="um_company"><option value="">-- Select --</option>${activeCompanies().concat(u.company && activeCompanies().indexOf(u.company) < 0 ? [u.company] : []).map(c => `<option value="${esc(c)}" ${c === u.company ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>
       <span class="hint">${L('Not in the list? Add it under the Companies tab first.', '清單沒有？請先到「公司」分頁新增。')}</span></div>
-    <div class="form-group"><label>&nbsp;</label><label class="chk"><input type="checkbox" id="um_admin" ${u.role === 'admin' ? 'checked' : ''} onchange="document.getElementById('um_role').disabled=this.checked"> ${L('System administrator (Admin)', '系統管理員（Admin）')}</label>
+    <div class="form-group" ${isAdmin() ? '' : 'hidden'}><label>&nbsp;</label><label class="chk"><input type="checkbox" id="um_admin" ${u.role === 'admin' ? 'checked' : ''} onchange="document.getElementById('um_role').disabled=this.checked"> ${L('System administrator (Admin)', '系統管理員（Admin）')}</label>
       <span class="hint">${L('Admin can do everything for all companies, approve personnel / vessels and manage accounts.', 'Admin 可操作所有公司的全部功能、核准人員與船舶、管理帳號。')}</span></div>
     <div class="form-group"><label>Role (non-Admin)</label><select id="um_role" ${u.role === 'admin' ? 'disabled' : ''}>${['contractor','mc'].map(r => `<option value="${r}" ${r === u.role ? 'selected' : ''}>${ROLE_LABEL[r]}</option>`).join('')}</select>
       <span class="hint">${L('MC: transfers, site log, meetings, certificate approval · Contractor: own company only. Both can only edit personnel of their own company.', 'MC：轉運、現場日誌、會議、證照核准 · 承包商：只限自家公司。兩者都只能編修自己公司的人員。')}</span></div>
@@ -2866,8 +2878,8 @@ function adminSys(el) {
   const cats = [...new Set(S.personCertTypes.map(t => t.category))];
   const req = requiredCats();
   el.innerHTML = `<div class="section"><div class="section-header"><h3>System settings</h3></div><div class="section-body"><div class="form-grid">
-    <div class="form-group full"><label>Offshore PTW System URL (Web App /exec)</label><input id="st_ptw" value="${esc(S.settings.ptw_url || '')}"></div>
-    <div class="form-group full"><label>${L('PTW link key (paste into PTW System → Administration → Vessels)', 'PTW 連結金鑰（貼到 PTW 系統 → 系統管理 → 船舶）')}</label>
+    <div class="form-group full adm-only"><label>Offshore PTW System URL (Web App /exec)</label><input id="st_ptw" value="${esc(S.settings.ptw_url || '')}"></div>
+    <div class="form-group full adm-only"><label>${L('PTW link key (paste into PTW System → Administration → Vessels)', 'PTW 連結金鑰（貼到 PTW 系統 → 系統管理 → 船舶）')}</label>
       <div class="toolbar"><input id="st_ptwkey" class="mono" readonly placeholder="••••••••" style="flex:1;min-width:220px"><button class="btn btn-secondary btn-sm" onclick="showPtwKey(this,false)">👁 ${L('Show', '顯示')}</button><button class="btn btn-secondary btn-sm" onclick="showPtwKey(this,true)">🔄 ${L('Regenerate', '重新產生')}</button></div>
       <span class="hint">${L('The PTW System uses this key to read approved vessels and to send vessel applications here. After regenerating, paste the new key into PTW or vessel sync stops.', 'PTW 系統用這組金鑰讀取已核准船舶、並把暫存船舶送來這裡申請。重新產生後，要把新金鑰貼到 PTW，否則船舶同步會中斷。')}</span></div>
     <div class="form-group full"><label>${L('Default meeting title (new meeting minutes)', '預設會議名稱（新增會議紀錄時帶入）')}</label><input id="st_mtitle" class="notr" value="${esc(defaultMeetingTitle())}" placeholder="每日協調會議">
@@ -2882,22 +2894,37 @@ function adminSys(el) {
       <div class="toolbar" style="margin-top:6px"><label class="chk">${L('Wave height limit (m)', '浪高限制（m）')} <input id="st_wxwave" class="mono" style="width:70px" value="${esc(S.settings.weather_wave_limit || '1.5')}"></label>
         <label class="chk">${L('Wind limit (kn)', '風速限制（kn）')} <input id="st_wxwind" class="mono" style="width:70px" value="${esc(S.settings.weather_wind_limit || '25')}"></label></div>
       <span class="hint">${L('One point per line: name, latitude, longitude (decimal degrees, north / east positive), in pipeline order — the map joins them as the route. Up to 30 points; one every 5–10 km is plenty (the wave model grid is about 5–25 km). Leave empty to hide the panel. Limits only colour values red — for reference.', '每行一個點：名稱, 緯度, 經度（十進位度數，北緯、東經為正），請依管線順序填寫，地圖會依序連成路線。最多 30 點，約每 5–10 公里一點就夠（海浪模式網格約 5–25 公里，點太密數值會一樣）。留空＝不顯示天氣欄。限制值只用來把超標項目標紅，僅供參考。')}</span></div>
-    <div class="form-group full"><label>Certificate categories required for transfer</label><div class="toolbar">${cats.map(c => `<label class="chk"><input type="checkbox" class="st_cat" value="${esc(c)}" ${req.indexOf(c) >= 0 ? 'checked' : ''}> ${esc(c)}</label>`).join('')}</div></div>
+    <div class="form-group full adm-only"><label>Certificate categories required for transfer</label><div class="toolbar">${cats.map(c => `<label class="chk"><input type="checkbox" class="st_cat" value="${esc(c)}" ${req.indexOf(c) >= 0 ? 'checked' : ''}> ${esc(c)}</label>`).join('')}</div></div>
     <div class="form-actions"><button class="btn btn-primary" onclick="saveSys(this)">💾 Save settings</button></div></div></div></div>
-    <div class="section"><div class="section-header"><h3>📧 ${L('Email notifications', '通知信設定')}</h3></div><div class="section-body"><div class="form-grid">
+    <div class="section adm-only"><div class="section-header"><h3>📧 ${L('Email notifications', '通知信設定')}</h3></div><div class="section-body"><div class="form-grid">
       <div class="form-group full"><label>${L('Recipients (one list for all notifications) — separate with commas or new lines', '收件者（所有通知共用）— 以逗號或換行分隔')}</label><textarea id="st_mails" placeholder="name@nmdc-group.com, mc@example.com">${esc(String(S.settings.notify_emails || '').split(', ').join('\n'))}</textarea></div>
       <div class="form-group full"><label>${L('Send an email when…', '以下情況發信')}</label><div class="toolbar" style="flex-direction:column;align-items:flex-start;gap:6px">${NOTIFY_EVENTS.map(e => `<label class="chk"><input type="checkbox" class="st_ev" value="${e[0]}" ${String(S.settings.notify_events || '').split(',').indexOf(e[0]) >= 0 ? 'checked' : ''}> ${L(e[1], e[2])}</label>`).join('')}</div></div>
       <div class="form-group full"><label>${L('System link used in emails', '信件中的系統連結')}</label><input id="st_appurl" value="${esc(S.settings.app_url || '')}"></div>
       <div class="note full">${L('Emails are sent from the Google account that owns the system (Gmail quota ~100 emails/day). Expiry reminders run every morning at 08:00 for certificates 30 / 14 / 7 / 1 days before expiry and on the expiry day.', '信件由系統擁有者的 Google 帳號寄出（每日約 100 封上限）。到期提醒每天早上 08:00 檢查，於證照到期前 30／14／7／1 天及到期當天寄出。')}</div>
       <div class="form-actions"><button class="btn btn-primary" onclick="saveSys(this)">💾 Save settings</button><button class="btn btn-secondary" onclick="testMail(this)">✉ ${L('Send test email', '寄測試信')}</button></div></div></div></div>
-    <div class="section"><div class="section-header"><h3>Backup</h3></div><div class="section-body"><p class="hint" style="margin-bottom:10px">Data is stored in the Google Sheet “Person transfer”; files are in the Drive folder “OPTS Files (Person transfer)”. You can also download a JSON snapshot of the data (without files).</p>
+    <div class="section adm-only"><div class="section-header"><h3>Backup</h3></div><div class="section-body"><p class="hint" style="margin-bottom:10px">Data is stored in the Google Sheet “Person transfer”; files are in the Drive folder “OPTS Files (Person transfer)”. You can also download a JSON snapshot of the data (without files).</p>
     <button class="btn btn-secondary btn-sm" onclick="exportJSON()">⬇ Download JSON snapshot</button></div></div>
-    <div class="section" style="border-color:#efc4c4"><div class="section-header"><h3>⚠️ ${L('Reset system data', '清空資料（回到初始狀態）')}</h3></div><div class="section-body">
+    <div class="section adm-only" style="border-color:#efc4c4"><div class="section-header"><h3>⚠️ ${L('Reset system data', '清空資料（回到初始狀態）')}</h3></div><div class="section-body">
       <div class="note bad">${L('Permanently deletes the data you tick below. User accounts, companies, certificate requirement settings and system settings are always kept. This cannot be undone — download a JSON snapshot first.',
         '永久刪除下方勾選的資料。使用者帳號、公司清單、證照要求設定與系統設定一律保留。刪除後無法復原 — 請先下載 JSON 快照備份。')}</div>
       <div class="toolbar" style="flex-direction:column;align-items:flex-start;gap:6px;margin-bottom:12px">${RESET_GROUPS.map(g => `<label class="chk"><input type="checkbox" class="rs_grp" value="${g[0]}" checked> ${L(g[1], g[2])}</label>`).join('')}</div>
       <p class="hint" style="margin-bottom:10px">${L('A 6-digit verification code will be emailed to', '系統會寄 6 位數驗證碼到')} <b class="notr">paul.tong@nmdc-group.com</b>${L('. The code is valid for 10 minutes.', '，驗證碼 10 分鐘內有效。')}</p>
-      <button class="btn btn-danger" onclick="resetRequest(this)">🗑 ${L('Send verification code', '寄送驗證碼')}</button></div></div>`;
+      <button class="btn btn-danger" onclick="resetRequest(this)">🗑 ${L('Send verification code', '寄送驗證碼')}</button></div></div>
+    <div class="section adm-only"><div class="section-header"><h3>🧑‍✈️ ${L('MC permissions', 'MC 權限')}</h3></div><div class="section-body">
+      <p class="hint" style="margin-bottom:10px">${L('Tick the Administration areas that MC users may use. PTW link, email settings, data reset and these permissions always stay Admin-only. MC can never create, edit or delete Admin accounts.', '勾選要開放給 MC 使用的系統管理項目。PTW 連結、通知信設定、清空資料與本權限設定一律只有 Admin 能改；MC 也不能新增、修改或刪除 Admin 帳號。')}</p>
+      <div class="toolbar" style="flex-direction:column;align-items:flex-start;gap:8px">${MC_PERMS.map(p => `<label class="chk"><input type="checkbox" class="st_mcp" value="${p[0]}" ${String(S.settings.mc_permissions || '').split(',').indexOf(p[0]) >= 0 ? 'checked' : ''}> ${L(p[1], p[2])}</label>`).join('')}</div>
+      <div class="form-actions" style="margin-top:12px"><button class="btn btn-primary" onclick="saveMcPerms(this)">💾 ${L('Save MC permissions', '儲存 MC 權限')}</button></div></div></div>`;
+  if (!isAdmin()) {
+    el.querySelectorAll('.adm-only').forEach(x => x.remove());
+    el.querySelector('.section-header h3').textContent = L('Basic settings', '基本設定');
+  }
+}
+async function saveMcPerms(btn) {
+  const perms = [...document.querySelectorAll('.st_mcp')].filter(c => c.checked).map(c => c.value);
+  await withBusy(btn, async () => {
+    S.settings = await api('settings.save', { mc_permissions: perms.join(',') });
+    toast(L('MC permissions saved', 'MC 權限已儲存'), 'success'); renderAdmin();
+  });
 }
 const NOTIFY_EVENTS = [
   ['personnel_pending', 'New / resubmitted personnel awaiting Admin approval', '有新增（或退件後重送）的人員待 Admin 核准'],
@@ -2941,6 +2968,16 @@ async function resetRequest(btn) {
 async function saveSys(btn) {
   const cats = [...document.querySelectorAll('.st_cat')].filter(c => c.checked).map(c => c.value);
   const evs = [...document.querySelectorAll('.st_ev')].filter(c => c.checked).map(c => c.value);
+  const basic = { meeting_title: v('st_mtitle'), project_name: v('st_project'), vessel_types: document.getElementById('st_vtypes').value,
+    weather_name: v('st_wxname'), weather_points: document.getElementById('st_wxpts').value, weather_lat: '', weather_lon: '', weather_wave_limit: v('st_wxwave'), weather_wind_limit: v('st_wxwind') };
+  if (!isAdmin()) {
+    await withBusy(btn, async () => {
+      S.settings = await api('settings.save', basic);
+      WX.data = null; WX.err = ''; WX.built = '';
+      toast('Settings saved', 'success'); renderAdmin();
+    });
+    return;
+  }
   await withBusy(btn, async () => {
     S.settings = await api('settings.save', { ptw_url: v('st_ptw'), required_categories: cats.join(','),
       notify_emails: v('st_mails'), notify_events: evs.join(','), app_url: v('st_appurl'), meeting_title: v('st_mtitle'), project_name: v('st_project'), vessel_types: document.getElementById('st_vtypes').value,

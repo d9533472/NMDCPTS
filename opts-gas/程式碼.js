@@ -39,6 +39,7 @@ const DEFAULT_SETTINGS = {
   notify_emails: '',
   notify_events: 'personnel_pending,vessel_pending,cert_pending,review_result,transfer,expiry,meeting',
   meeting_title: '每日協調會議',
+  mc_permissions: '',   // Admin 開放給 MC 的系統管理項目（逗號分隔，見 MC_PERMS）
   // 船型清單（每行一個，系統設定可改）
   vessel_types: ['Pipelay Vessel (PLV)', 'CTV (Crew Transfer Vessel)', 'SOV (Service Operation Vessel)', 'Supply Vessel', 'Tug', 'Barge', 'Crane Vessel', 'Jack-up', 'Dive Support Vessel', 'Survey Vessel', 'Anchor Handling Tug', 'Guard Vessel', 'Other'].join('\n'),
   project_name: '通霄電廠二期更新改建計畫海底輸氣管線統包工程',   // 顯示在通知信頁首
@@ -192,7 +193,7 @@ function audit_(action, user, payload, data, ok, err) {
   } catch (e) { console.warn('audit failed: ' + e.message); }
 }
 function auditList_(u, p) {
-  requireRole_(u, ['admin']);
+  requirePerm_(u, 'audit');
   const from = str_(p.from), to = str_(p.to), who = str_(p.username).toLowerCase(), act = str_(p.action), q = str_(p.q).toLowerCase();
   const limit = Math.min(Number(p.limit) || 500, 3000);
   const rows = Repo.all('AuditLog').filter(r => {
@@ -226,8 +227,8 @@ const ROUTES = {
   'personnel.review': (u, p) => reviewRecord_(u, 'Personnel', p),
   'meeting.save': (u, p) => { requireRole_(u, ['admin','mc']); return saveMeeting_(u, p); },
   'meeting.delete': (u, p) => { requireRole_(u, ['admin','mc']); return deleteWithFiles_('Meetings', p.id); },
-  'announce.save': (u, p) => { requireRole_(u, ['admin']); return saveAnnouncement_(u, p); },
-  'announce.delete': (u, p) => { requireRole_(u, ['admin']); return deleteWithFiles_('Announcements', p.id); },
+  'announce.save': (u, p) => { requirePerm_(u, 'ann'); return saveAnnouncement_(u, p); },
+  'announce.delete': (u, p) => { requirePerm_(u, 'ann'); return deleteWithFiles_('Announcements', p.id); },
   'notify.test': (u, p) => { requireRole_(u, ['admin']); return notifyTest_(u); },
   'audit.list': (u, p) => auditList_(u, p),
   'reset.request': (u, p) => { requireRole_(u, ['admin']); return resetRequest_(u, p); },
@@ -249,10 +250,10 @@ const ROUTES = {
   'sitelog.save': (u, p) => { requireRole_(u, ['admin','mc']); return saveSiteLog_(u, p); },
   'sitelog.delete': (u, p) => { requireRole_(u, ['admin','mc']); withLock_(() => Repo.remove('SiteLog', p.id)); return { id: p.id }; },
 
-  'vcerttype.save': (u, p) => { requireRole_(u, ['admin']); return saveCertType_('VesselCertTypes', p, ['code','name','mandatory','active','sort']); },
-  'pcerttype.save': (u, p) => { requireRole_(u, ['admin']); return saveCertType_('PersonCertTypes', p, ['name','category','has_expiry','active','sort']); },
-  'company.save': (u, p) => { requireRole_(u, ['admin']); return saveSimple_('Companies', p, ['name','active'], ['name']); },
-  'company.delete': (u, p) => { requireRole_(u, ['admin']); return deleteCompany_(p.id); },
+  'vcerttype.save': (u, p) => { requirePerm_(u, 'vct'); return saveCertType_('VesselCertTypes', p, ['code','name','mandatory','active','sort']); },
+  'pcerttype.save': (u, p) => { requirePerm_(u, 'pct'); return saveCertType_('PersonCertTypes', p, ['name','category','has_expiry','active','sort']); },
+  'company.save': (u, p) => { requirePerm_(u, 'companies'); return saveSimple_('Companies', p, ['name','active'], ['name']); },
+  'company.delete': (u, p) => { requirePerm_(u, 'companies'); return deleteCompany_(p.id); },
   'transfer.delete': (u, p) => { requireRole_(u, ['admin']); withLock_(() => Repo.remove('Transfers', p.id)); return { id: p.id }; },
   'user.save': (u, p) => saveUser_(u, p),
   'user.resetPassword': (u, p) => resetPassword_(u, p),
@@ -450,6 +451,17 @@ function settings_() {
   Repo.all('Settings').forEach(s => { o[s.key] = s.value; });
   return o;
 }
+// ---- MC 可用的系統管理項目（Admin 在系統設定勾選）----
+const MC_PERMS = ['users', 'companies', 'vct', 'pct', 'ann', 'basic', 'audit'];
+// 「基本設定」包含的設定欄位；其餘設定（PTW、通知信、清空資料、MC 權限）一律只有 Admin 能改
+const BASIC_SETTINGS = ['meeting_title', 'project_name', 'vessel_types', 'weather_name', 'weather_points', 'weather_lat', 'weather_lon', 'weather_wave_limit', 'weather_wind_limit'];
+function hasPerm_(u, perm) {
+  if (!u) return false;
+  if (u.role === 'admin') return true;
+  if (u.role !== 'mc') return false;
+  return String(settings_().mc_permissions || '').split(',').indexOf(perm) >= 0;
+}
+function requirePerm_(u, perm) { if (!hasPerm_(u, perm)) fail_('Permission denied', 'FORBIDDEN'); }
 function requireRole_(u, roles) {
   if (!u || roles.indexOf(u.role) < 0) fail_('Permission denied', 'FORBIDDEN');
 }
@@ -536,12 +548,19 @@ function changePassword_(u, p) {
   Repo.update('Users', u.id, { password_salt: salt, password_hash: hash_(p.newPassword, salt), must_change: 'FALSE', updated_at: nowIso_() });
   return true;
 }
+function guardAdminTarget_(u, id) {
+  if (u.role === 'admin' || !id) return;
+  const t = Repo.get('Users', id);
+  if (t && t.role === 'admin') fail_('Only an Admin can change an Admin account', 'FORBIDDEN');
+}
 function saveUser_(u, p) {
-  requireRole_(u, ['admin']);
+  requirePerm_(u, 'users');
+  guardAdminTarget_(u, p.id);
   const saved = withLock_(() => {
     const username = str_(p.username).toLowerCase();
     if (!username) fail_('Username required');
     const role = ROLES.indexOf(p.role) >= 0 ? p.role : 'contractor';
+    if (role === 'admin' && u.role !== 'admin') fail_('Only an Admin can create or promote Admin accounts', 'FORBIDDEN');
     const company = str_(p.company);
     if (!company) fail_('Please select a company');
     if (!Repo.all('Companies').some(c => sameCompany_(c.name, company))) fail_('Company is not in the company list — add it under Companies first');
@@ -599,7 +618,8 @@ function sendWelcome_(user, password) {
   }
 }
 function resetPassword_(u, p) {
-  requireRole_(u, ['admin']);
+  requirePerm_(u, 'users');
+  guardAdminTarget_(u, p.id);
   checkPassword_(p.password);
   const salt = Utilities.getUuid();
   return withLock_(() => {
@@ -609,7 +629,8 @@ function resetPassword_(u, p) {
   });
 }
 function deleteUser_(u, id) {
-  requireRole_(u, ['admin']);
+  requirePerm_(u, 'users');
+  guardAdminTarget_(u, id);
   if (id === u.id) fail_('You cannot delete your own account');
   return withLock_(() => {
     killSessions_(id);
@@ -618,7 +639,13 @@ function deleteUser_(u, id) {
   });
 }
 function saveSettings_(u, p) {
-  requireRole_(u, ['admin']);
+  if (u.role !== 'admin') {
+    requirePerm_(u, 'basic');
+    const q = {};
+    BASIC_SETTINGS.forEach(k => { if (p[k] !== undefined) q[k] = p[k]; });
+    p = q;
+  }
+  if (p.mc_permissions !== undefined) p.mc_permissions = String(p.mc_permissions || '').split(',').map(x => x.trim()).filter(x => MC_PERMS.indexOf(x) >= 0).join(',');
   return withLock_(() => {
     if (p.notify_emails !== undefined) {
       const list = str_(p.notify_emails).split(/[\s,;]+/).filter(Boolean);
@@ -676,7 +703,7 @@ function loadData_(u) {
     personnel: personnel,
     transfers: Repo.all('Transfers').filter(t => isStaff_(u) || ids[t.personnel_id]),
     siteLog: Repo.all('SiteLog'),
-    announcements: Repo.all('Announcements').filter(a => u.role === 'admin' || a.active !== 'FALSE'),
+    announcements: Repo.all('Announcements').filter(a => hasPerm_(u, 'ann') || a.active !== 'FALSE'),
     vesselCertTypes: Repo.all('VesselCertTypes'),
     vesselCerts: Repo.all('VesselCerts'),
     personCertTypes: Repo.all('PersonCertTypes'),
@@ -688,7 +715,7 @@ function loadData_(u) {
     }),
     // 會議勾選參與者用：Admin／MC 拿全部人員的精簡清單
     people: isStaff_(u) ? personnelAll.map(p => ({ id: p.id, name: p.name, company: p.company, position: p.position })) : [],
-    users: u.role === 'admin' ? Repo.all('Users').map(publicUser_) : []
+    users: hasPerm_(u, 'users') ? Repo.all('Users').map(publicUser_) : []
   };
 }
 function meetingVisible_(u, m, personnelAll) {
@@ -857,7 +884,7 @@ function getFile_(u, id) {
     const pc = Repo.all('PersonCerts').find(c => c.file_id === id);
     if (pc) { personFor_(u, pc.personnel_id, false); allowed = true; }
   }
-  if (!allowed) allowed = Repo.all('Announcements').some(a => (u.role === 'admin' || a.active !== 'FALSE') && parseList_(a.attachments).some(x => x.id === id));
+  if (!allowed) allowed = Repo.all('Announcements').some(a => (hasPerm_(u, 'ann') || a.active !== 'FALSE') && parseList_(a.attachments).some(x => x.id === id));
   if (!allowed) {
     const all = Repo.all('Personnel');
     allowed = Repo.all('Meetings').some(m => meetingVisible_(u, m, all) && parseList_(m.attachments).some(x => x.id === id));
