@@ -2735,8 +2735,12 @@ async function deleteUser(id) {
   if (!await confirmBox(L(`Delete account <b>${esc(u.username)}</b>? (Tip: untick “Account active” instead to keep it for later.)`, `確定刪除帳號 <b>${esc(u.username)}</b>？（提示：若之後還會用到，可改為取消勾選「帳號啟用」。）`))) return;
   await withBusy(null, async () => { await api('user.delete', { id }); dropId(S.users, id); renderAdmin(); toast('User deleted', 'success'); }, 'Deleting…');
 }
-function showCredentials(username, pw) {
-  openModal('Account details', `<p style="margin-bottom:12px">Send these sign-in details to the user. They will be asked to set their own password at first sign-in.</p>
+function showCredentials(username, pw, mail) {
+  const sent = mail && mail.sent;
+  openModal('Account details', `${sent
+      ? `<div class="note" style="margin-bottom:12px;background:var(--green-bg);color:var(--green-dark)">✉ ${L('The sign-in details have been emailed to ', '帳號與臨時密碼已寄到 ')}<b class="notr">${esc(mail.to)}</b>${L('.', '。')}</div>`
+      : mail ? `<div class="note bad" style="margin-bottom:12px">⚠ ${L('The email could not be sent', '通知信寄送失敗')}${mail.error ? '：' + esc(mail.error) : ''}${L(' — please pass on the details below yourself.', '，請自行把下面的資料告知對方。')}</div>` : ''}
+    <p style="margin-bottom:12px">${sent ? L('A copy for your reference. They will be asked to set their own password at first sign-in.', '以下為備份，對方首次登入時會被要求設定新密碼。') : 'Send these sign-in details to the user. They will be asked to set their own password at first sign-in.'}</p>
     <div class="note" style="font-size:14px;line-height:1.9">Website: <b>https://d9533472.github.io/NMDCPTS/</b><br>Username: <b class="mono" style="font-size:14px">${esc(username)}</b><br>Temporary password: <b class="mono" style="font-size:14px">${esc(pw)}</b></div>
     <button class="btn btn-primary" onclick="closeTop()">Done</button>`);
 }
@@ -2745,7 +2749,7 @@ function openUser(id) {
   openModal(id ? 'Edit user' : 'Add user', `<div class="form-grid">
     <div class="form-group"><label>Username *</label><input id="um_user" value="${esc(u.username || '')}"></div>
     <div class="form-group"><label>Full name</label><input id="um_name" value="${esc(u.name || '')}"></div>
-    <div class="form-group"><label>Email</label><input id="um_email" value="${esc(u.email || '')}"></div>
+    <div class="form-group"><label>${id ? 'Email' : L('Email * (sign-in details are sent here)', 'Email *（帳號與臨時密碼會寄到這裡）')}</label><input id="um_email" type="email" value="${esc(u.email || '')}"></div>
     <div class="form-group"><label>Company *</label><select id="um_company"><option value="">-- Select --</option>${activeCompanies().concat(u.company && activeCompanies().indexOf(u.company) < 0 ? [u.company] : []).map(c => `<option value="${esc(c)}" ${c === u.company ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>
       <span class="hint">${L('Not in the list? Add it under the Companies tab first.', '清單沒有？請先到「公司」分頁新增。')}</span></div>
     <div class="form-group"><label>&nbsp;</label><label class="chk"><input type="checkbox" id="um_admin" ${u.role === 'admin' ? 'checked' : ''} onchange="document.getElementById('um_role').disabled=this.checked"> ${L('System administrator (Admin)', '系統管理員（Admin）')}</label>
@@ -2761,10 +2765,13 @@ async function saveUser(btn, id) {
   const d = { id, username: v('um_user'), name: v('um_name'), email: v('um_email'), role: document.getElementById('um_admin').checked ? 'admin' : v('um_role'), company: v('um_company'), active: document.getElementById('um_active').checked };
   if (!d.company) { toast(L('Please select a company', '請選擇公司'), 'error'); return; }
   if (!id) d.password = v('um_pw');
+  if (!id && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)) { toast(L('Please enter a valid email — the sign-in details are emailed to the user', '請填寫正確的 Email，系統會把帳號與臨時密碼寄給對方'), 'error'); return; }
   await withBusy(btn, async () => {
-    upsert(S.users, await api('user.save', d));
+    const rec = await api('user.save', d);
+    const mail = rec.mail; delete rec.mail;
+    upsert(S.users, rec);
     closeTop(); renderAdmin();
-    if (id) toast('User updated', 'success'); else showCredentials(d.username.toLowerCase(), d.password);
+    if (id) toast('User updated', 'success'); else showCredentials(d.username.toLowerCase(), d.password, mail);
   });
 }
 async function resetUserPw(id) {

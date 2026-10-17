@@ -535,7 +535,7 @@ function changePassword_(u, p) {
 }
 function saveUser_(u, p) {
   requireRole_(u, ['admin']);
-  return withLock_(() => {
+  const saved = withLock_(() => {
     const username = str_(p.username).toLowerCase();
     if (!username) fail_('Username required');
     const role = ROLES.indexOf(p.role) >= 0 ? p.role : 'contractor';
@@ -546,6 +546,8 @@ function saveUser_(u, p) {
     if (dup) fail_('Username already exists');
     const patch = { username: username, name: str_(p.name), email: str_(p.email), role: role, company: company,
       active: bool_(p.active) ? 'TRUE' : 'FALSE', updated_at: nowIso_() };
+    if (patch.email && !EMAIL_RE.test(patch.email)) fail_('Invalid email address');
+    if (!p.id && !patch.email) fail_('Email is required — the sign-in details are emailed to the user');
     if (p.id) {
       if (p.id === u.id && (role !== 'admin' || patch.active !== 'TRUE')) fail_('You cannot demote or disable your own account');
       const saved = Repo.update('Users', p.id, patch);
@@ -557,8 +559,34 @@ function saveUser_(u, p) {
     const rec = Object.assign({ id: genId_(), password_salt: salt, password_hash: hash_(p.password, salt), must_change: 'TRUE',
       last_login: '', created_at: nowIso_() }, patch);
     Repo.insert('Users', rec);
-    return publicUser_(rec);
+    return rec;
   });
+  if (p.id) return saved;
+  // 新帳號：把帳號與臨時密碼寄給本人（寄信失敗不影響帳號建立，前端會提示改用手動告知）
+  return Object.assign(publicUser_(saved), { mail: sendWelcome_(saved, p.password) });
+}
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const ROLE_NAME_ = { admin: ['Administrator', '系統管理員'], mc: ['Marine Coordinator (MC)', '海事協調員（MC）'], contractor: ['Contractor', '承包商'] };
+function sendWelcome_(user, password) {
+  try {
+    const st = settings_();
+    const role = ROLE_NAME_[user.role] || [user.role, user.role];
+    const rows = [
+      ['Name｜姓名', user.name || user.username],
+      ['Company｜公司', user.company],
+      ['Role｜角色', role[0] + '｜' + role[1]],
+      ['Website｜系統網址', st.app_url],
+      ['Username｜帳號', user.username],
+      ['Temporary password｜臨時密碼', password],
+      ['Note｜說明', 'You will be asked to set your own password at first sign-in. Please do not share this email.｜首次登入時系統會要求您設定新密碼，請勿轉寄此信。']
+    ];
+    MailApp.sendEmail({ to: user.email, subject: '[OPTS] Your account｜您的 OPTS 帳號已建立', name: 'OPTS — NMDC',
+      htmlBody: mailHtml_('Your account｜帳號已建立', rows, st.app_url) });
+    return { sent: true, to: user.email };
+  } catch (e) {
+    console.warn('welcome mail failed: ' + e.message);
+    return { sent: false, to: user.email, error: e.message };
+  }
 }
 function resetPassword_(u, p) {
   requireRole_(u, ['admin']);
