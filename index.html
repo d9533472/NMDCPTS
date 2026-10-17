@@ -1150,10 +1150,12 @@ function locName(cid, withIcon) {
   if (cid.indexOf('loc_') === 0) { const x = S.locations.find(l => l.id === cid.slice(4)); return x ? (withIcon ? '📍 ' : '') + x.name : 'Unknown location'; }
   return cid;
 }
-function locOptions(selected, firstLabel, extra) {
+// counts（選填）：{位置 id: 人數}，有給就在選項後面加「(N 人)」
+function locOptions(selected, firstLabel, extra, counts) {
+  const n = id => counts ? ` (${counts[id] || 0}${L(" POB", " 人")})` : "";
   let h = `<option value="">${esc(firstLabel || '-- Select --')}</option>`;
-  if (S.vessels.length) h += '<optgroup label="Vessels">' + S.vessels.map(x => `<option value="vessel_${x.id}" ${selected === 'vessel_' + x.id ? 'selected' : ''}>🚢 ${esc(x.name)}</option>`).join('') + '</optgroup>';
-  if (S.locations.length) h += '<optgroup label="Locations / Assets">' + S.locations.map(x => `<option value="loc_${x.id}" ${selected === 'loc_' + x.id ? 'selected' : ''}>📍 ${esc(x.name)}${x.type ? ' (' + esc(x.type) + ')' : ''}</option>`).join('') + '</optgroup>';
+  if (S.vessels.length) h += '<optgroup label="Vessels">' + S.vessels.map(x => `<option value="vessel_${x.id}" ${selected === 'vessel_' + x.id ? 'selected' : ''}>🚢 ${esc(x.name)}${n('vessel_' + x.id)}</option>`).join('') + '</optgroup>';
+  if (S.locations.length) h += '<optgroup label="Locations / Assets">' + S.locations.map(x => `<option value="loc_${x.id}" ${selected === 'loc_' + x.id ? 'selected' : ''}>📍 ${esc(x.name)}${x.type ? ' (' + esc(x.type) + ')' : ''}${n('loc_' + x.id)}</option>`).join('') + '</optgroup>';
   return h + (extra || '');
 }
 function vesselOptions(selected, firstLabel) {
@@ -2305,7 +2307,9 @@ function exportHistoryCSV() {
 // ==================== POB ====================
 function initPOB() {
   document.getElementById('pobLbl').textContent = L('📍 Select a vessel / location to see who is on board', '📍 請選擇船舶／位置，查看在場人員');
-  const cur = v('pobSel'); document.getElementById('pobSel').innerHTML = locOptions(cur, '-- Select vessel / location --'); renderPOB();
+  const cnt = {};
+  S.personnel.forEach(p => { if (p.current_location) cnt[p.current_location] = (cnt[p.current_location] || 0) + 1; });
+  const cur = v('pobSel'); document.getElementById('pobSel').innerHTML = locOptions(cur, '-- Select vessel / location --', '', cnt); renderPOB();
 }
 function pickPOB(cid) { document.getElementById('pobSel').value = cid; renderPOB(); }
 // 位置快選：有人的排前面，並顯示在場人數
