@@ -155,6 +155,16 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
 .pob-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
 .pob-item{border:1px solid var(--border);border-radius:var(--radius);padding:11px 12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
 .pob-item:hover{border-color:var(--green);background:var(--green-bg)}
+.pob-lbl{display:block;font-weight:700;font-size:15px;color:var(--navy);margin-bottom:8px}
+.pob-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pob-sel{flex:1 1 280px;max-width:520px;font-size:15px;padding:10px 12px;border:2px solid var(--green);border-radius:var(--radius)}
+.pob-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.pob-chip{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border:1px solid var(--border-2);border-radius:20px;background:var(--card);color:var(--text);cursor:pointer;font:inherit;font-size:13px}
+.pob-chip:hover{border-color:var(--green)}
+.pob-chip.active{background:var(--navy);border-color:var(--navy);color:#fff}
+.pob-chip .n{background:var(--green-bg);color:var(--green-dark);border-radius:10px;padding:0 8px;font-weight:700;font-size:12px}
+.pob-chip.active .n{background:var(--green);color:#fff}
+.pob-chip.zero{opacity:.6}
 .pob-num{background:var(--navy);color:#fff;border-radius:12px;padding:1px 10px;font-weight:700;font-size:12px}
 .tf-list{max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius)}
 .tf-row{display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid #edf1f5;cursor:pointer;font-size:13px}
@@ -626,10 +636,13 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
 
       <!-- POB -->
       <div class="page" id="page-pob">
+        <div class="section pob-pick"><div class="section-body">
+          <label class="pob-lbl notr" for="pobSel" id="pobLbl"></label>
+          <div class="pob-row"><select class="fi pob-sel" id="pobSel" onchange="renderPOB()"></select><button class="btn btn-secondary" onclick="exportPOBCSV()">⬇ CSV</button></div>
+          <div class="pob-chips" id="pobChips"></div>
+        </div></div>
         <div class="section">
-          <div class="section-header"><h3>Persons On Board</h3>
-            <div class="toolbar"><select class="fi" id="pobSel" onchange="renderPOB()"></select><button class="btn btn-secondary btn-sm" onclick="exportPOBCSV()">⬇ CSV</button></div>
-          </div>
+          <div class="section-header"><h3>Persons On Board</h3></div>
           <div class="section-body" id="pobHead"></div>
           <div class="table-wrap"><table><thead><tr><th>#</th><th>Name</th><th>Company</th><th>Position</th><th>Phone</th><th>Blood type</th><th>Medical</th><th>Offshore Safety Training</th><th>Last transfer</th></tr></thead><tbody id="pobBody"></tbody></table></div>
         </div>
@@ -1721,6 +1734,7 @@ async function executeTransfer(btn) {
     document.getElementById('tfTime').value = nowLocal();
     refreshPage();
   }, 'Executing transfer…');
+  liveSync();
 }
 
 // ==================== SITE LOG ====================
@@ -1811,9 +1825,22 @@ function exportHistoryCSV() {
 }
 
 // ==================== POB ====================
-function initPOB() { const cur = v('pobSel'); document.getElementById('pobSel').innerHTML = locOptions(cur, '-- Select vessel / location --'); renderPOB(); }
+function initPOB() {
+  document.getElementById('pobLbl').textContent = L('📍 Select a vessel / location to see who is on board', '📍 請選擇船舶／位置，查看在場人員');
+  const cur = v('pobSel'); document.getElementById('pobSel').innerHTML = locOptions(cur, '-- Select vessel / location --'); renderPOB();
+}
+function pickPOB(cid) { document.getElementById('pobSel').value = cid; renderPOB(); }
+// 位置快選：有人的排前面，並顯示在場人數
+function renderPOBChips(cid) {
+  const cnt = {};
+  S.personnel.forEach(p => { if (p.current_location) cnt[p.current_location] = (cnt[p.current_location] || 0) + 1; });
+  const all = S.vessels.map(x => 'vessel_' + x.id).concat(S.locations.map(x => 'loc_' + x.id))
+    .sort((a, b) => (cnt[b] || 0) - (cnt[a] || 0) || locName(a).localeCompare(locName(b)));
+  document.getElementById('pobChips').innerHTML = all.map(id => `<button type="button" class="pob-chip notr ${id === cid ? 'active' : ''} ${cnt[id] ? '' : 'zero'}" onclick="pickPOB('${id}')">${esc(locName(id, true))}<span class="n">${cnt[id] || 0}</span></button>`).join('');
+}
 function renderPOB() {
   const cid = v('pobSel');
+  renderPOBChips(cid);
   const head = document.getElementById('pobHead'), tb = document.getElementById('pobBody');
   if (!cid) { head.innerHTML = '<span class="muted">Select a vessel or location.</span>'; tb.innerHTML = ''; return; }
   const list = S.personnel.filter(p => p.current_location === cid).sort((a, b) => a.name.localeCompare(b.name));
