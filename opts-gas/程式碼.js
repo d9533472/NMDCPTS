@@ -10,7 +10,7 @@
 // 通知信：Settings.notify_emails（共用收件者）＋ notify_events（啟用的事件）；每日到期提醒由 setup() 建立的觸發器執行。
 // ============================================================
 
-const VERSION = '2.3';
+const VERSION = '2.4';
 const CAT_SAFETY = 'Offshore Safety Training';   // 原 'Sea Survival'（2.1 改名，ensureSchema_ 會遷移舊資料）
 
 const SCHEMAS = {
@@ -19,7 +19,8 @@ const SCHEMAS = {
   Companies: ['id','name','active','created_at'],
   Vessels: ['id','name','mmsi','imo','type','flag','operator','contact_person','phone','whatsapp','email','remark','approval','approval_note','approved_by','approved_at','created_by','created_at','updated_at'],
   Personnel: ['id','name','company','nationality','position','email','phone','passport','blood_type','emergency','emergency_phone','photo','remark','current_location','approval','approval_note','approved_by','approved_at','created_by','created_at','updated_at'],
-  Meetings: ['id','title','time','location','items','attendees','externals','remark','created_by','created_at','updated_at'],
+  Meetings: ['id','title','time','location','items','attendees','externals','remark','attachments','created_by','created_at','updated_at'],
+  Announcements: ['id','text_zh','text_en','level','link_url','link_text','attachments','active','created_by','created_at','updated_at'],
   AuditLog: ['id','time','username','name','role','company','action','target_id','target_name','detail','result','error'],
   Locations: ['id','name','type','linked_vessel','remark','created_at','updated_at'],
   Transfers: ['id','personnel_id','personnel_name','company','from_location','to_location','time','type','transport','approved_by','reason','remark','logged_by','created_at'],
@@ -37,7 +38,13 @@ const DEFAULT_SETTINGS = {
   app_url: 'https://d9533472.github.io/NMDCPTS/',
   notify_emails: '',
   notify_events: 'personnel_pending,vessel_pending,cert_pending,review_result,transfer,expiry,meeting',
-  meeting_title: '每日協調會議'
+  meeting_title: '每日協調會議',
+  // 儀表板天氣／海象（Open-Meteo 預報＋Windy 地圖）；座標空白＝不顯示天氣欄
+  weather_name: '',
+  weather_lat: '',
+  weather_lon: '',
+  weather_wave_limit: '1.5',
+  weather_wind_limit: '25'
 };
 const NOTIFY_EVENTS = ['personnel_pending','vessel_pending','cert_pending','review_result','transfer','expiry','meeting'];
 const EXPIRY_ALERT_DAYS = [30, 14, 7, 1, 0];
@@ -124,6 +131,7 @@ function auditDetail_(payload) {
     const v = payload[k];
     if (AUDIT_SECRET[k]) { if (v) o[k] = k === 'photo' ? '(photo)' : '***'; return; }
     if (k === 'file') { if (v && v.name) o.file = v.name; return; }
+    if (k === 'newFiles') { if (Array.isArray(v) && v.length) o.newFiles = v.map(x => x && x.name).join(', '); return; }
     if (v === '' || v === null || v === undefined) return;
     o[k] = (typeof v === 'object') ? v : String(v);
   });
@@ -141,7 +149,7 @@ function auditTarget_(action, payload, data) {
 }
 /** 刪除類動作：刪之前先記下對象名稱，紀錄才看得出刪了什麼 */
 const DELETE_SHEETS = { 'personnel.delete': 'Personnel', 'vessel.delete': 'Vessels', 'location.delete': 'Locations', 'transfer.delete': 'Transfers',
-  'sitelog.delete': 'SiteLog', 'meeting.delete': 'Meetings', 'user.delete': 'Users', 'company.delete': 'Companies', 'pcert.delete': 'PersonCerts', 'vcert.delete': 'VesselCerts' };
+  'sitelog.delete': 'SiteLog', 'meeting.delete': 'Meetings', 'announce.delete': 'Announcements', 'user.delete': 'Users', 'company.delete': 'Companies', 'pcert.delete': 'PersonCerts', 'vcert.delete': 'VesselCerts' };
 function deletedName_(action, p) {
   const sheet = DELETE_SHEETS[action];
   if (!sheet || !p.id) return '';
@@ -201,7 +209,9 @@ const ROUTES = {
   'vessel.review': (u, p) => reviewRecord_(u, 'Vessels', p),
   'personnel.review': (u, p) => reviewRecord_(u, 'Personnel', p),
   'meeting.save': (u, p) => { requireRole_(u, ['admin','mc']); return saveMeeting_(u, p); },
-  'meeting.delete': (u, p) => { requireRole_(u, ['admin','mc']); withLock_(() => Repo.remove('Meetings', p.id)); return { id: p.id }; },
+  'meeting.delete': (u, p) => { requireRole_(u, ['admin','mc']); return deleteWithFiles_('Meetings', p.id); },
+  'announce.save': (u, p) => { requireRole_(u, ['admin']); return saveAnnouncement_(u, p); },
+  'announce.delete': (u, p) => { requireRole_(u, ['admin']); return deleteWithFiles_('Announcements', p.id); },
   'notify.test': (u, p) => { requireRole_(u, ['admin']); return notifyTest_(u); },
   'audit.list': (u, p) => auditList_(u, p),
   'reset.request': (u, p) => { requireRole_(u, ['admin']); return resetRequest_(u, p); },
@@ -566,6 +576,15 @@ function saveSettings_(u, p) {
       p.notify_emails = list.join(', ');
     }
     if (p.meeting_title !== undefined && !str_(p.meeting_title)) p.meeting_title = DEFAULT_SETTINGS.meeting_title;
+    [['weather_lat', 90], ['weather_lon', 180]].forEach(([k, max]) => {
+      if (p[k] === undefined || str_(p[k]) === '') return;
+      const n = Number(str_(p[k]));
+      if (!isFinite(n) || Math.abs(n) > max) fail_((k === 'weather_lat' ? 'Latitude' : 'Longitude') + ' must be a number between -' + max + ' and ' + max);
+      p[k] = String(n);
+    });
+    ['weather_wave_limit', 'weather_wind_limit'].forEach(k => {
+      if (p[k] !== undefined && !(Number(str_(p[k])) > 0)) p[k] = DEFAULT_SETTINGS[k];
+    });
     Object.keys(DEFAULT_SETTINGS).forEach(k => {
       if (p[k] === undefined) return;
       if (Repo.get('Settings', k)) Repo.update('Settings', k, { value: str_(p[k]) });
@@ -590,6 +609,7 @@ function loadData_(u) {
     personnel: personnel,
     transfers: Repo.all('Transfers').filter(t => isStaff_(u) || ids[t.personnel_id]),
     siteLog: Repo.all('SiteLog'),
+    announcements: Repo.all('Announcements').filter(a => u.role === 'admin' || a.active !== 'FALSE'),
     vesselCertTypes: Repo.all('VesselCertTypes'),
     vesselCerts: Repo.all('VesselCerts'),
     personCertTypes: Repo.all('PersonCertTypes'),
@@ -770,6 +790,11 @@ function getFile_(u, id) {
     const pc = Repo.all('PersonCerts').find(c => c.file_id === id);
     if (pc) { personFor_(u, pc.personnel_id, false); allowed = true; }
   }
+  if (!allowed) allowed = Repo.all('Announcements').some(a => (u.role === 'admin' || a.active !== 'FALSE') && parseList_(a.attachments).some(x => x.id === id));
+  if (!allowed) {
+    const all = Repo.all('Personnel');
+    allowed = Repo.all('Meetings').some(m => meetingVisible_(u, m, all) && parseList_(m.attachments).some(x => x.id === id));
+  }
   if (!allowed) fail_('File not found', 'NOT_FOUND');
   const f = DriveApp.getFileById(id);
   const blob = f.getBlob();
@@ -937,6 +962,9 @@ function saveMeeting_(u, p) {
   if (!items.length) fail_('Add at least one discussion item');
   const isNew = !p.id;
   const rec = withLock_(() => {
+    const old = p.id ? Repo.get('Meetings', p.id) : null;
+    if (p.id && !old) fail_('Record not found', 'NOT_FOUND');
+    d.attachments = JSON.stringify(applyAttachments_(old ? old.attachments : '', p, 'Meeting ' + d.time.slice(0, 10)));
     if (p.id) return Repo.update('Meetings', p.id, d);
     d.id = genId_(); d.created_by = u.username; d.created_at = d.updated_at;
     return Repo.insert('Meetings', d);
@@ -950,6 +978,49 @@ function saveMeeting_(u, p) {
         .concat(items.map((i, n) => ['Item ' + (n + 1) + '｜議題 ' + (n + 1), [i.topic, i.discussion, i.action ? '→ ' + i.action + (i.owner ? ' (' + i.owner + ')' : '') + (i.due ? ' ' + i.due : '') : ''].filter(Boolean).join(' — ')])));
   }
   return rec;
+}
+
+// ============ Attachments ============
+const MAX_ATTACH_TOTAL = 25 * 1024 * 1024;   // 單次儲存最多 25 MB（GAS 請求大小有限）
+/** 附件清單：保留舊的（扣掉 removeFiles）＋存入 newFiles，回傳 [{id,name}] */
+function applyAttachments_(oldJson, p, prefix) {
+  const remove = parseList_(p.removeFiles).map(str_);
+  const add = parseList_(p.newFiles);
+  const total = add.reduce((n, x) => n + Math.floor(String((x && x.data) || '').length * 3 / 4), 0);
+  if (total > MAX_ATTACH_TOTAL) fail_('Attachments are larger than 25 MB in total — upload them in several saves');
+  const keep = parseList_(oldJson).filter(a => {
+    if (remove.indexOf(a.id) >= 0) { trashFile_(a.id); return false; }
+    return true;
+  });
+  add.forEach(x => { const saved = saveFile_(x, prefix); if (saved) keep.push(saved); });
+  return keep;
+}
+function deleteWithFiles_(sheet, id) {
+  return withLock_(() => {
+    const rec = Repo.get(sheet, id);
+    if (rec) { parseList_(rec.attachments).forEach(a => trashFile_(a.id)); Repo.remove(sheet, id); }
+    return { id: id };
+  });
+}
+
+// ============ Announcements ============
+const ANNOUNCE_LEVELS = ['info', 'warning', 'danger'];
+function saveAnnouncement_(u, p) {
+  const d = { text_zh: str_(p.text_zh), text_en: str_(p.text_en), level: ANNOUNCE_LEVELS.indexOf(str_(p.level)) >= 0 ? str_(p.level) : 'info',
+    link_url: str_(p.link_url), link_text: str_(p.link_text).slice(0, 120), updated_at: nowIso_() };
+  if (p.active !== undefined) d.active = bool_(p.active) ? 'TRUE' : 'FALSE';
+  if (!d.text_zh) fail_('Chinese text is required');
+  if (!d.text_en) fail_('English text is required');
+  if (d.link_url && !/^https?:\/\//i.test(d.link_url)) fail_('Link must start with http:// or https://');
+  return withLock_(() => {
+    const old = p.id ? Repo.get('Announcements', p.id) : null;
+    if (p.id && !old) fail_('Record not found', 'NOT_FOUND');
+    d.attachments = JSON.stringify(applyAttachments_(old ? old.attachments : '', p, 'Announcement'));
+    if (old) return Repo.update('Announcements', p.id, d);
+    d.id = genId_(); d.created_by = u.username; d.created_at = d.updated_at;
+    if (d.active === undefined) d.active = 'TRUE';
+    return Repo.insert('Announcements', d);
+  });
 }
 
 // ============ Notifications ============
@@ -994,6 +1065,8 @@ const RESET_GROUPS = {
   sitelog: ['SiteLog'],
   meetings: ['Meetings']
 };
+// 清空資料時一併丟掉附件的表
+const RESET_ATTACH = { meetings: 'Meetings' };
 function resetRequest_(u, p) {
   const groups = (Array.isArray(p.groups) ? p.groups : []).filter(g => RESET_GROUPS[g]);
   if (!groups.length) fail_('Tick at least one item to clear');
@@ -1028,6 +1101,7 @@ function resetConfirm_(u, p) {
     const g = st.groups;
     if (g.indexOf('personnel') >= 0) Repo.all('PersonCerts').forEach(c => { if (c.file_id) { trashFile_(c.file_id); files++; } });
     if (g.indexOf('vessels') >= 0) Repo.all('VesselCerts').forEach(c => { if (c.file_id) { trashFile_(c.file_id); files++; } });
+    g.forEach(k => { if (RESET_ATTACH[k]) Repo.all(RESET_ATTACH[k]).forEach(x => parseList_(x.attachments).forEach(a => { trashFile_(a.id); files++; })); });
     g.forEach(k => RESET_GROUPS[k].forEach(sheet => { rows += Repo.clear(sheet); }));
     // 刪了船舶／位置但人員還在 → 把指向已刪位置的派駐清掉
     if (g.indexOf('personnel') < 0 && (g.indexOf('vessels') >= 0 || g.indexOf('locations') >= 0)) {

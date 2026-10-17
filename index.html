@@ -152,6 +152,41 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
 .alert strong{display:block}
 .alert span{color:var(--muted);font-size:12px}
 .alert.click{cursor:pointer}.alert.click:hover{filter:brightness(.97)}
+.alert>div{flex:1;min-width:0}
+.alert .dleft{flex-shrink:0;align-self:center;width:34px;height:34px;border-radius:50%;background:var(--danger);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;box-shadow:0 2px 6px rgba(198,40,40,.35)}
+.alert .dleft b{font-size:13px;font-weight:700}.alert .dleft small{font-size:9px;opacity:.9;color:#fff}
+/* 天氣／海象 */
+.wx{background:linear-gradient(135deg,#002038 0%,#0b3d66 60%,#0f5a7a 100%);color:#fff;border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:14px;box-shadow:var(--shadow)}
+.wx-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:10px}
+.wx-head h3{font-size:15px;font-weight:700;margin-right:auto}
+.wx-head .wx-sub{font-size:11px;opacity:.75}
+.wx-pill{border-radius:20px;padding:3px 10px;font-size:12px;font-weight:700}
+.wx-pill.ok{background:rgba(0,176,80,.25);color:#7dffb4}.wx-pill.no{background:rgba(198,40,40,.35);color:#ffc2c2}
+.wx .btn{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)}
+.wx-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.wx-t{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 10px}
+.wx-t .k{font-size:11px;opacity:.75}.wx-t .v{font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace}.wx-t .v small{font-size:12px;opacity:.8;margin-left:2px}
+.wx-t .s{font-size:11px;opacity:.8}
+.wx-t.over{border-color:#ff8a80;background:rgba(198,40,40,.28)}
+.wx-fc{display:flex;gap:6px;overflow-x:auto;margin-top:10px;padding-bottom:2px}
+.wx-fc div{flex:0 0 auto;min-width:64px;text-align:center;background:rgba(255,255,255,.06);border-radius:6px;padding:5px 6px;font-size:11px}
+.wx-fc div.over{background:rgba(198,40,40,.35)}
+.wx-fc b{display:block;font-size:13px}
+.wx-map{margin-top:10px;border-radius:8px;overflow:hidden;aspect-ratio:16/7;max-width:100%}
+.wx-map iframe{width:100%;height:100%;border:0}
+.wx-empty{background:var(--card);border:1px dashed var(--border-2);border-radius:var(--radius-lg);padding:12px 16px;margin-bottom:14px;color:var(--muted);font-size:13px}
+/* 公告欄 */
+.ann-board{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:14px}
+.ann-board h3{font-size:14px;color:var(--navy);margin-bottom:8px}
+.ann-item{display:flex;gap:10px;align-items:flex-start;padding:8px 12px;border-radius:8px;margin-bottom:6px;border:1px solid}
+.ann-item:last-child{margin-bottom:0}
+.ann-item.info{background:#f2f7fb;border-color:#d4e2ee;color:#123b5c}
+.ann-item.warning{background:#fdf6e8;border-color:#f0dcb0;color:#7a5200}
+.ann-item.danger{background:#fdeeee;border-color:#f2c4c4;color:#98201f}
+.ann-item .t{font-weight:600;white-space:pre-wrap}
+.ann-item .d{font-size:11px;opacity:.6;margin-left:6px;font-weight:400}
+.ann-files{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
+.ann-files a{font-size:12px;background:rgba(255,255,255,.7);border:1px solid currentColor;border-radius:12px;padding:1px 9px;color:inherit;text-decoration:none}
 .pob-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
 .pob-item{border:1px solid var(--border);border-radius:var(--radius);padding:11px 12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
 .pob-item:hover{border-color:var(--green);background:var(--green-bg)}
@@ -514,6 +549,8 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
     <div class="content">
       <!-- DASHBOARD -->
       <div class="page" id="page-dashboard">
+        <div id="dashWeather"></div>
+        <div id="dashAnnounce"></div>
         <div class="kpi-grid" id="dashStats"></div>
         <div class="grid-2">
           <div class="section"><div class="section-header"><h3 id="dashPendTitle">⏳ Awaiting Approval</h3><span class="link" onclick="go('certificates')">View all →</span></div><div class="section-body" id="dashPending" style="max-height:330px;overflow-y:auto"></div></div>
@@ -725,6 +762,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
           <div class="tab" data-t="companies">Companies</div>
           <div class="tab" data-t="vct">Vessel Certificate Requirements</div>
           <div class="tab" data-t="pct">Personnel Certificate Types</div>
+          <div class="tab" data-t="ann">📢 Announcements</div>
           <div class="tab" data-t="sys">System</div>
           <div class="tab" data-t="audit">🕵️ Activity Log</div>
         </div>
@@ -1064,6 +1102,7 @@ function pcName(c) { const t = pcType(c.type_id); return c.other_name ? t.name +
 function requiredCats() { return String(S.settings.required_categories || '').split(',').map(s => s.trim()).filter(Boolean); }
 function certExpired(c) { return !!c.expiry_date && c.expiry_date < todayStr(); }
 function certExpiringSoon(c) { return !!c.expiry_date && !certExpired(c) && c.expiry_date <= addDays(todayStr(), 30); }
+function daysLeft(d) { return Math.round((new Date(String(d).slice(0, 10) + 'T00:00:00') - new Date(todayStr() + 'T00:00:00')) / 864e5); }
 function certValid(c) { return c.status === 'Approved' && !certExpired(c); }
 function certsOf(pid) { return S.personCerts.filter(c => c.personnel_id === pid); }
 function catStatus(p, cat) {
@@ -1096,13 +1135,13 @@ function vcState(vid, t) {
 }
 function vesselCompliance(vid) {
   const issues = [];
-  let soon = 0;
+  let soon = 0, soonDays = null;
   vcTypesActive().forEach(t => {
     const s = vcState(vid, t);
     if (['missing','expired','nofile'].indexOf(s.key) >= 0) issues.push({ t, s });
-    if (s.key === 'soon') soon++;
+    if (s.key === 'soon') { soon++; const d = daysLeft(s.c.expiry_date); if (soonDays === null || d < soonDays) soonDays = d; }
   });
-  return { issues, soon };
+  return { issues, soon, soonDays };
 }
 function vesselCertBadge(vid) {
   const c = vesselCompliance(vid);
@@ -1215,6 +1254,8 @@ function renderDashboard() {
   ];
   document.getElementById('dashStats').innerHTML = groups.map(g => `<div class="kpi-group ${g.cls}"><div class="kpi-group-title">${esc(g.title)}</div>
     <div class="kpi-row" style="--n:${g.cards.length}">${g.cards.map(kpiCard).join('')}</div></div>`).join('');
+  renderWeather();
+  renderAnnouncements();
   renderDashPending();
   renderDashPTW();
   animateKPIs();
@@ -1229,6 +1270,176 @@ function renderDashboard() {
   const trs = [...S.transfers].sort((a, b) => String(b.time).localeCompare(String(a.time))).slice(0, 8);
   document.getElementById('dashTransfers').innerHTML = trs.length ? '<div class="dash-list">' + trs.map(t => `<div class="dash-row"><span class="t">${fmtDT(t.time)}</span><strong>${esc(tName(t))}</strong><span class="d muted">${esc(locName(t.from_location))} → ${esc(locName(t.to_location))}</span></div>`).join('') + '</div>' : '<p class="muted">No transfers</p>';
 }
+// ==================== WEATHER（儀表板海象）====================
+// 數值來自 Open-Meteo（免費、免金鑰，ECMWF／DWD 等模式）；地圖嵌入 Windy。
+const WX = { data: null, at: 0, tried: 0, key: '', loading: null, err: '', map: false };
+const WX_CODES = { 0: ['☀️', 'Clear', '晴'], 1: ['🌤', 'Mainly clear', '晴時多雲'], 2: ['⛅', 'Partly cloudy', '多雲'], 3: ['☁️', 'Overcast', '陰'],
+  45: ['🌫', 'Fog', '霧'], 48: ['🌫', 'Fog', '霧'], 51: ['🌦', 'Drizzle', '毛毛雨'], 53: ['🌦', 'Drizzle', '毛毛雨'], 55: ['🌦', 'Drizzle', '毛毛雨'],
+  61: ['🌧', 'Rain', '雨'], 63: ['🌧', 'Rain', '雨'], 65: ['🌧', 'Heavy rain', '大雨'], 80: ['🌦', 'Showers', '陣雨'], 81: ['🌧', 'Showers', '陣雨'], 82: ['⛈', 'Heavy showers', '強陣雨'],
+  95: ['⛈', 'Thunderstorm', '雷雨'], 96: ['⛈', 'Thunderstorm', '雷雨'], 99: ['⛈', 'Thunderstorm', '雷雨'] };
+function wxCfg() {
+  const st = (S && S.settings) || {};
+  const lat = parseFloat(st.weather_lat), lon = parseFloat(st.weather_lon);
+  if (!isFinite(lat) || !isFinite(lon)) return null;
+  return { lat, lon, name: st.weather_name || '', wave: parseFloat(st.weather_wave_limit) || 1.5, wind: parseFloat(st.weather_wind_limit) || 25 };
+}
+function compass(deg) {
+  if (deg === null || deg === undefined || isNaN(deg)) return '—';
+  return ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'][Math.round(deg / 22.5) % 16];
+}
+function loadWeather(force) {
+  const c = wxCfg();
+  if (!c) return Promise.resolve(null);
+  const key = c.lat + ',' + c.lon;
+  if (!force && WX.key === key && WX.data && Date.now() - WX.at < 30 * 60000) return Promise.resolve(WX.data);
+  if (WX.loading) return WX.loading;
+  WX.tried = Date.now();
+  const q = `latitude=${c.lat}&longitude=${c.lon}&timezone=auto&timeformat=unixtime&forecast_days=2`;
+  const get = u => fetch(u).then(r => r.json()).then(j => { if (j.error) throw new Error(j.reason || 'weather error'); return j; });
+  WX.loading = Promise.allSettled([
+    get(`https://marine-api.open-meteo.com/v1/marine?${q}&hourly=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_period,swell_wave_direction`),
+    get(`https://api.open-meteo.com/v1/forecast?${q}&wind_speed_unit=kn&hourly=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,precipitation`)
+  ]).then(([m, f]) => {
+    // 其中一個來源失敗（例如服務暫時過載）時，另一個照常顯示，缺的欄位顯示「—」
+    if (m.status === 'rejected' && f.status === 'rejected') throw m.reason;
+    const blank = t => new Proxy({ time: t }, { get: (o, k) => k in o ? o[k] : [] });
+    const mh = m.status === 'fulfilled' ? m.value.hourly : null, fh = f.status === 'fulfilled' ? f.value.hourly : null;
+    WX.data = { m: mh || blank(fh.time), f: fh || blank(mh.time) };
+    WX.part = !mh || !fh;
+    WX.at = Date.now(); WX.key = key; WX.err = ''; return WX.data;
+  })
+    .catch(e => { WX.err = e.message || 'Network error'; throw e; })
+    .finally(() => { WX.loading = null; if (currentPage === 'dashboard') renderWeather(); });
+  return WX.loading;
+}
+function renderWeather() {
+  const el = document.getElementById('dashWeather');
+  if (!el) return;
+  const c = wxCfg();
+  if (!c) {
+    el.innerHTML = isAdmin() ? `<div class="wx-empty">🌊 ${L('Sea-state / weather panel: set the site coordinates under Administration → System.', '海象天氣欄：請到「系統管理 → 系統設定」填入場址座標後就會顯示。')}</div>` : '';
+    return;
+  }
+  const windy = `https://www.windy.com/?waves,${c.lat},${c.lon},9`;
+  const head = (extra) => `<div class="wx-head"><h3>🌊 ${L('Sea state & weather', '海象天氣')}${c.name ? ' · ' + esc(c.name) : ''}</h3>${extra || ''}
+    <a class="btn btn-sm" href="${windy}" target="_blank" rel="noopener">Windy ↗</a>
+    <button class="btn btn-sm" onclick="WX.map=!WX.map;renderWeather()">🗺 ${WX.map ? L('Hide map', '隱藏地圖') : L('Windy map', 'Windy 地圖')}</button></div>`;
+  const map = WX.map ? `<div class="wx-map"><iframe loading="lazy" title="Windy" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=mm&metricTemp=%C2%B0C&metricWind=kt&zoom=8&overlay=waves&product=ecmwf&level=surface&lat=${c.lat}&lon=${c.lon}&detailLat=${c.lat}&detailLon=${c.lon}&marker=true"></iframe></div>` : '';
+  if (!WX.data || WX.key !== c.lat + ',' + c.lon) {
+    el.innerHTML = `<div class="wx">${head()}<div class="wx-sub">${WX.err ? '⚠ ' + L('Could not load weather: ', '無法取得天氣資料：') + esc(WX.err) : L('Loading weather…', '天氣資料載入中…')}</div>${map}</div>`;
+    if (!WX.err || Date.now() - WX.tried > 5 * 60000) loadWeather(true).catch(() => {});
+    return;
+  }
+  if (Date.now() - WX.tried > (WX.part ? 5 : 30) * 60000) loadWeather(true).catch(() => {});   // 每 30 分鐘背景更新（缺資料時 5 分鐘重試）
+  const m = WX.data.m, f = WX.data.f, now = Date.now() / 1000;
+  const idx = arr => { let i = 0; for (let k = 0; k < arr.length; k++) if (arr[k] <= now) i = k; return i; };
+  const im = idx(m.time), iff = idx(f.time);
+  const num = (v, d) => (v === null || v === undefined || isNaN(v)) ? '—' : Number(v).toFixed(d);
+  const hs = m.wave_height[im], wind = f.wind_speed_10m[iff], gust = f.wind_gusts_10m[iff];
+  // 未來 12 小時最大值，判斷是否超過作業限制（僅供參考）
+  let maxHs = hs || 0, maxWind = Math.max(wind || 0, 0);
+  for (let k = 1; k <= 12; k++) { if (m.wave_height[im + k] > maxHs) maxHs = m.wave_height[im + k]; if (f.wind_speed_10m[iff + k] > maxWind) maxWind = f.wind_speed_10m[iff + k]; }
+  const okNow = (hs || 0) < c.wave && (wind || 0) < c.wind, ok12 = maxHs < c.wave && maxWind < c.wind;
+  const pill = okNow && ok12 ? `<span class="wx-pill ok">✅ ${L('Within limits (next 12 h)', '未來 12 小時在作業限制內')}</span>`
+    : `<span class="wx-pill no">⚠️ ${okNow ? L('Limit exceeded within 12 h', '12 小時內將超過作業限制') : L('Above operating limit', '目前超過作業限制')}</span>`;
+  const wc = WX_CODES[f.weather_code[iff]] || ['🌡', '', ''];
+  const tile = (k, v, s, over) => `<div class="wx-t ${over ? 'over' : ''}"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s || '&nbsp;'}</div></div>`;
+  const tiles = [
+    tile(L('Wave height (Hs)', '浪高 Hs'), num(hs, 1) + '<small>m</small>', L('Limit ', '限制 ') + c.wave + ' m', hs >= c.wave),
+    tile(L('Wave period / dir.', '浪週期／浪向'), num(m.wave_period[im], 0) + '<small>s</small>', compass(m.wave_direction[im]) + ' ' + num(m.wave_direction[im], 0) + '°'),
+    tile(L('Swell', '湧浪'), num(m.swell_wave_height[im], 1) + '<small>m</small>', num(m.swell_wave_period[im], 0) + ' s · ' + compass(m.swell_wave_direction[im])),
+    tile(L('Wind', '風速'), num(wind, 0) + '<small>kn</small>', L('Gust ', '陣風 ') + num(gust, 0) + ' kn · ' + compass(f.wind_direction_10m[iff]), wind >= c.wind),
+    tile(L('Weather', '天氣'), wc[0] + ' <small>' + num(f.temperature_2m[iff], 0) + '°C</small>', LANG === 'zh' ? wc[2] : wc[1]),
+    tile(L('Visibility', '能見度'), (f.visibility[iff] === null || f.visibility[iff] === undefined) ? '—' : num(f.visibility[iff] / 1000, f.visibility[iff] < 10000 ? 1 : 0) + '<small>km</small>', L('Rain ', '降雨 ') + num(f.precipitation[iff], 1) + ' mm')
+  ].join('');
+  let fc = '';
+  for (let k = 3; k <= 24; k += 3) {
+    const a = m.wave_height[im + k], w = f.wind_speed_10m[iff + k], t = f.time[iff + k];
+    if (t === undefined) break;
+    const hh = new Date(t * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    fc += `<div class="${a >= c.wave || w >= c.wind ? 'over' : ''}">${hh}<b>${num(a, 1)} m</b>${num(w, 0)} kn</div>`;
+  }
+  const upd = new Date(WX.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  el.innerHTML = `<div class="wx">${head(pill)}<div class="wx-tiles">${tiles}</div><div class="wx-fc">${fc}</div>
+    <div class="wx-sub" style="margin-top:6px">${L('Forecast data: Open-Meteo (ECMWF / DWD models) · updated ', '預報資料：Open-Meteo（ECMWF／DWD 模式）· 更新於 ')}${upd} · ${L('For reference only — follow the Marine Coordinator’s decision.', '僅供參考，實際以 MC 判斷為準。')}${WX.part ? ' · ⚠ ' + L('part of the data is temporarily unavailable', '部分資料暫時無法取得') : ''}</div>${map}</div>`;
+}
+
+// ==================== ANNOUNCEMENTS（公告欄）====================
+const ANN_LEVELS = [['info', 'ℹ️', 'Info', '一般'], ['warning', '⚠️', 'Warning', '注意'], ['danger', '🚨', 'Critical', '重要']];
+function annLevel(k) { return ANN_LEVELS.find(x => x[0] === k) || ANN_LEVELS[0]; }
+function annText(a) { return LANG === 'zh' ? (a.text_zh || a.text_en) : (a.text_en || a.text_zh); }
+function attachLinks(list) {
+  return list.map(x => `<a href="javascript:void(0)" class="notr" onclick="event.stopPropagation();openFile('${esc(x.id)}')" title="${esc(x.name)}">📎 ${esc(x.name)}</a>`).join('');
+}
+function renderAnnouncements() {
+  const el = document.getElementById('dashAnnounce');
+  if (!el) return;
+  const list = (S.announcements || []).filter(a => a.active !== 'FALSE').sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 5);
+  if (!list.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="ann-board"><h3>📢 ${L('Announcements', '公告')}</h3>${list.map(a => {
+    const lv = annLevel(a.level), files = jlist(a.attachments);
+    const link = a.link_url ? ` <a href="${esc(a.link_url)}" target="_blank" rel="noopener" class="notr">🔗 ${esc(a.link_text || a.link_url)}</a>` : '';
+    return `<div class="ann-item ${lv[0]}"><span>${lv[1]}</span><div style="min-width:0"><span class="t notr">${esc(annText(a))}</span><span class="d">${fmtDate(a.created_at)}</span>${link}
+      ${files.length ? `<div class="ann-files">${attachLinks(files)}</div>` : ''}</div></div>`;
+  }).join('')}</div>`;
+}
+
+// 系統管理 → 公告
+let annEdit = null;   // 編輯中的公告 id（null＝新增）
+function adminAnn(el) {
+  const a = annEdit ? (S.announcements || []).find(x => x.id === annEdit) : null;
+  const files = a ? jlist(a.attachments) : [];
+  const list = [...(S.announcements || [])].sort((x, y) => String(y.created_at).localeCompare(String(x.created_at)));
+  el.innerHTML = `<div class="section"><div class="section-header"><h3>${a ? '✏️ ' + L('Edit announcement', '編輯公告') : '📢 ' + L('New announcement', '新增公告')}</h3></div><div class="section-body"><div class="form-grid">
+    <div class="form-group"><label>${L('Announcement (Chinese) *', '公告內容（中文）*')}</label><textarea id="an_zh" class="notr" rows="3">${esc(a ? a.text_zh : '')}</textarea></div>
+    <div class="form-group"><label>${L('Announcement (English) *', '公告內容（英文）*')}</label><textarea id="an_en" class="notr" rows="3">${esc(a ? a.text_en : '')}</textarea></div>
+    <div class="form-group"><label>${L('Type', '類型')}</label><select id="an_level">${ANN_LEVELS.map(x => `<option value="${x[0]}" ${(a ? a.level : 'info') === x[0] ? 'selected' : ''}>${x[1]} ${x[3]} ${x[2]}</option>`).join('')}</select></div>
+    <div class="form-group"><label class="chk" style="margin-top:22px"><input type="checkbox" id="an_active" ${!a || a.active !== 'FALSE' ? 'checked' : ''}> ${L('Show on Dashboard', '顯示在儀表板')}</label></div>
+    <div class="form-group"><label>${L('Link (optional)', '連結（選填）')}</label><input id="an_url" class="notr" placeholder="https://…" value="${esc(a ? a.link_url : '')}"></div>
+    <div class="form-group"><label>${L('Link text (optional)', '連結文字（選填）')}</label><input id="an_ltext" class="notr" value="${esc(a ? a.link_text : '')}"></div>
+    <div class="form-group full"><label>${L('Attachments — any file type, max 10 MB each', '附件 — 不限檔案類型，每個上限 10 MB')}</label><input type="file" id="an_files" multiple>
+      ${files.length ? `<div class="toolbar" style="margin-top:6px">${files.map(x => `<label class="chk notr"><input type="checkbox" class="an_rm" value="${esc(x.id)}"> 🗑 ${esc(x.name)}</label>`).join('')}<span class="hint">${L('(tick to remove)', '（勾選＝刪除）')}</span></div>` : ''}</div>
+    <div class="form-actions"><button class="btn btn-primary" onclick="saveAnn(this)">💾 ${L('Save announcement', '儲存公告')}</button>${a ? `<button class="btn btn-secondary" onclick="annEdit=null;renderAdmin()">${L('Cancel editing', '取消編輯')}</button>` : ''}</div>
+  </div></div></div>
+  <div class="section"><div class="section-header"><h3>${L('Announcements', '公告')} (${list.length})</h3></div><div class="table-wrap"><table><thead><tr><th>${L('Type', '類型')}</th><th>${L('Content', '內容')}</th><th>${L('Attachments', '附件')}</th><th>${L('Status', '狀態')}</th><th>${L('Created', '建立')}</th><th></th></tr></thead><tbody>
+    ${list.map(x => { const lv = annLevel(x.level); return `<tr><td class="nowrap">${lv[1]} ${L(lv[2], lv[3])}</td><td class="notr"><div>${esc(x.text_zh)}</div><div class="hint">${esc(x.text_en)}</div></td>
+      <td><div class="ann-files">${attachLinks(jlist(x.attachments)) || '—'}</div></td>
+      <td>${x.active === 'FALSE' ? `<span class="b b-na">${L('Hidden', '已隱藏')}</span>` : `<span class="b b-ok">${L('Showing', '顯示中')}</span>`}</td>
+      <td class="hint nowrap">${esc(x.created_by)}<br>${fmtDT(x.created_at)}</td>
+      <td><div class="acts"><button class="btn btn-secondary btn-sm" onclick="annEdit='${x.id}';renderAdmin();window.scrollTo(0,0)">✏️</button>
+        <button class="btn btn-secondary btn-sm" onclick="toggleAnn('${x.id}')">${x.active === 'FALSE' ? L('Show', '顯示') : L('Hide', '隱藏')}</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteAnn('${x.id}')">🗑</button></div></td></tr>`; }).join('') || `<tr class="empty"><td colspan="6">${L('No announcements yet', '尚無公告')}</td></tr>`}</tbody></table></div></div>`;
+}
+async function readFilesB64(input) {
+  const files = input ? [...input.files] : [];
+  if (files.reduce((n, f) => n + f.size, 0) > 25 * 1024 * 1024) throw new Error(L('Attachments are larger than 25 MB in total — upload them in several saves', '附件合計超過 25 MB，請分次上傳'));
+  return Promise.all(files.map(readFileB64));
+}
+async function saveAnn(btn) {
+  const d = { id: annEdit || '', text_zh: v('an_zh'), text_en: v('an_en'), level: v('an_level'), link_url: v('an_url'), link_text: v('an_ltext'),
+    active: document.getElementById('an_active').checked, removeFiles: [...document.querySelectorAll('.an_rm')].filter(c => c.checked).map(c => c.value) };
+  if (!d.text_zh || !d.text_en) { toast(L('Both Chinese and English text are required', '中文與英文公告內容都必填'), 'error'); return; }
+  if (d.link_url && !/^https?:\/\//i.test(d.link_url)) { toast(L('Link must start with http:// or https://', '連結網址必須以 http:// 或 https:// 開頭'), 'error'); return; }
+  await withBusy(btn, async () => {
+    d.newFiles = await readFilesB64(document.getElementById('an_files'));
+    S.announcements = S.announcements || [];
+    upsert(S.announcements, await api('announce.save', d));
+    annEdit = null; renderAdmin();
+    toast(L('Announcement saved', '公告已儲存'), 'success');
+  }, d.newFiles && d.newFiles.length ? 'Uploading…' : 'Saving…');
+}
+async function toggleAnn(id) {
+  const a = S.announcements.find(x => x.id === id);
+  await withBusy(null, async () => {
+    upsert(S.announcements, await api('announce.save', { id, text_zh: a.text_zh, text_en: a.text_en, level: a.level, link_url: a.link_url, link_text: a.link_text, active: a.active === 'FALSE' }));
+    renderAdmin();
+  });
+}
+async function deleteAnn(id) {
+  if (!await confirmBox(L('Delete this announcement and its attachments?', '確定刪除這則公告（含附件）？'))) return;
+  await withBusy(null, async () => { await api('announce.delete', { id }); dropId(S.announcements, id); if (annEdit === id) annEdit = null; renderAdmin(); }, 'Deleting…');
+}
+
 function gotoPOB(cid) { go('pob'); document.getElementById('pobSel').value = cid; renderPOB(); }
 
 // ==================== PERSONNEL ====================
@@ -1867,23 +2078,23 @@ function personAlerts() {
     const miss = missingCats(p);
     if (miss.length) out.push({ sev: 'bad', title: p.name + ' — ' + p.company, msg: L('Not qualified: ', '不合格：') + miss.map(c => tz(c) + ' (' + tz(catStatus(p, c).text) + ')').join(L(', ', '、')), pid: p.id });
     certsOf(p.id).forEach(c => {
-      if (c.status === 'Approved' && certExpiringSoon(c)) out.push({ sev: 'warn', title: p.name + ' — ' + p.company, msg: pcName(c) + L(' expires ', ' 到期日 ') + fmtDate(c.expiry_date), pid: p.id });
+      if (c.status === 'Approved' && certExpiringSoon(c)) out.push({ sev: 'warn', title: p.name + ' — ' + p.company, msg: pcName(c) + L(' expires ', ' 到期日 ') + fmtDate(c.expiry_date), pid: p.id, days: daysLeft(c.expiry_date) });
     });
   });
-  return out.sort((a, b) => (a.sev === 'bad' ? 0 : 1) - (b.sev === 'bad' ? 0 : 1));
+  return out.sort((a, b) => (a.sev === 'bad' ? 0 : 1) - (b.sev === 'bad' ? 0 : 1) || (a.days ?? 999) - (b.days ?? 999));
 }
 function vesselAlerts() {
   const va = [];
   S.vessels.forEach(x => {
     const c = vesselCompliance(x.id);
     if (c.issues.length) va.push({ sev: 'bad', title: x.name, msg: L(c.issues.length + ' mandatory issue(s): ', c.issues.length + ' 項強制證書缺失：') + c.issues.slice(0, 4).map(i => (LANG === 'zh' ? i.t.name.split(' ')[0] : i.t.name.replace(/^[^A-Za-z]+/, '')) + ' (' + tz(i.s.text) + ')').join('; ') + (c.issues.length > 4 ? ' …' : ''), vid: x.id });
-    else if (c.soon) va.push({ sev: 'warn', title: x.name, msg: L(c.soon + ' certificate(s) expiring within 30 days', c.soon + ' 張證書將於 30 天內到期'), vid: x.id });
+    else if (c.soon) va.push({ sev: 'warn', title: x.name, msg: L(c.soon + ' certificate(s) expiring within 30 days', c.soon + ' 張證書將於 30 天內到期'), vid: x.id, days: c.soonDays });
   });
-  return va;
+  return va.sort((a, b) => (a.sev === 'bad' ? 0 : 1) - (b.sev === 'bad' ? 0 : 1) || (a.days ?? 999) - (b.days ?? 999));
 }
 function alertHtml(a) {
   const click = a.pid ? `onclick="openPersonnel('${a.pid}')"` : a.vid ? `onclick="openVessel('${a.vid}','certs')"` : '';
-  return `<div class="alert ${a.sev} ${click ? 'click' : ''}" ${click}><span>${a.sev === 'bad' ? '⛔' : '⚠️'}</span><div><strong>${esc(a.title)}</strong><span>${esc(a.msg)}</span></div></div>`;
+  return `<div class="alert ${a.sev} ${click ? 'click' : ''}" ${click}><span>${a.sev === 'bad' ? '⛔' : '⚠️'}</span><div><strong>${esc(a.title)}</strong><span>${esc(a.msg)}</span></div>${a.days !== undefined && a.days !== null ? `<span class="dleft" title="${L('Days remaining', '剩餘天數')}"><b>${a.days}</b><small>${L('days', '天')}</small></span>` : ''}</div>`;
 }
 function renderCertificates() {
   const staff = isStaff();
@@ -2009,7 +2220,7 @@ function renderMeetings() {
     const ppl = meetingPeople(m), items = jlist(m.items);
     return `<div class="mt-card" onclick="viewMeeting('${m.id}')">
       <h4>${esc(m.title)}</h4>
-      <div class="mt-meta"><span>🕒 ${fmtDT(m.time)}</span>${m.location ? `<span>📍 ${esc(m.location)}</span>` : ''}<span>👥 ${ppl.length} ${L('attendee(s)', '位參與者')}</span><span>📝 ${items.length} ${L('item(s)', '項議題')}</span><span>✍ ${esc(m.created_by)}</span></div>
+      <div class="mt-meta"><span>🕒 ${fmtDT(m.time)}</span>${m.location ? `<span>📍 ${esc(m.location)}</span>` : ''}<span>👥 ${ppl.length} ${L('attendee(s)', '位參與者')}</span>${jlist(m.attachments).length ? `<span>📎 ${jlist(m.attachments).length}</span>` : ''}<span>📝 ${items.length} ${L('item(s)', '項議題')}</span><span>✍ ${esc(m.created_by)}</span></div>
       ${items.length ? `<div class="hint" style="margin-top:6px">${items.slice(0, 3).map(i => '• ' + esc(i.topic || i.discussion)).join('<br>')}${items.length > 3 ? '<br>…' : ''}</div>` : ''}</div>`;
   }).join('') : `<p class="muted">${L('No meeting minutes yet.', '尚無會議紀錄。')}</p>`;
 }
@@ -2025,6 +2236,7 @@ function viewMeeting(id) {
     <div class="table-wrap"><table><thead><tr><th>#</th><th>${L('Topic', '議題')}</th><th>${L('Discussion / decision', '討論內容／決議')}</th><th>${L('Action', '待辦事項')}</th><th>${L('Owner', '負責人')}</th><th>${L('Due', '期限')}</th></tr></thead><tbody>
       ${items.map((i, n) => `<tr><td class="mono">${n + 1}</td><td><strong>${esc(i.topic)}</strong></td><td style="white-space:pre-wrap">${esc(i.discussion)}</td><td style="white-space:pre-wrap">${esc(i.action)}</td><td>${esc(i.owner)}</td><td class="nowrap">${fmtDate(i.due)}</td></tr>`).join('')}</tbody></table></div>
     ${m.remark ? `<p style="margin-top:12px;white-space:pre-wrap"><b>${L('Remark', '備註')}:</b> ${esc(m.remark)}</p>` : ''}
+    ${jlist(m.attachments).length ? `<h4 style="font-size:13px;color:var(--navy);margin:14px 0 6px">📎 ${L('Attachments', '附件')} (${jlist(m.attachments).length})</h4><div class="ann-files">${attachLinks(jlist(m.attachments))}</div>` : ''}
     <div class="acts" style="margin-top:16px"><button class="btn btn-secondary" onclick="printMeeting('${m.id}')">🖨 ${L('Print / PDF', '列印／存 PDF')}</button>
       ${isStaff() ? `<button class="btn btn-primary" onclick="closeTop();openMeeting('${m.id}')">✏️ ${L('Edit', '編輯')}</button><button class="btn btn-danger" onclick="deleteMeeting('${m.id}')">🗑 ${L('Delete', '刪除')}</button>` : ''}</div>`, true);
 }
@@ -2044,6 +2256,7 @@ function printMeeting(id) {
     <h3>${L('Discussion items', '討論事項')}</h3><table><tr><th>#</th><th>${L('Topic', '議題')}</th><th>${L('Discussion / decision', '討論內容／決議')}</th><th>${L('Action', '待辦事項')}</th><th>${L('Owner', '負責人')}</th><th>${L('Due', '期限')}</th></tr>
     ${items.map((i, n) => `<tr><td>${n + 1}</td><td>${esc(i.topic)}</td><td style="white-space:pre-wrap">${esc(i.discussion)}</td><td style="white-space:pre-wrap">${esc(i.action)}</td><td>${esc(i.owner)}</td><td>${esc(i.due)}</td></tr>`).join('')}</table>
     ${m.remark ? `<h3>${L('Remark', '備註')}</h3><p style="white-space:pre-wrap">${esc(m.remark)}</p>` : ''}
+    ${jlist(m.attachments).length ? `<h3>${L('Attachments', '附件')}</h3><p>${jlist(m.attachments).map(x => esc(x.name)).join('<br>')}</p>` : ''}
     <script>window.onload=function(){window.print()}<\/script></body></html>`);
   w.document.close();
 }
@@ -2056,7 +2269,7 @@ function unlockMeetingTitle(btn) {
 }
 function openMeeting(id) {
   const m = id ? S.meetings.find(x => x.id === id) : { time: nowLocal() };
-  MT = { id: id || '', items: id ? jlist(m.items) : [{ topic: '', discussion: '', action: '', owner: '', due: '' }], att: new Set(id ? jlist(m.attendees) : []), ext: id ? jlist(m.externals) : [] };
+  MT = { id: id || '', items: id ? jlist(m.items) : [{ topic: '', discussion: '', action: '', owner: '', due: '' }], att: new Set(id ? jlist(m.attendees) : []), ext: id ? jlist(m.externals) : [], files: id ? jlist(m.attachments) : [], remove: [] };
   openModal(id ? L('Edit meeting minutes', '編輯會議紀錄') : L('New meeting minutes', '新增會議紀錄'), `
     <div class="form-grid">
       <div class="form-group" style="grid-column:span 2"><label>${L('Meeting title *', '會議名稱 *')}</label>
@@ -2076,8 +2289,13 @@ function openMeeting(id) {
     <div id="mtExt"></div>
     <button class="btn btn-secondary btn-sm" onclick="mtSync();MT.ext.push({company:'',name:''});mtRenderExt()">+ ${L('Add attendee', '新增人員')}</button>
     <div class="form-group" style="margin-top:16px"><label>${L('Remark', '備註')}</label><textarea id="mt_remark">${esc(m.remark || '')}</textarea></div>
+    <div class="form-group" style="margin-top:12px"><label>📎 ${L('Attachments — any file type, max 10 MB each', '附件 — 不限檔案類型，每個上限 10 MB')}</label><div id="mtFiles"></div><input type="file" id="mt_files" multiple></div>
     <div class="acts" style="margin-top:14px"><button class="btn btn-primary" onclick="saveMeeting(this)">💾 ${L('Save meeting minutes', '儲存會議紀錄')}</button></div>`, true);
-  mtRenderItems(); mtRenderAtt(); mtRenderExt();
+  mtRenderItems(); mtRenderAtt(); mtRenderExt(); mtRenderFiles();
+}
+function mtRenderFiles() {
+  const el = document.getElementById('mtFiles');
+  el.innerHTML = MT.files.length ? `<div class="ann-files" style="margin-bottom:6px">${MT.files.map((x, n) => `<span class="chip notr">📎 <a href="javascript:void(0)" onclick="openFile('${esc(x.id)}')">${esc(x.name)}</a> <button type="button" class="btn btn-danger btn-sm" style="padding:0 6px" title="${L('Remove', '移除')}" onclick="MT.remove.push(MT.files[${n}].id);MT.files.splice(${n},1);mtRenderFiles()">✕</button></span>`).join('')}</div>` : '';
 }
 function mtSync() {
   document.querySelectorAll('#mtItems .item-row').forEach((row, n) => {
@@ -2125,7 +2343,9 @@ async function saveMeeting(btn) {
   if (!d.title || !d.time) { toast(L('Meeting title and time are required', '會議名稱與時間為必填'), 'error'); return; }
   if (!d.items.length) { toast(L('Add at least one discussion item', '請至少填寫一項討論事項'), 'error'); return; }
   if (MT.ext.some(x => x.name.trim() && !x.company.trim())) { toast(L('Please fill in the company of each other attendee', '請填寫其他參與人員的公司'), 'error'); return; }
+  d.removeFiles = MT.remove;
   await withBusy(btn, async () => {
+    d.newFiles = await readFilesB64(document.getElementById('mt_files'));
     const rec = await api('meeting.save', d);
     const pool = mtPeoplePool();
     rec.attendee_info = JSON.stringify(d.attendees.map(id => { const p = pool.find(x => x.id === id); return p ? { id, name: p.name, company: p.company, position: p.position } : null; }).filter(Boolean));
@@ -2218,7 +2438,7 @@ function renderAdmin() {
   const auditSec = document.getElementById('auditSection');
   if (auditSec && auditSec.parentNode !== document.getElementById('page-audit')) document.getElementById('page-audit').appendChild(auditSec);
   if (adminTab === 'audit') { el.innerHTML = ''; el.appendChild(auditSec); initAudit(); return; }
-  ({ users: adminUsers, companies: adminCompanies, vct: adminVct, pct: adminPct, sys: adminSys }[adminTab])(el);
+  ({ users: adminUsers, companies: adminCompanies, vct: adminVct, pct: adminPct, ann: adminAnn, sys: adminSys }[adminTab])(el);
 }
 function adminUsers(el) {
   const list = [...S.users].sort((a, b) => a.role.localeCompare(b.role) || a.username.localeCompare(b.username));
@@ -2364,6 +2584,13 @@ function adminSys(el) {
       <span class="hint">${L('The PTW System uses this key to read approved vessels and to send vessel applications here. After regenerating, paste the new key into PTW or vessel sync stops.', 'PTW 系統用這組金鑰讀取已核准船舶、並把暫存船舶送來這裡申請。重新產生後，要把新金鑰貼到 PTW，否則船舶同步會中斷。')}</span></div>
     <div class="form-group full"><label>${L('Default meeting title (new meeting minutes)', '預設會議名稱（新增會議紀錄時帶入）')}</label><input id="st_mtitle" class="notr" value="${esc(defaultMeetingTitle())}" placeholder="每日協調會議">
       <span class="hint">${L('Filled in automatically for every new meeting; users can still press “Edit name” to change it for that meeting.', '新增會議紀錄時自動帶入；個別會議仍可按「修改名稱」更改。')}</span></div>
+    <div class="form-group full" style="border-top:1px solid var(--border);padding-top:12px"><label>🌊 ${L('Dashboard sea-state / weather (Open-Meteo data + Windy map)', '儀表板海象天氣（Open-Meteo 預報＋Windy 地圖）')}</label>
+      <div class="toolbar"><input id="st_wxname" class="notr" style="flex:2;min-width:160px" placeholder="${L('Site name, e.g. Pipeline KP 12', '場址名稱，例：管線 KP 12')}" value="${esc(S.settings.weather_name || '')}">
+        <input id="st_wxlat" class="mono" style="flex:1;min-width:110px" placeholder="${L('Latitude, e.g. 24.25', '緯度，例 24.25')}" value="${esc(S.settings.weather_lat || '')}">
+        <input id="st_wxlon" class="mono" style="flex:1;min-width:110px" placeholder="${L('Longitude, e.g. 120.25', '經度，例 120.25')}" value="${esc(S.settings.weather_lon || '')}"></div>
+      <div class="toolbar" style="margin-top:6px"><label class="chk">${L('Wave height limit (m)', '浪高限制（m）')} <input id="st_wxwave" class="mono" style="width:70px" value="${esc(S.settings.weather_wave_limit || '1.5')}"></label>
+        <label class="chk">${L('Wind limit (kn)', '風速限制（kn）')} <input id="st_wxwind" class="mono" style="width:70px" value="${esc(S.settings.weather_wind_limit || '25')}"></label></div>
+      <span class="hint">${L('Decimal degrees (north / east positive). Leave latitude/longitude empty to hide the weather panel. Limits only colour the panel red — for reference.', '十進位度數（北緯、東經為正）。經緯度留空＝不顯示天氣欄。限制值只用來把超標項目標紅，僅供參考。')}</span></div>
     <div class="form-group full"><label>Certificate categories required for transfer</label><div class="toolbar">${cats.map(c => `<label class="chk"><input type="checkbox" class="st_cat" value="${esc(c)}" ${req.indexOf(c) >= 0 ? 'checked' : ''}> ${esc(c)}</label>`).join('')}</div></div>
     <div class="form-actions"><button class="btn btn-primary" onclick="saveSys(this)">💾 Save settings</button></div></div></div></div>
     <div class="section"><div class="section-header"><h3>📧 ${L('Email notifications', '通知信設定')}</h3></div><div class="section-body"><div class="form-grid">
@@ -2425,7 +2652,9 @@ async function saveSys(btn) {
   const evs = [...document.querySelectorAll('.st_ev')].filter(c => c.checked).map(c => c.value);
   await withBusy(btn, async () => {
     S.settings = await api('settings.save', { ptw_url: v('st_ptw'), required_categories: cats.join(','),
-      notify_emails: v('st_mails'), notify_events: evs.join(','), app_url: v('st_appurl'), meeting_title: v('st_mtitle') });
+      notify_emails: v('st_mails'), notify_events: evs.join(','), app_url: v('st_appurl'), meeting_title: v('st_mtitle'),
+      weather_name: v('st_wxname'), weather_lat: v('st_wxlat'), weather_lon: v('st_wxlon'), weather_wave_limit: v('st_wxwave'), weather_wind_limit: v('st_wxwind') });
+    WX.data = null; WX.err = '';
     PTW.data = null; refreshPTW(true).catch(() => {});
     toast('Settings saved', 'success'); renderAdmin();
   });
