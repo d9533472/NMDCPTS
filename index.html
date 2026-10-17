@@ -873,6 +873,7 @@ async function reloadData(showSpinner) {
   try {
     const d = await api('data.load');
     S = d;
+    liveAt = Date.now();
     S.meetings = S.meetings || []; S.people = S.people || [];
     document.getElementById('liveTime').textContent = 'LIVE · ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
     if (S.user.must_change) { showAuth('authChange'); return; }
@@ -882,6 +883,29 @@ async function reloadData(showSpinner) {
     throw e;
   } finally { if (showSpinner) hideLoading(); }
 }
+// 背景自動同步：每 60 秒（分頁在前景時）或切回分頁時重新抓資料。
+// 只有純顯示的頁面會立即重畫；有表單的頁面只更新資料，避免打斷正在填寫的內容。
+const LIVE_EVERY = 60000, LIVE_PAGES = ['dashboard', 'pob', 'history', 'ptw'];
+let liveAt = Date.now(), liveBusy = false, kpiQuiet = false;
+async function liveSync() {
+  if (!S || !TOKEN || liveBusy || document.hidden || modalStack.length) return;
+  if (!document.getElementById('loading').classList.contains('hidden')) return;
+  liveBusy = true;
+  try {
+    const d = await api('data.load');
+    if (modalStack.length || !document.getElementById('loading').classList.contains('hidden')) return;
+    d.meetings = d.meetings || []; d.people = d.people || [];
+    S = d;
+    liveAt = Date.now();
+    document.getElementById('liveTime').textContent = 'LIVE · ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    kpiQuiet = true;
+    try { if (LIVE_PAGES.indexOf(currentPage) >= 0) refreshPage(); else updateBadges(); } finally { kpiQuiet = false; }
+    refreshPTW(false).catch(() => {});
+  } catch (e) { /* 網路短暫失敗就等下一輪 */ }
+  finally { liveBusy = false; }
+}
+setInterval(() => { if (Date.now() - liveAt >= LIVE_EVERY) liveSync(); }, 10000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - liveAt > 15000) liveSync(); });
 function enterApp() {
   document.getElementById('auth').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
@@ -1114,6 +1138,11 @@ function kpiCard(k) {
     <div class="kpi-bar"><i style="width:0" data-w="${pct}"></i></div></div>`;
 }
 function animateKPIs() {
+  if (kpiQuiet) { // 背景同步：直接顯示新數字，不重播動畫
+    document.querySelectorAll('#dashStats .kpi-val[data-v]').forEach(el => { el.textContent = Number(el.dataset.v) || 0; });
+    document.querySelectorAll('#dashStats .kpi-bar i').forEach(i => { i.style.transition = 'none'; i.style.width = i.dataset.w + '%'; });
+    return;
+  }
   document.querySelectorAll('#dashStats .kpi-val[data-v]').forEach(el => {
     const target = Number(el.dataset.v);
     if (!target) { el.textContent = '0'; return; }
