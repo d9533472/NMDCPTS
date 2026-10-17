@@ -10,14 +10,14 @@
 // 通知信：Settings.notify_emails（共用收件者）＋ notify_events（啟用的事件）；每日到期提醒由 setup() 建立的觸發器執行。
 // ============================================================
 
-const VERSION = '2.5';
+const VERSION = '2.6';
 const CAT_SAFETY = 'Offshore Safety Training';   // 原 'Sea Survival'（2.1 改名，ensureSchema_ 會遷移舊資料）
 
 const SCHEMAS = {
   Users: ['id','username','name','email','role','company','password_hash','password_salt','active','must_change','last_login','created_at','updated_at'],
   Sessions: ['token','user_id','expires_at','created_at'],
   Companies: ['id','name','active','created_at'],
-  Vessels: ['id','name','mmsi','imo','type','flag','operator','company','contact_person','phone','whatsapp','email','remark','approval','approval_note','approved_by','approved_at','created_by','created_at','updated_at'],
+  Vessels: ['id','name','mmsi','imo','type','flag','gross_tonnage','max_persons','operator','company','contact_person','phone','whatsapp','email','remark','approval','approval_note','approved_by','approved_at','created_by','created_at','updated_at'],
   Personnel: ['id','name','company','nationality','position','email','phone','passport','blood_type','emergency','emergency_phone','photo','remark','current_location','approval','approval_note','approved_by','approved_at','created_by','created_at','updated_at'],
   Meetings: ['id','title','time','location','items','attendees','externals','remark','attachments','created_by','created_at','updated_at'],
   Announcements: ['id','text_zh','text_en','level','link_url','link_text','attachments','active','created_by','created_at','updated_at'],
@@ -25,7 +25,7 @@ const SCHEMAS = {
   Locations: ['id','name','type','linked_vessel','remark','created_at','updated_at'],
   Transfers: ['id','personnel_id','personnel_name','company','from_location','to_location','time','type','transport','approved_by','reason','remark','logged_by','created_at'],
   SiteLog: ['id','time','activity','source','detail','asset','transport','personnel','logged_by','created_at'],
-  VesselCertTypes: ['id','code','name','mandatory','active','sort'],
+  VesselCertTypes: ['id','code','name','mandatory','active','sort','rule'],
   VesselCerts: ['id','vessel_id','type_id','issue_date','expiry_date','description','file_id','file_name','updated_by','updated_at'],
   PersonCertTypes: ['id','name','category','has_expiry','active','sort'],
   PersonCerts: ['id','personnel_id','type_id','other_name','cert_no','issue_date','expiry_date','file_id','file_name','status','review_note','reviewed_by','reviewed_at','submitted_by','created_at','updated_at'],
@@ -85,6 +85,38 @@ const VESSEL_CERT_SEED = [
   [61,'吊車裝備證書 Hoisting Equipment'],[62,'貨船設備證書 Cargo Equipment'],[63,'起重機測試證書 Crane Test Certificate']
 ];
 
+/**
+ * 船舶證書的適用條件（rule，JSON）：
+ *   mode: 'always' 每艘都要 | 'never' 依實際配備（不自動要求）| 'auto' 依條件
+ *   flag: 'any' | 'tw' 本國籍 | 'foreign' 外國籍
+ *   gt_min / pob_min：總噸位 ≥ gt_min「或」限制員額 ≥ pob_min 時需要（兩個都沒填＝只看船籍）
+ *   gt_max：總噸位 < gt_max 才需要（例：小船執照）
+ * 門檻取自 SOLAS／MARPOL／ISM／ISPS 與我國小船規定的常見數值，僅供參考；實際以船旗國與驗船機構為準。
+ */
+const VESSEL_RULE_SEED = {
+  20: { mode: 'always' }, 21: { mode: 'auto', flag: 'tw', gt_min: 20 }, 22: { mode: 'auto', flag: 'tw', gt_min: 100 },
+  23: { mode: 'auto', gt_min: 100 }, 24: { mode: 'auto', gt_min: 100 }, 25: { mode: 'auto', gt_min: 150 }, 26: { mode: 'never' },
+  27: { mode: 'auto', gt_min: 20 }, 28: { mode: 'auto', gt_min: 300 }, 29: { mode: 'auto', gt_min: 500 }, 30: { mode: 'auto', gt_min: 500 },
+  31: { mode: 'auto', gt_min: 500 }, 32: { mode: 'auto', gt_min: 500 }, 33: { mode: 'auto', flag: 'tw', gt_max: 20 },
+  34: { mode: 'always' }, 35: { mode: 'always' }, 36: { mode: 'always' }, 37: { mode: 'auto', gt_min: 400 }, 38: { mode: 'auto', gt_min: 400 },
+  39: { mode: 'auto', gt_min: 400, pob_min: 16 }, 40: { mode: 'auto', gt_min: 400 }, 41: { mode: 'auto', gt_min: 400 }, 42: { mode: 'auto', gt_min: 500 },
+  43: { mode: 'auto', pob_min: 13 }, 44: { mode: 'always' }, 45: { mode: 'auto', gt_min: 100, pob_min: 15 }, 46: { mode: 'always' },
+  47: { mode: 'auto', gt_min: 100 }, 48: { mode: 'auto', gt_min: 100 }, 49: { mode: 'always' }, 50: { mode: 'auto', gt_min: 300 },
+  51: { mode: 'auto', flag: 'foreign' }, 52: { mode: 'never' }, 53: { mode: 'auto', gt_min: 500 }, 54: { mode: 'always' }, 55: { mode: 'auto', gt_min: 500 },
+  56: { mode: 'never' }, 57: { mode: 'always' }, 58: { mode: 'auto', gt_min: 500 }, 59: { mode: 'auto', gt_min: 500 }, 60: { mode: 'always' },
+  61: { mode: 'never' }, 62: { mode: 'never' }, 63: { mode: 'never' }
+};
+function normRule_(raw) {
+  let r = raw;
+  if (typeof r === 'string') { try { r = JSON.parse(r || '{}'); } catch (e) { r = {}; } }
+  r = r || {};
+  const out = { mode: ['always', 'never', 'auto'].indexOf(r.mode) >= 0 ? r.mode : 'always' };
+  if (out.mode === 'auto') {
+    out.flag = ['tw', 'foreign'].indexOf(r.flag) >= 0 ? r.flag : 'any';
+    ['gt_min', 'gt_max', 'pob_min'].forEach(k => { const n = Number(r[k]); if (r[k] !== '' && r[k] !== null && r[k] !== undefined && isFinite(n) && n > 0) out[k] = n; });
+  }
+  return JSON.stringify(out);
+}
 const PERSON_CERT_SEED = [
   ['OEUK Medical','Medical'],['ADNOC Medical','Medical'],['Other Medical','Medical'],
   ['BOSIET',CAT_SAFETY],['FOET',CAT_SAFETY],['STCW95 Basic Safety Training',CAT_SAFETY],
@@ -250,7 +282,7 @@ const ROUTES = {
   'sitelog.save': (u, p) => { requireRole_(u, ['admin','mc']); return saveSiteLog_(u, p); },
   'sitelog.delete': (u, p) => { requireRole_(u, ['admin','mc']); withLock_(() => Repo.remove('SiteLog', p.id)); return { id: p.id }; },
 
-  'vcerttype.save': (u, p) => { requirePerm_(u, 'vct'); return saveCertType_('VesselCertTypes', p, ['code','name','mandatory','active','sort']); },
+  'vcerttype.save': (u, p) => { requirePerm_(u, 'vct'); if (p.rule !== undefined) p.rule = normRule_(p.rule); return saveCertType_('VesselCertTypes', p, ['code','name','mandatory','active','sort','rule']); },
   'pcerttype.save': (u, p) => { requirePerm_(u, 'pct'); return saveCertType_('PersonCertTypes', p, ['name','category','has_expiry','active','sort']); },
   'company.save': (u, p) => { requirePerm_(u, 'companies'); return saveSimple_('Companies', p, ['name','active'], ['name']); },
   'company.delete': (u, p) => { requirePerm_(u, 'companies'); return deleteCompany_(p.id); },
@@ -388,8 +420,9 @@ function ensureSchema_() {
     Repo.flush();
     if (!Repo.all('VesselCertTypes').length) {
       Repo.insertMany('VesselCertTypes', VESSEL_CERT_SEED.map((c, i) => ({
-        id: genId_(), code: String(c[0]), name: c[1], mandatory: 'TRUE', active: 'TRUE', sort: String(i + 1) })));
+        id: genId_(), code: String(c[0]), name: c[1], mandatory: 'TRUE', active: 'TRUE', sort: String(i + 1), rule: normRule_(VESSEL_RULE_SEED[c[0]]) })));
     }
+    Repo.all('VesselCertTypes').forEach(t => { if (!t.rule) Repo.update('VesselCertTypes', t.id, { rule: normRule_(VESSEL_RULE_SEED[t.code] || { mode: 'always' }) }); });
     if (!Repo.all('PersonCertTypes').length) {
       Repo.insertMany('PersonCertTypes', PERSON_CERT_SEED.map((c, i) => ({
         id: genId_(), name: c[0], category: c[1], has_expiry: 'TRUE', active: 'TRUE', sort: String(i + 1) })));
@@ -974,7 +1007,17 @@ function reviewRecord_(u, sheet, p) {
      ['Reason｜原因', rec.approval_note], ['Reviewed by｜審核人', u.name || u.username]]);
   return rec;
 }
-const VESSEL_FIELDS = ['name','mmsi','imo','type','flag','operator','contact_person','phone','whatsapp','email','remark'];
+/** 總噸位、限制員額、船籍：判斷需要哪些證書的依據，三項都必填 */
+function checkVesselSpecs_(m, out) {
+  out = out || m;
+  const gt = Number(str_(m.gross_tonnage)), pob = Number(str_(m.max_persons));
+  if (!str_(m.gross_tonnage) || !isFinite(gt) || gt <= 0) fail_('Gross tonnage is required (a number greater than 0)');
+  if (!str_(m.max_persons) || !isFinite(pob) || pob <= 0 || Math.floor(pob) !== pob) fail_('Maximum persons on board is required (a whole number)');
+  if (!str_(m.flag)) fail_('Flag (nationality) is required');
+  if (out.gross_tonnage !== undefined) out.gross_tonnage = String(gt);
+  if (out.max_persons !== undefined) out.max_persons = String(pob);
+}
+const VESSEL_FIELDS = ['name','mmsi','imo','type','flag','gross_tonnage','max_persons','operator','contact_person','phone','whatsapp','email','remark'];
 function saveVessel_(u, p) {
   let event = '';
   const rec = withLock_(() => {
@@ -986,11 +1029,13 @@ function saveVessel_(u, p) {
       if (d.name === '') fail_('name is required');
       if (!isStaff_(u) && !sameCompany_(existing.company, u.company)) fail_('You can only edit vessels registered by your company', 'FORBIDDEN');
       delete d.company;
+      checkVesselSpecs_(Object.assign({}, existing, d), d);
       d.updated_at = nowIso_();
       if (existing.approval === 'Rejected' && !isStaff_(u)) { d.approval = 'Pending'; d.approval_note = ''; event = 'resubmitted'; }
       return Repo.update('Vessels', p.id, d);
     }
     if (!d.name) fail_('name is required');
+    checkVesselSpecs_(d);
     d.id = genId_(); d.created_by = u.username; d.created_at = d.updated_at = nowIso_();
     d.company = isStaff_(u) ? '' : u.company;
     if (isStaff_(u)) { d.approval = 'Approved'; d.approved_by = u.username; d.approved_at = d.created_at; }
@@ -1026,7 +1071,7 @@ function ptwLinkKeyAdmin_(u, p) {
   return { key: ptwLinkKey_(!!p.regenerate) };
 }
 function extVessel_(v) {
-  return { id: v.id, name: v.name, imo: v.imo, mmsi: v.mmsi, type: v.type, flag: v.flag, operator: v.operator, approval: v.approval };
+  return { id: v.id, name: v.name, imo: v.imo, mmsi: v.mmsi, type: v.type, flag: v.flag, gross_tonnage: v.gross_tonnage, max_persons: v.max_persons, operator: v.operator, approval: v.approval };
 }
 /** PTW 送來的船舶申請：同 IMO／MMSI／船名已存在就回傳既有那筆，不重複建立 */
 function extVesselApply_(u, p) {

@@ -1204,12 +1204,81 @@ function catBadge(p, cat) { const s = catStatus(p, cat); return `<span class="b 
 function isQualified(p) { return requiredCats().every(cat => catStatus(p, cat).ok); }
 function missingCats(p) { return requiredCats().filter(cat => !catStatus(p, cat).ok); }
 
+// ---- 依總噸位、限制員額、船籍判斷船舶需要哪些證書（條件在 系統管理 → 船舶證書要求 設定）----
+const FLAGS = ['中華民國（台灣）Taiwan (ROC)', 'Panama', 'Liberia', 'Marshall Islands', 'Singapore', 'Hong Kong', 'Malaysia', 'Indonesia', 'Philippines',
+  'Vietnam', 'Japan', 'Korea', 'China', 'Netherlands', 'Norway', 'United Kingdom', 'Malta', 'Bahamas', 'Cyprus', 'Belize', 'Other'];
+const isTwFlag = f => /taiwan|\bR\.?\s?O\.?\s?C\b|republic of china|中華民國|台灣|臺灣|^tw$/i.test(String(f || '').trim());
+function vesselSpecs(x) {
+  const gt = parseFloat(x && x.gross_tonnage), pob = parseInt(x && x.max_persons, 10);
+  return (x && isFinite(gt) && gt > 0 && isFinite(pob) && pob > 0 && String(x.flag || '').trim()) ? { gt, pob, tw: isTwFlag(x.flag) } : null;
+}
+function vcRule(t) { try { const r = JSON.parse(t.rule || '{}'); return r && r.mode ? r : { mode: 'always' }; } catch (e) { return { mode: 'always' }; } }
+/** 這艘船需不需要這張證書：true 需要／false 不需要。船的三項資料還沒填齊時，強制項目一律當作需要 */
+function vcRequired(t, x) {
+  if (t.mandatory !== 'TRUE') return false;
+  const sp = vesselSpecs(x);
+  if (!sp) return true;
+  const r = vcRule(t);
+  if (r.mode === 'never') return false;
+  if (r.mode !== 'auto') return true;
+  if (r.flag === 'tw' && !sp.tw) return false;
+  if (r.flag === 'foreign' && sp.tw) return false;
+  if (r.gt_max && sp.gt >= r.gt_max) return false;
+  const conds = [];
+  if (r.gt_min) conds.push(sp.gt >= r.gt_min);
+  if (r.pob_min) conds.push(sp.pob >= r.pob_min);
+  return !conds.length || conds.some(Boolean);
+}
+function vcRuleText(t) {
+  if (t.mandatory !== 'TRUE') return L('Optional', '選填');
+  const r = vcRule(t);
+  if (r.mode === 'never') return L('As fitted (not auto-required)', '依實際配備（不自動要求）');
+  if (r.mode !== 'auto') return L('All vessels', '所有船舶');
+  const p = [];
+  if (r.flag === 'tw') p.push(L('Taiwan-flagged', '本國籍'));
+  if (r.flag === 'foreign') p.push(L('Foreign-flagged', '外國籍'));
+  const or = [];
+  if (r.gt_min) or.push('GT ≥ ' + r.gt_min);
+  if (r.pob_min) or.push(L('persons ≥ ', '員額 ≥ ') + r.pob_min);
+  if (or.length) p.push(or.join(L(' or ', ' 或 ')));
+  if (r.gt_max) p.push('GT < ' + r.gt_max);
+  return p.join(' · ') || L('All vessels', '所有船舶');
+}
+function openVctRule(id) {
+  const t = S.vesselCertTypes.find(x => x.id === id), r = vcRule(t);
+  openModal(L('Applies to — ', '適用條件 — ') + esc(t.name), `
+    <div class="form-grid">
+      <div class="form-group full"><label>${L('When is this certificate required?', '什麼船需要這張證書？')}</label>
+        <div class="toolbar" style="flex-direction:column;align-items:flex-start;gap:6px">
+          <label class="chk"><input type="radio" name="vr_mode" value="always" ${r.mode === 'always' ? 'checked' : ''}> ${L('All vessels', '所有船舶')}</label>
+          <label class="chk"><input type="radio" name="vr_mode" value="auto" ${r.mode === 'auto' ? 'checked' : ''}> ${L('Depends on tonnage / persons / flag (below)', '依總噸位／員額／船籍判斷（下方條件）')}</label>
+          <label class="chk"><input type="radio" name="vr_mode" value="never" ${r.mode === 'never' ? 'checked' : ''}> ${L('As fitted — never auto-required (e.g. crane, incinerator)', '依實際配備，不自動要求（例：吊車、焚化爐）')}</label></div></div>
+      <div class="form-group"><label>${L('Flag', '船籍')}</label><select id="vr_flag">
+        <option value="any" ${!r.flag || r.flag === 'any' ? 'selected' : ''}>${L('Any', '不限')}</option>
+        <option value="tw" ${r.flag === 'tw' ? 'selected' : ''}>${L('Taiwan-flagged only', '僅本國籍')}</option>
+        <option value="foreign" ${r.flag === 'foreign' ? 'selected' : ''}>${L('Foreign-flagged only', '僅外國籍')}</option></select></div>
+      <div class="form-group"><label>${L('Gross tonnage ≥ (GT)', '總噸位 ≥（GT）')}</label><input id="vr_gtmin" type="number" min="0" value="${esc(r.gt_min || '')}"></div>
+      <div class="form-group"><label>${L('or max persons on board ≥', '或 限制員額 ≥')}</label><input id="vr_pob" type="number" min="0" value="${esc(r.pob_min || '')}"></div>
+      <div class="form-group"><label>${L('and gross tonnage < (GT, optional)', '且 總噸位 <（GT，選填）')}</label><input id="vr_gtmax" type="number" min="0" value="${esc(r.gt_max || '')}"></div>
+      <div class="note full">${L('Leave tonnage and persons empty to decide by flag only. Thresholds are pre-filled from common SOLAS / MARPOL / ISM / ISPS and Taiwan small-boat limits — for reference; confirm with the flag state / class society.', '總噸位與員額都留空＝只看船籍。預設門檻取自 SOLAS／MARPOL／ISM／ISPS 與我國小船規定的常見數值，僅供參考，實際請以船旗國與驗船機構為準。')}</div>
+      <div class="form-actions"><button class="btn btn-primary" onclick="saveVctRule(this,'${t.id}')">💾 ${L('Save', '儲存')}</button></div></div>`);
+}
+async function saveVctRule(btn, id) {
+  const mode = (document.querySelector('input[name="vr_mode"]:checked') || {}).value || 'always';
+  const rule = { mode, flag: v('vr_flag'), gt_min: v('vr_gtmin'), pob_min: v('vr_pob'), gt_max: v('vr_gtmax') };
+  await withBusy(btn, async () => {
+    upsert(S.vesselCertTypes, await api('vcerttype.save', { id, rule: JSON.stringify(rule) }));
+    closeTop(); renderAdmin(); toast(L('Saved', '已儲存'), 'success');
+  });
+}
+let WX_SHOW_NA = false;   // 證書分頁是否顯示「不需要」的項目
 function vcTypesActive() { return S.vesselCertTypes.filter(t => t.active !== 'FALSE').sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)); }
 function vcOf(vid, tid) { return S.vesselCerts.find(c => c.vessel_id === vid && c.type_id === tid); }
 function vcState(vid, t) {
   const c = vcOf(vid, t.id);
-  const mand = t.mandatory === 'TRUE';
-  if (!c || (!c.file_id && !c.expiry_date)) return { key: mand ? 'missing' : 'none', cls: mand ? 'b-bad' : 'b-na', text: mand ? 'Missing' : 'Not provided', c };
+  const mand = vcRequired(t, vesselById(vid));
+  if (!c || (!c.file_id && !c.expiry_date)) return mand ? { key: 'missing', cls: 'b-bad', text: 'Missing', c }
+    : t.mandatory === 'TRUE' ? { key: 'na', cls: 'b-na', text: L('Not required', '不需要'), c } : { key: 'none', cls: 'b-na', text: 'Not provided', c };
   if (certExpired(c)) return { key: 'expired', cls: 'b-bad', text: 'Expired', c };
   if (mand && !c.file_id) return { key: 'nofile', cls: 'b-bad', text: 'No file uploaded', c };
   if (certExpiringSoon(c)) return { key: 'soon', cls: 'b-warn', text: 'Expiring', c };
@@ -2014,10 +2083,12 @@ function openVessel(id, tab) {
     else banner = `<div class="note warn">⏳ ${L('This vessel is awaiting MC approval.', '此船舶等待 MC 核准。')}</div>`;
     if (isStaff() && !isApproved(x)) banner += `<div class="acts" style="margin:-4px 0 14px"><button class="btn btn-green btn-sm" onclick="reviewRecord('Vessels','${x.id}','Approved')">✔ ${L('Approve vessel', '核准船舶')}</button><button class="btn btn-danger btn-sm" onclick="reviewRecord('Vessels','${x.id}','Rejected')">✖ ${L('Reject', '退件')}</button></div>`;
   } else if (!isStaff()) banner = `<div class="note warn">${L('New vessels must be approved by MC.', '新增的船舶須經 MC 核准。')}</div>`;
+  const specsOk = !!vesselSpecs(x);
+  if (!specsOk) banner = `<div class="note info">📋 <b>${L('Step 1 of 2', '步驟 1／2')}</b>　${L('Fill in <b>gross tonnage</b>, <b>max persons on board</b> and <b>flag</b>, then save — the system uses them to work out which certificates this vessel needs, and the Certificates step opens.', '請先填寫<b>總噸位</b>、<b>船上限制員額</b>與<b>船籍</b>並儲存，系統會依這三項判斷需要哪些證書，接著才能進入下一步上傳證書。')}</div>` + banner;
   openModal(id ? 'Vessel — ' + esc(x.name) : 'Add Vessel', `${banner}
     <div class="tabs" id="vmTabs">
       <div class="tab" data-t="info">Details & Contact</div>
-      <div class="tab ${id ? '' : 'disabled'}" data-t="certs">Certificates</div>
+      <div class="tab ${id && specsOk ? '' : 'disabled'}" data-t="certs" title="${specsOk ? '' : L('Fill in tonnage, persons and flag first', '請先填寫總噸位、員額與船籍')}">Certificates</div>
       <div class="tab ${id ? '' : 'disabled'}" data-t="ptw">PTW</div>
     </div>
     <div id="vmTab-info"><div class="form-grid">
@@ -2025,7 +2096,9 @@ function openVessel(id, tab) {
       <div class="form-group"><label>Vessel type</label><select id="vm_type" ${ro}><option value="">-- Select --</option>${vesselTypes().concat(x.type && vesselTypes().indexOf(x.type) < 0 ? [x.type] : []).map(t => `<option value="${esc(t)}" ${t === x.type ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></div>
       <div class="form-group"><label>MMSI</label><input id="vm_mmsi" value="${esc(x.mmsi || '')}" ${ro}></div>
       <div class="form-group"><label>IMO No</label><input id="vm_imo" value="${esc(x.imo || '')}" ${ro}></div>
-      <div class="form-group"><label>Flag</label><input id="vm_flag" value="${esc(x.flag || '')}" ${ro}></div>
+      <div class="form-group"><label>${L('Flag (nationality) *', '船籍（國籍）*')}</label><select id="vm_flag" ${ro}><option value="">-- Select --</option>${FLAGS.concat(x.flag && FLAGS.indexOf(x.flag) < 0 ? [x.flag] : []).map(fl => `<option value="${esc(fl)}" ${fl === x.flag ? 'selected' : ''}>${esc(fl)}</option>`).join('')}</select></div>
+      <div class="form-group"><label>${L('Gross tonnage (GT) *', '總噸位（GT）*')}</label><input id="vm_gt" type="number" min="0" step="any" value="${esc(x.gross_tonnage || '')}" ${ro}></div>
+      <div class="form-group"><label>${L('Max persons on board *', '船上限制員額（人）*')}</label><input id="vm_pob" type="number" min="1" step="1" value="${esc(x.max_persons || '')}" ${ro}></div>
       <div class="form-group"><label>Operator / Owner</label><input id="vm_operator" value="${esc(x.operator || '')}" ${ro}></div>
       <div class="form-group"><label>Master / contact person</label><input id="vm_contact" value="${esc(x.contact_person || '')}" ${ro}></div>
       <div class="form-group"><label>Contact phone</label><input id="vm_phone" value="${esc(x.phone || '')}" placeholder="+886 …" ${ro}></div>
@@ -2037,7 +2110,7 @@ function openVessel(id, tab) {
     <div id="vmTab-certs" class="hidden"></div>
     <div id="vmTab-ptw" class="hidden"></div>`, true);
   document.querySelectorAll('#vmTabs .tab').forEach(t => t.onclick = () => { if (!t.classList.contains('disabled')) vmTab(id, t.dataset.t); });
-  vmTab(id, tab || 'info');
+  vmTab(id, specsOk ? (tab || 'info') : 'info');
 }
 function vmTab(id, t) {
   document.querySelectorAll('#vmTabs .tab').forEach(x => x.classList.toggle('active', x.dataset.t === t));
@@ -2049,13 +2122,18 @@ function renderVmCerts(id) {
   const el = document.getElementById('vmTab-certs');
   if (!el) return;
   const comp = vesselCompliance(id);
-  const types = vcTypesActive();
-  const edit = canEditVessel(vesselById(id));
+  const vx = vesselById(id), sp = vesselSpecs(vx);
+  const all = vcTypesActive(), need = all.filter(t => vcRequired(t, vx));
+  const types = WX_SHOW_NA ? all : all.filter(t => vcRequired(t, vx) || vcOf(id, t.id));
+  const edit = canEditVessel(vx);
   el.innerHTML = (comp.issues.length ? `<div class="note bad">⛔ ${L(comp.issues.length + ' mandatory certificate issue(s): missing, expired or without an uploaded file.', comp.issues.length + ' 項強制證書有缺失：缺少、已過期或未上傳檔案。')}</div>` : '<div class="note">✅ All mandatory certificates are valid and uploaded.</div>') +
+    (sp ? `<div class="note info" style="margin-bottom:10px">🧭 ${L('Based on', '依')} <b>GT ${sp.gt}</b>${L(', ', '、')}<b>${L('max ', '限制員額 ')}${sp.pob}${L(' persons', ' 人')}</b>${L(', ', '、')}<b>${sp.tw ? L('Taiwan-flagged', '本國籍') : L('foreign-flagged', '外國籍')}</b>${L(': this vessel needs ', '判斷：本船需要 ')}<b>${need.length}</b>${L(' certificate(s); ', ' 項證書；')}${all.length - need.length}${L(' others are not required.', ' 項不需要。')}
+      <label class="chk" style="margin-left:8px"><input type="checkbox" ${WX_SHOW_NA ? 'checked' : ''} onchange="WX_SHOW_NA=this.checked;renderVmCerts('${id}')"> ${L('Show not-required items', '顯示不需要的項目')}</label>
+      <div class="hint" style="margin-top:4px">${L('Reference only — rules are set under Administration → Vessel Certificate Requirements; confirm with the flag state / class society.', '僅供參考：判斷條件在 系統管理 → 船舶證書要求 設定，實際請以船旗國與驗船機構為準。')}</div></div>` : '') +
     `<p class="hint" style="margin-bottom:10px">Mandatory items are set by the administrator (Administration → Vessel Certificate Requirements).</p>
     <div class="table-wrap"><table><thead><tr><th>#</th><th>Certificate</th><th>Required</th><th>Issued</th><th>Expiry</th><th>Status</th><th>File</th><th>Description</th>${edit ? '<th></th>' : ''}</tr></thead><tbody>${types.map((t, i) => {
       const s = vcState(id, t), c = s.c || {};
-      return `<tr><td class="muted">${i + 1}</td><td>${esc(t.name)}</td><td>${t.mandatory === 'TRUE' ? '<span class="b b-navy">Mandatory</span>' : '<span class="b b-na">Optional</span>'}</td>
+      return `<tr><td class="muted">${i + 1}</td><td>${esc(t.name)}</td><td>${vcRequired(t, vx) ? '<span class="b b-navy">' + L('Required', '需要') + '</span>' : '<span class="b b-na">' + (t.mandatory === 'TRUE' ? L('Not required', '不需要') : L('Optional', '選填')) + '</span>'}</td>
         <td class="nowrap">${fmtDate(c.issue_date)}</td><td class="nowrap">${fmtDate(c.expiry_date)}</td><td><span class="b ${s.cls}">${s.text}</span></td>
         <td>${fileLink(c.file_id, c.file_name)}</td><td class="hint">${esc(c.description || '')}</td>
         ${edit ? `<td><button class="btn btn-secondary btn-sm" onclick="openVesselCert('${id}','${t.id}')">${s.c ? 'Edit' : 'Add'}</button></td>` : ''}</tr>`;
@@ -2104,8 +2182,10 @@ async function deleteVesselCert(cid, vid) {
 }
 async function saveVessel(btn, id) {
   const d = { id, name: v('vm_name'), type: v('vm_type'), mmsi: v('vm_mmsi'), imo: v('vm_imo'), flag: v('vm_flag'), operator: v('vm_operator'),
-    contact_person: v('vm_contact'), phone: v('vm_phone'), whatsapp: v('vm_whatsapp'), email: v('vm_email'), remark: v('vm_remark') };
+    contact_person: v('vm_contact'), phone: v('vm_phone'), whatsapp: v('vm_whatsapp'), email: v('vm_email'), remark: v('vm_remark'),
+    gross_tonnage: v('vm_gt'), max_persons: v('vm_pob') };
   if (!d.name) { toast('Vessel name is required', 'error'); return; }
+  if (!(parseFloat(d.gross_tonnage) > 0) || !(parseInt(d.max_persons, 10) > 0) || !d.flag) { toast(L('Please fill in gross tonnage, max persons on board and flag — they decide which certificates are required', '請填寫總噸位、船上限制員額與船籍，系統依這三項判斷需要哪些證書'), 'error'); return; }
   await withBusy(btn, async () => {
     const rec = await api('vessel.save', d);
     upsert(S.vessels, rec);
@@ -2836,9 +2916,10 @@ function adminVct(el) {
       <div class="toolbar"><input class="fi" id="newVct" placeholder="New certificate name" style="width:260px"><button class="btn btn-green btn-sm" onclick="addVct(this)">+ Add</button></div></div>
     <div class="section-body note" style="margin:0;border-radius:0">${L('Tick <b>Mandatory</b> for certificates every vessel must hold <b>with an uploaded file</b>. Optional certificates can still be recorded but do not raise alerts. Untick <b>Shown</b> to hide an item from the checklist.',
       '勾選<b>強制</b>的證書，每艘船都必須具備並<b>上傳檔案</b>；選填的證書仍可登錄，但不會產生警示。取消勾選<b>顯示</b>可將該項目從清單隱藏。')}</div>
-    <div class="table-wrap"><table><thead><tr><th>#</th><th>Code</th><th>Certificate</th><th>Mandatory</th><th>Shown</th></tr></thead><tbody>${list.map((t, i) => `<tr>
+    <div class="table-wrap"><table><thead><tr><th>#</th><th>Code</th><th>Certificate</th><th>Mandatory</th><th>${L('Applies to', '適用條件')}</th><th>Shown</th></tr></thead><tbody>${list.map((t, i) => `<tr>
       <td class="muted">${i + 1}</td><td class="mono">${esc(t.code)}</td><td>${esc(t.name)}</td>
       <td><label class="chk"><input type="checkbox" ${t.mandatory === 'TRUE' ? 'checked' : ''} onchange="setVct('${t.id}','mandatory',this)"></label></td>
+      <td><a href="javascript:void(0)" onclick="openVctRule('${t.id}')" title="${L('Edit', '修改')}">${esc(vcRuleText(t))}</a> ✏️</td>
       <td><label class="chk"><input type="checkbox" ${t.active !== 'FALSE' ? 'checked' : ''} onchange="setVct('${t.id}','active',this)"></label></td></tr>`).join('')}</tbody></table></div></div>`;
 }
 async function setVct(id, field, cb) {
