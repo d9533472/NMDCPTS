@@ -1435,10 +1435,11 @@ async function reviewCert(cid, status) {
 }
 
 // ==================== VESSELS ====================
-function vesselPTWs(name) {
-  if (!PTW.data || !name) return [];
-  const n = name.toLowerCase();
-  return PTW.data.active.concat(PTW.data.overdue).filter(p => String(p.vessel || '').toLowerCase().indexOf(n) >= 0);
+// PTW 系統的船舶下拉選單來自 OPTS（vesselId = 'OPTS-' + 船舶 id）；舊 PTW 沒有 vesselId 時才退回用船名比對
+function vesselPTWs(x) {
+  if (!PTW.data || !x || !x.name) return [];
+  const id = 'OPTS-' + x.id, n = x.name.toLowerCase();
+  return PTW.data.active.concat(PTW.data.overdue).filter(p => p.vesselId ? p.vesselId === id : String(p.vessel || '').toLowerCase().indexOf(n) >= 0);
 }
 function renderVessels() {
   const q = v('vSearch').toLowerCase();
@@ -1446,7 +1447,7 @@ function renderVessels() {
   const tb = document.getElementById('vBody');
   if (!list.length) { tb.innerHTML = '<tr class="empty"><td colspan="9">No vessels found</td></tr>'; return; }
   tb.innerHTML = list.map(x => {
-    const ptws = vesselPTWs(x.name);
+    const ptws = vesselPTWs(x);
     const od = ptws.filter(p => PTW.data.overdue.indexOf(p) >= 0).length;
     return `<tr>
     <td><strong>${esc(x.name)}</strong><div class="hint">${esc(x.type || '')}${x.flag ? ' · ' + esc(x.flag) : ''}</div></td>
@@ -1529,7 +1530,7 @@ function renderVmPTW(id) {
   const el = document.getElementById('vmTab-ptw');
   const x = vesselById(id);
   if (!PTW.data) { el.innerHTML = '<p class="muted">Loading PTW data…</p>'; refreshPTW(false).then(() => renderVmPTW(id)).catch(e => { el.innerHTML = `<div class="note bad">${esc(e.message)}</div>`; }); return; }
-  const list = vesselPTWs(x.name);
+  const list = vesselPTWs(x);
   el.innerHTML = `<p class="hint" style="margin-bottom:10px">${L('Open permits in the Offshore PTW System whose vessel field matches', 'Offshore PTW 系統中船舶欄位符合以下船名的開立中 PTW：')} “${esc(x.name)}”</p>` + ptwTable(list);
 }
 function openVesselCert(vid, tid) {
@@ -2279,11 +2280,18 @@ async function addPct(btn) {
   const name = v('newPct'); if (!name) return;
   await withBusy(btn, async () => { upsert(S.personCertTypes, await api('pcerttype.save', { name, category: v('newPctCat') })); renderAdmin(); });
 }
+async function showPtwKey(btn, regenerate) {
+  if (regenerate && !await confirmBox(L('Generate a new PTW link key? Vessel sync in the PTW System stops until you paste the new key there.', '確定重新產生 PTW 連結金鑰？在 PTW 系統貼上新金鑰之前，船舶同步會中斷。'))) return;
+  await withBusy(btn, async () => { document.getElementById('st_ptwkey').value = (await api('admin.ptwKey', { regenerate })).key; });
+}
 function adminSys(el) {
   const cats = [...new Set(S.personCertTypes.map(t => t.category))];
   const req = requiredCats();
   el.innerHTML = `<div class="section"><div class="section-header"><h3>System settings</h3></div><div class="section-body"><div class="form-grid">
     <div class="form-group full"><label>Offshore PTW System URL (Web App /exec)</label><input id="st_ptw" value="${esc(S.settings.ptw_url || '')}"></div>
+    <div class="form-group full"><label>${L('PTW link key (paste into PTW System → Administration → Vessels)', 'PTW 連結金鑰（貼到 PTW 系統 → 系統管理 → 船舶）')}</label>
+      <div class="toolbar"><input id="st_ptwkey" class="mono" readonly placeholder="••••••••" style="flex:1;min-width:220px"><button class="btn btn-secondary btn-sm" onclick="showPtwKey(this,false)">👁 ${L('Show', '顯示')}</button><button class="btn btn-secondary btn-sm" onclick="showPtwKey(this,true)">🔄 ${L('Regenerate', '重新產生')}</button></div>
+      <span class="hint">${L('The PTW System uses this key to read approved vessels and to send vessel applications here. After regenerating, paste the new key into PTW or vessel sync stops.', 'PTW 系統用這組金鑰讀取已核准船舶、並把暫存船舶送來這裡申請。重新產生後，要把新金鑰貼到 PTW，否則船舶同步會中斷。')}</span></div>
     <div class="form-group full"><label>Certificate categories required for transfer</label><div class="toolbar">${cats.map(c => `<label class="chk"><input type="checkbox" class="st_cat" value="${esc(c)}" ${req.indexOf(c) >= 0 ? 'checked' : ''}> ${esc(c)}</label>`).join('')}</div></div>
     <div class="form-actions"><button class="btn btn-primary" onclick="saveSys(this)">💾 Save settings</button></div></div></div></div>
     <div class="section"><div class="section-header"><h3>📧 ${L('Email notifications', '通知信設定')}</h3></div><div class="section-body"><div class="form-grid">

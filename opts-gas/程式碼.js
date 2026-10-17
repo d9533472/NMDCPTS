@@ -99,7 +99,8 @@ function handle_(req) {
   const payload = req.payload || {};
   try {
     ensureSchema_();
-    if (!PUBLIC[action]) user = verifySession_(req.token);
+    if (EXT_ACTIONS[action]) user = verifyLinkKey_(payload.key);
+    else if (!PUBLIC[action]) user = verifySession_(req.token);
     const before = deletedName_(action, payload);
     const data = fn(user, payload);
     audit_(action, user, payload, before ? { name: before } : data, true, '');
@@ -114,8 +115,8 @@ function handle_(req) {
 }
 
 // ============ Audit log（操作紀錄：誰在何時做了什麼；只增不改，清空資料也保留） ============
-const AUDIT_SKIP = { 'ping': 1, 'auth.status': 1, 'data.load': 1, 'audit.list': 1 };
-const AUDIT_SECRET = { password: 1, oldPassword: 1, newPassword: 1, code: 1, photo: 1 };
+const AUDIT_SKIP = { 'ping': 1, 'auth.status': 1, 'data.load': 1, 'audit.list': 1, 'ext.vessels': 1 };
+const AUDIT_SECRET = { password: 1, oldPassword: 1, newPassword: 1, code: 1, photo: 1, key: 1 };
 function auditDetail_(payload) {
   const o = {};
   Object.keys(payload || {}).forEach(k => {
@@ -229,7 +230,12 @@ const ROUTES = {
   'user.save': (u, p) => saveUser_(u, p),
   'user.resetPassword': (u, p) => resetPassword_(u, p),
   'user.delete': (u, p) => deleteUser_(u, p.id),
-  'settings.save': (u, p) => saveSettings_(u, p)
+  'settings.save': (u, p) => saveSettings_(u, p),
+  'admin.ptwKey': (u, p) => ptwLinkKeyAdmin_(u, p),
+
+  // Offshore PTW 系統（伺服器對伺服器，以連結金鑰驗證）
+  'ext.vessels': () => ({ vessels: Repo.all('Vessels').map(extVessel_) }),
+  'ext.vesselApply': (u, p) => extVesselApply_(u, p)
 };
 
 // ============ Repo（依表頭名稱讀寫，欄位順序不拘） ============
@@ -862,6 +868,55 @@ function saveVessel_(u, p) {
     [['Vessel｜船舶', rec.name], ['Type｜船型', rec.type], ['MMSI / IMO', [rec.mmsi, rec.imo].filter(Boolean).join(' / ')], ['Operator｜營運公司', rec.operator],
      ['Submitted by｜送件人', u.name || u.username]]);
   return rec;
+}
+
+// ============ Offshore PTW 系統連結 ============
+// OPTS 是船舶的主資料：PTW 系統只拿「已核准」的船當下拉選單，並可把暫存船舶送來這裡申請。
+// 金鑰存在 Script Properties（不進試算表，承包商讀得到的 settings 也不會帶出）。
+const EXT_ACTIONS = { 'ext.vessels': 1, 'ext.vesselApply': 1 };
+function ptwLinkKey_(regenerate) {
+  const props = PropertiesService.getScriptProperties();
+  let k = props.getProperty('PTW_LINK_KEY');
+  if (!k || regenerate) {
+    k = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '').slice(0, 16);
+    props.setProperty('PTW_LINK_KEY', k);
+  }
+  return k;
+}
+function verifyLinkKey_(key) {
+  const k = PropertiesService.getScriptProperties().getProperty('PTW_LINK_KEY');
+  if (!k || str_(key) !== k) fail_('Invalid PTW link key', 'FORBIDDEN');
+  return { id: 'ptw-system', username: 'ptw-system', name: 'Offshore PTW System', role: 'system', company: '' };
+}
+function ptwLinkKeyAdmin_(u, p) {
+  requireRole_(u, ['admin']);
+  return { key: ptwLinkKey_(!!p.regenerate) };
+}
+function extVessel_(v) {
+  return { id: v.id, name: v.name, imo: v.imo, mmsi: v.mmsi, type: v.type, flag: v.flag, operator: v.operator, approval: v.approval };
+}
+/** PTW 送來的船舶申請：同 IMO／MMSI／船名已存在就回傳既有那筆，不重複建立 */
+function extVesselApply_(u, p) {
+  const name = str_(p.name);
+  if (!name) fail_('name is required');
+  const imo = str_(p.imo).toLowerCase(), mmsi = str_(p.mmsi).toLowerCase();
+  let created = false;
+  const rec = withLock_(() => {
+    const dup = Repo.all('Vessels').find(v => (imo && str_(v.imo).toLowerCase() === imo) ||
+      (mmsi && str_(v.mmsi).toLowerCase() === mmsi) || str_(v.name).toLowerCase() === name.toLowerCase());
+    if (dup) return dup;
+    const d = {};
+    VESSEL_FIELDS.forEach(f => { if (p[f] !== undefined) d[f] = str_(p[f]); });
+    d.remark = [d.remark, 'Requested from Offshore PTW System by ' + (str_(p.requested_by) || 'PTW')].filter(Boolean).join(' · ');
+    d.id = genId_(); d.created_by = 'ptw:' + (str_(p.requested_by) || 'system'); d.created_at = d.updated_at = nowIso_();
+    d.approval = 'Pending';
+    created = true;
+    return Repo.insert('Vessels', d);
+  });
+  if (created) notify_('vessel_pending', 'Vessel pending approval｜船舶待核准',
+    [['Vessel｜船舶', rec.name], ['Type｜船型', rec.type], ['MMSI / IMO', [rec.mmsi, rec.imo].filter(Boolean).join(' / ')], ['Operator｜營運公司', rec.operator],
+     ['Submitted by｜送件人', 'Offshore PTW System — ' + (str_(p.requested_by) || '')]]);
+  return { vessel: extVessel_(rec), created: created };
 }
 
 // ============ Meetings ============
