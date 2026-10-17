@@ -574,14 +574,17 @@ function sendWelcome_(user, password) {
     const rows = [
       ['Name｜姓名', user.name || user.username],
       ['Company｜公司', user.company],
-      ['Role｜角色', role[0] + '｜' + role[1]],
-      ['Website｜系統網址', st.app_url],
-      ['Username｜帳號', user.username],
-      ['Temporary password｜臨時密碼', password],
-      ['Note｜說明', 'You will be asked to set your own password at first sign-in. Please do not share this email.｜首次登入時系統會要求您設定新密碼，請勿轉寄此信。']
+      ['Role｜角色', role[1] + '　' + role[0]],
+      ['Website｜系統網址', st.app_url]
     ];
-    MailApp.sendEmail({ to: user.email, subject: '[OPTS] Your account｜您的 OPTS 帳號已建立', name: 'OPTS — NMDC',
-      htmlBody: mailHtml_('Your account｜帳號已建立', rows, st.app_url) });
+    MailApp.sendEmail({ to: user.email, subject: '[OPTS] 您的帳號已建立｜Your OPTS account is ready', name: 'OPTS — NMDC',
+      htmlBody: mailHtml_('Your account is ready｜您的帳號已建立', rows, st.app_url, {
+        intro: [(user.name || user.username) + ' 您好，', '系統管理員已為您建立 OPTS（離岸人員轉運系統）帳號，請使用下方帳號與臨時密碼登入。',
+          'An OPTS account has been created for you. Sign in with the details below.'],
+        highlight: [['Username｜帳號', user.username], ['Temporary password｜臨時密碼', password]],
+        notice: ['首次登入時，系統會要求您設定自己的新密碼。', 'You will be asked to set your own password at first sign-in.', '請妥善保管此信，勿轉寄他人。Please do not forward this email.'],
+        button: '登入 OPTS　Sign in'
+      }) });
     return { sent: true, to: user.email };
   } catch (e) {
     console.warn('welcome mail failed: ' + e.message);
@@ -1077,15 +1080,62 @@ function saveAnnouncement_(u, p) {
 
 // ============ Notifications ============
 function htmlEsc_(s) { return String(s === undefined || s === null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
-function mailHtml_(title, rows, appUrl) {
-  return '<div style="font-family:Segoe UI,Arial,sans-serif;max-width:640px;border:1px solid #dde4ec;border-radius:8px;overflow:hidden">' +
-    '<div style="background:#002038;color:#fff;padding:14px 18px;border-bottom:3px solid #00B050;font-size:16px;font-weight:600">OPTS · ' + htmlEsc_(title) + '</div>' +
-    '<table style="width:100%;border-collapse:collapse;font-size:14px">' +
-    rows.filter(r => r[1] !== undefined && r[1] !== null && String(r[1]) !== '').map(r =>
-      '<tr><td style="padding:8px 18px;color:#6b7a8c;width:170px;vertical-align:top;border-bottom:1px solid #eef1f5">' + htmlEsc_(r[0]) + '</td>' +
-      '<td style="padding:8px 18px;color:#1d2b3a;border-bottom:1px solid #eef1f5">' + htmlEsc_(r[1]) + '</td></tr>').join('') +
-    '</table><div style="padding:14px 18px"><a href="' + htmlEsc_(appUrl) + '" style="background:#00B050;color:#fff;text-decoration:none;padding:9px 16px;border-radius:6px;font-weight:600">Open OPTS｜開啟系統</a></div>' +
-    '<div style="padding:0 18px 14px;color:#9aa7b5;font-size:12px">Automatic message from OPTS — Offshore Personnel Transfer System.｜此信由系統自動發送。</div></div>';
+/**
+ * 通知信版型：用表格排版（Outlook／Gmail／手機都正常），每格都寫字型（Outlook 不繼承）。
+ * rows：[['Label｜標籤', 值], …]；opt.intro 開頭說明、opt.highlight 醒目資料（如帳號密碼）、opt.notice 黃色提醒、opt.button 按鈕文字
+ */
+const MAIL_FONT_ = "'Segoe UI','Microsoft JhengHei','PingFang TC','Noto Sans TC',Arial,sans-serif";
+function mailLabel_(label) {
+  const p = String(label).split('｜');
+  return p.length > 1
+    ? '<div style="font-family:' + MAIL_FONT_ + ';font-size:13px;color:#1d2b3a;font-weight:600">' + htmlEsc_(p[1]) + '</div>' +
+      '<div style="font-family:' + MAIL_FONT_ + ';font-size:11px;color:#8795a5">' + htmlEsc_(p[0]) + '</div>'
+    : '<div style="font-family:' + MAIL_FONT_ + ';font-size:13px;color:#1d2b3a;font-weight:600">' + htmlEsc_(label) + '</div>';
+}
+function mailHtml_(title, rows, appUrl, opt) {
+  opt = opt || {};
+  const f = 'font-family:' + MAIL_FONT_ + ';';
+  const t = String(title).split('｜');
+  const keep = (rows || []).filter(r => r[1] !== undefined && r[1] !== null && String(r[1]) !== '');
+  const val = v => /^https?:\/\//.test(String(v))
+    ? '<a href="' + htmlEsc_(v) + '" style="color:#0b5cad;text-decoration:underline">' + htmlEsc_(v) + '</a>'
+    : htmlEsc_(v).replace(/\n/g, '<br>');
+  const detail = keep.length ? '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">' +
+    keep.map(r => '<tr><td width="150" valign="top" style="padding:10px 12px 10px 0;border-bottom:1px solid #edf1f5">' + mailLabel_(r[0]) + '</td>' +
+      '<td valign="top" style="' + f + 'padding:10px 0;border-bottom:1px solid #edf1f5;font-size:14px;color:#1d2b3a;line-height:1.5">' + val(r[1]) + '</td></tr>').join('') +
+    '</table>' : '';
+  const hi = (opt.highlight || []).length ? '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;margin:4px 0 18px">' +
+    '<tr><td bgcolor="#e9f7ef" style="background:#e9f7ef;border:1px solid #b9e4c9;border-radius:8px;padding:6px 18px">' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' +
+    opt.highlight.map((r, i) => '<tr><td style="padding:10px 0;' + (i ? 'border-top:1px solid #cdebd8;' : '') + '">' + mailLabel_(r[0]) + '</td>' +
+      '<td align="right" style="padding:10px 0;' + (i ? 'border-top:1px solid #cdebd8;' : '') + 'font-family:Consolas,\'Courier New\',monospace;font-size:20px;font-weight:700;color:#002038;letter-spacing:1px">' + htmlEsc_(r[1]) + '</td></tr>').join('') +
+    '</table></td></tr></table>' : '';
+  const notice = opt.notice ? '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0 0">' +
+    '<tr><td bgcolor="#fff6e5" style="' + f + 'background:#fff6e5;border-left:4px solid #e0a100;padding:12px 14px;font-size:13px;color:#6b4e00;line-height:1.6">' + opt.notice.map(htmlEsc_).join('<br>') + '</td></tr></table>' : '';
+  const btn = appUrl ? '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 4px"><tr>' +
+    '<td bgcolor="#00B050" style="background:#00B050;border-radius:6px">' +
+    '<a href="' + htmlEsc_(appUrl) + '" style="' + f + 'display:inline-block;padding:12px 28px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:6px">' +
+    htmlEsc_(opt.button || '開啟 OPTS 系統　Open OPTS') + ' &rarr;</a></td></tr></table>' : '';
+  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>' +
+    '<body style="margin:0;padding:0;background:#eef2f7">' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#eef2f7" style="background:#eef2f7"><tr><td align="center" style="padding:24px 12px">' +
+    '<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:100%;background:#ffffff;border:1px solid #dde4ec;border-radius:10px;border-collapse:separate;overflow:hidden">' +
+    // header
+    '<tr><td bgcolor="#002038" style="background:#002038;padding:18px 28px">' +
+    '<div style="' + f + 'font-size:20px;font-weight:700;color:#ffffff;letter-spacing:2px">OPTS</div>' +
+    '<div style="' + f + 'font-size:12px;color:#9fb6cc">Offshore Personnel Transfer System　·　NMDC</div></td></tr>' +
+    '<tr><td bgcolor="#00B050" style="background:#00B050;height:4px;line-height:4px;font-size:0">&nbsp;</td></tr>' +
+    // body
+    '<tr><td style="padding:26px 28px 8px">' +
+    '<div style="' + f + 'font-size:22px;font-weight:700;color:#002038;line-height:1.3">' + htmlEsc_(t[1] || t[0]) + '</div>' +
+    (t[1] ? '<div style="' + f + 'font-size:14px;color:#6b7a8c;margin-top:2px">' + htmlEsc_(t[0]) + '</div>' : '') +
+    (opt.intro ? '<div style="' + f + 'font-size:14px;color:#1d2b3a;line-height:1.7;margin:16px 0 14px">' + opt.intro.map(htmlEsc_).join('<br>') + '</div>' : '<div style="height:16px;line-height:16px;font-size:0">&nbsp;</div>') +
+    hi + detail + notice + btn +
+    '</td></tr>' +
+    // footer
+    '<tr><td style="' + f + 'padding:18px 28px 22px;font-size:11px;color:#9aa7b5;line-height:1.6;border-top:1px solid #edf1f5">' +
+    '此信由 OPTS 系統自動發送，請勿直接回覆。<br>Automatic message from OPTS — please do not reply.</td></tr>' +
+    '</table></td></tr></table></body></html>';
 }
 function notify_(event, subject, rows) {
   try {
