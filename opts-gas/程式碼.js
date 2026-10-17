@@ -40,7 +40,7 @@ const DEFAULT_SETTINGS = {
   notify_events: 'personnel_pending,vessel_pending,cert_pending,review_result,transfer,expiry,meeting',
   meeting_title: '每日協調會議',
   // 儀表板天氣／海象（Open-Meteo 預報＋Windy 地圖）；座標空白＝不顯示天氣欄
-  weather_name: '台中－通霄 36" 海管',
+  weather_name: '沿線海象 · 台中－通霄 36" 海管',
   // 每行「名稱, 緯度, 經度」，依管線順序（預設：台中接收站→通霄電廠沿線約每 5 km 一點，依路線圖估計）
   weather_points: [
     'KP 5, 24.2483, 120.4217',

@@ -1379,6 +1379,25 @@ function wxPin(hs, c, sel) {
   return L_ ? L_.divIcon({ className: '', iconSize: null, html: `<div class="wx-pin ${wxTone(hs, c)} ${sel ? 'sel' : ''}">${wxNum(hs, 1)}</div>` }) : null;
 }
 let L_ = window.LEAFLET || null;   // Leaflet（window.L 會跟翻譯函式 L() 撞名，所以載入後另存一份）
+function wxEditTitle() {
+  const h = document.getElementById('wxTitle');
+  if (!h) return;
+  WX.editing = true;
+  h.innerHTML = `🌊 <input id="wxTitleIn" class="notr" style="font:inherit;font-size:14px;padding:2px 8px;border-radius:6px;border:0;min-width:240px;color:var(--navy)" value="${esc(S.settings.weather_name || '')}" placeholder="${L('Sea state along the pipeline', '沿線海象')}">
+    <button type="button" class="btn btn-sm" onclick="wxSaveTitle(this)">💾</button> <button type="button" class="btn btn-sm" onclick="WX.editing=false;renderWeather()">✕</button>`;
+  const i = document.getElementById('wxTitleIn');
+  i.focus(); i.select();
+  i.onkeydown = e => { if (e.key === 'Enter') wxSaveTitle(i.nextElementSibling); else if (e.key === 'Escape') { WX.editing = false; renderWeather(); } };
+}
+async function wxSaveTitle(btn) {
+  const name = v('wxTitleIn');
+  await withBusy(btn, async () => {
+    S.settings = await api('settings.save', { weather_name: name });
+    WX.editing = false;
+    renderWeather();
+    toast(L('Title saved', '標題已儲存'), 'success');
+  });
+}
 function wxSelect(i) { WX.sel = i; renderWeather(); }
 function renderWeather() {
   const el = document.getElementById('dashWeather');
@@ -1396,6 +1415,7 @@ function renderWeather() {
       <div class="wx-body"><div class="wx-mapbox"><div id="wxMap"></div><div class="wx-chips" id="wxChips"></div></div><div class="wx-detail" id="wxDetail"></div></div>
       <div class="wx-sub" id="wxFoot" style="margin-top:6px"></div></div>`;
     WX.built = buildKey;
+    WX.editing = false;
     if (L_) {
       WX.map = L_.map('wxMap', { scrollWheelZoom: false, attributionControl: true, zoomControl: true });
       L_.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 13, attribution: 'Esri, GEBCO, NOAA' }).addTo(WX.map);
@@ -1412,9 +1432,10 @@ function renderWeather() {
   }
   if (WX.map) setTimeout(() => WX.map && WX.map.invalidateSize(), 0);
   const head = document.getElementById('wxHead'), det = document.getElementById('wxDetail'), foot = document.getElementById('wxFoot'), chips = document.getElementById('wxChips');
-  const title = `<h3>🌊 ${L('Sea state along the pipeline', '沿線海象')}${c.name ? ' · ' + esc(c.name) : ''}</h3>`;
+  // 標題：系統設定的「天氣欄標題」整段取代預設文字；Admin 可直接在儀表板按 ✏️ 修改
+  const title = `<h3 class="notr" id="wxTitle">🌊 ${c.name ? esc(c.name) : L('Sea state along the pipeline', '沿線海象')}${isAdmin() ? ` <button type="button" class="btn btn-sm" style="padding:0 6px;font-size:11px" title="${L('Edit title', '修改標題')}" onclick="wxEditTitle()">✏️</button>` : ''}</h3>`;
   if (!WX.data || WX.key !== c.key) {
-    head.innerHTML = title;
+    if (!WX.editing) head.innerHTML = title;
     det.innerHTML = `<div class="wx-sub">${WX.err ? '⚠ ' + L('Could not load weather: ', '無法取得天氣資料：') + esc(WX.err) : L('Loading weather…', '天氣資料載入中…')}</div>`;
     chips.innerHTML = ''; foot.innerHTML = '';
     if (WX.layer) WX.layer.clearLayers();
@@ -1430,7 +1451,7 @@ function renderWeather() {
   const maxWind = Math.max(...now.map(n => n.wind || 0));
   const pill = !anyNow && !any12 ? `<span class="wx-pill ok">✅ ${L('All points within limits (next 12 h)', '全線未來 12 小時在作業限制內')}</span>`
     : `<span class="wx-pill no">⚠️ ${anyNow ? L('Above operating limit at ', '目前超過作業限制：') + now.map((n, i) => n.over ? c.pts[i].name : '').filter(Boolean).join(L(', ', '、')) : L('Limit exceeded within 12 h', '12 小時內將超過作業限制')}</span>`;
-  head.innerHTML = title + `<span class="wx-sum notr">${L('Max Hs ', '最大浪高 ')}<b>${wxNum(now[worst].hs, 1)} m</b> @ ${esc(c.pts[worst].name)} · ${L('Max wind ', '最大風速 ')}<b>${wxNum(maxWind, 0)} kn</b></span>` + pill;
+  if (!WX.editing) head.innerHTML = title + `<span class="wx-sum notr">${L('Max Hs ', '最大浪高 ')}<b>${wxNum(now[worst].hs, 1)} m</b> @ ${esc(c.pts[worst].name)} · ${L('Max wind ', '最大風速 ')}<b>${wxNum(maxWind, 0)} kn</b></span>` + pill;
   if (WX.layer) {
     WX.layer.clearLayers();
     c.pts.forEach((p, i) => {
@@ -2665,7 +2686,7 @@ function adminSys(el) {
     <div class="form-group full"><label>${L('Default meeting title (new meeting minutes)', '預設會議名稱（新增會議紀錄時帶入）')}</label><input id="st_mtitle" class="notr" value="${esc(defaultMeetingTitle())}" placeholder="每日協調會議">
       <span class="hint">${L('Filled in automatically for every new meeting; users can still press “Edit name” to change it for that meeting.', '新增會議紀錄時自動帶入；個別會議仍可按「修改名稱」更改。')}</span></div>
     <div class="form-group full" style="border-top:1px solid var(--border);padding-top:12px"><label>🌊 ${L('Dashboard sea-state / weather (Open-Meteo data + Windy map)', '儀表板海象天氣（Open-Meteo 預報＋Windy 地圖）')}</label>
-      <input id="st_wxname" class="notr" placeholder="${L('Panel title, e.g. 55 km export pipeline', '標題，例：55 公里海管')}" value="${esc(S.settings.weather_name || '')}">
+      <input id="st_wxname" class="notr" placeholder="${L('Panel title (empty = “Sea state along the pipeline”)', '天氣欄標題（留空＝「沿線海象」）')}" value="${esc(S.settings.weather_name || '')}">
       <textarea id="st_wxpts" class="mono notr" rows="6" style="margin-top:6px" placeholder="KP 0, 24.2500, 120.4800&#10;KP 10, 24.2700, 120.3900&#10;KP 20, 24.2900, 120.3000">${esc(S.settings.weather_points || (S.settings.weather_lat ? (S.settings.weather_name || 'Site') + ', ' + S.settings.weather_lat + ', ' + S.settings.weather_lon : ''))}</textarea>
       <div class="toolbar" style="margin-top:6px"><label class="chk">${L('Wave height limit (m)', '浪高限制（m）')} <input id="st_wxwave" class="mono" style="width:70px" value="${esc(S.settings.weather_wave_limit || '1.5')}"></label>
         <label class="chk">${L('Wind limit (kn)', '風速限制（kn）')} <input id="st_wxwind" class="mono" style="width:70px" value="${esc(S.settings.weather_wind_limit || '25')}"></label></div>
