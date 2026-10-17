@@ -1363,7 +1363,7 @@ function renderDashPending() {
     open: `openPersonnel('${p.id}')`, act: isStaff() && p.approval !== 'Rejected' ? `<button class="btn btn-green btn-sm" onclick="event.stopPropagation();reviewRecord('Personnel','${p.id}','Approved')">✔</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();reviewRecord('Personnel','${p.id}','Rejected')">✖</button>` : '' }));
   S.vessels.filter(x => !isApproved(x)).forEach(x => rows.push({ t: x.updated_at || x.created_at, kind: L('Vessel', '船舶'), ico: '🚢', name: x.name, org: x.operator, rec: x,
     open: `openVessel('${x.id}')`, act: isStaff() && x.approval !== 'Rejected' ? `<button class="btn btn-green btn-sm" onclick="event.stopPropagation();reviewRecord('Vessels','${x.id}','Approved')">✔</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();reviewRecord('Vessels','${x.id}','Rejected')">✖</button>` : '' }));
-  S.personCerts.filter(c => c.status === 'Pending').forEach(c => { const p = S.personnel.find(x => x.id === c.personnel_id) || {};
+  S.personCerts.filter(c => c.status === 'Pending' && isApproved(S.personnel.find(x => x.id === c.personnel_id) || {})).forEach(c => { const p = S.personnel.find(x => x.id === c.personnel_id) || {};
     rows.push({ t: c.updated_at, kind: L('Certificate', '證照'), ico: '🪪', name: p.name + ' — ' + pcName(c), org: p.company, rec: { approval: 'Pending' },
       open: `openPersonnel('${p.id}')`, act: isStaff() ? `<button class="btn btn-green btn-sm" onclick="event.stopPropagation();reviewCert('${c.id}','Approved')">✔</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();reviewCert('${c.id}','Rejected')">✖</button>` : '' }); });
   rows.sort((a, b) => String(a.t).localeCompare(String(b.t)));
@@ -1847,7 +1847,7 @@ function openPersonnel(id) {
     if (p.approval === 'Approved') banner = `<div class="note">✅ ${L('Approved', '已核准')}${p.approved_by && p.approved_by !== 'migration' ? ' · ' + esc(p.approved_by) + ' · ' + fmtDT(p.approved_at) : ''}</div>`;
     else if (p.approval === 'Rejected') banner = `<div class="note bad">✖ ${L('Rejected', '已被退件')} — ${esc(p.approval_note)}<br>${L('Update the record and save to resubmit.', '請修改資料後儲存即可重新送審。')}</div>`;
     else banner = `<div class="note warn">⏳ ${L('Awaiting MC approval — this person cannot be transferred until approved.', '等待 MC 核准 — 核准前不能被轉運。')}</div>`;
-    if (isStaff() && !isApproved(p)) banner += `<div class="acts" style="margin:-4px 0 14px"><button class="btn btn-green btn-sm" onclick="reviewRecord('Personnel','${p.id}','Approved')">✔ ${L('Approve personnel', '核准人員')}</button><button class="btn btn-danger btn-sm" onclick="reviewRecord('Personnel','${p.id}','Rejected')">✖ ${L('Reject', '退件')}</button></div>`;
+    if (isStaff() && !isApproved(p)) banner += `<div class="acts" style="margin:-4px 0 14px">${personApproveBtn(p)}<button class="btn btn-danger btn-sm" onclick="reviewRecord('Personnel','${p.id}','Rejected')">✖ ${L('Reject', '退件')}</button></div>`;
     if (!editable) banner += `<div class="note">${L('Read-only — you can only edit personnel of your own company.', '唯讀 — 您只能編修自己公司的人員。')}</div>`;
   } else if (!isStaff()) banner = `<div class="note warn">${L('New personnel must be approved by MC before they can be transferred.', '新增的人員須經 MC 核准後才能轉運。')}</div>`;
   const m = openModal(id ? 'Personnel — ' + esc(p.name) : 'Add Personnel', `${banner}
@@ -1918,6 +1918,29 @@ async function savePersonnel(btn, id) {
   });
 }
 function activeCompanies() { return S.companies.filter(c => c.active !== 'FALSE').map(c => c.name).sort((a, b) => a.localeCompare(b)); }
+// 人員核准＝基本資料＋證照一起合格；有退件證照或缺必要類別時不能核准
+function personApproveBtn(p) {
+  const certs = certsOf(p.id), pend = certs.filter(c => c.status === 'Pending').length;
+  const rej = certs.filter(c => c.status === 'Rejected').length;
+  const live = certs.filter(c => (c.status === 'Pending' || c.status === 'Approved') && !certExpired(c));
+  const miss = requiredCats().filter(k => !live.some(c => pcType(c.type_id).category === k));
+  const why = rej ? L(rej + ' certificate(s) rejected — fix or delete first', rej + ' 張證照被退件，請先處理') : miss.length ? L('Missing: ', '缺少：') + miss.map(tz).join(L(', ', '、')) : '';
+  return why ? `<button class="btn btn-green btn-sm" disabled title="${esc(why)}">✔ ${L('Approve personnel', '核准人員')}</button><span class="hint" style="align-self:center">⚠ ${esc(why)}</span>`
+    : `<button class="btn btn-green btn-sm" onclick="reviewRecord('Personnel','${p.id}','Approved')">✔ ${L('Approve personnel', '核准人員')}${pend ? L(` + ${pend} certificate(s)`, `（含 ${pend} 張證照）`) : ''}</button>`;
+}
+// 船舶：本船需要的證書都齊全（有檔案、未過期）才能核准
+function vesselApproveBtn(x) {
+  const why = !vesselSpecs(x) ? L('Fill in tonnage, persons and flag first', '請先填寫總噸位、員額與船籍')
+    : (n => n ? L(n + ' required certificate(s) missing / expired / without file', n + ' 項必要證書缺少、過期或未上傳檔案') : '')(vesselCompliance(x.id).issues.length);
+  return why ? `<button class="btn btn-green btn-sm" disabled title="${esc(why)}">✔ ${L('Approve vessel', '核准船舶')}</button><span class="hint" style="align-self:center">⚠ ${esc(why)}</span>`
+    : `<button class="btn btn-green btn-sm" onclick="reviewRecord('Vessels','${x.id}','Approved')">✔ ${L('Approve vessel', '核准船舶')}</button>`;
+}
+// 證照列表的「核准」：人員還沒核准的證照，改成隨人員一起核准
+function certApproveBtn(c, compact) {
+  const p = S.personnel.find(x => x.id === c.personnel_id) || {};
+  if (!isApproved(p)) return `<span class="hint" title="${L('Approved together with the person', '核准人員時一併核准')}">${L('With person', '隨人員核准')}</span>`;
+  return `<button class="btn btn-green btn-sm" onclick="${compact ? 'event.stopPropagation();' : ''}reviewCert('${c.id}','Approved')">${compact ? '✔' : 'Approve'}</button>`;
+}
 async function reviewRecord(sheet, id, status) {
   let note = '';
   if (status === 'Rejected') {
@@ -1927,8 +1950,10 @@ async function reviewRecord(sheet, id, status) {
   }
   await withBusy(null, async () => {
     const rec = await api(sheet === 'Vessels' ? 'vessel.review' : 'personnel.review', { id, status, note });
+    const certs = rec._certs || []; delete rec._certs;
+    certs.forEach(c => upsert(S.personCerts, c));
     upsert(sheet === 'Vessels' ? S.vessels : S.personnel, rec);
-    toast(status === 'Approved' ? L('Approved', '已核准') : L('Rejected', '已退件'), 'success');
+    toast((status === 'Approved' ? L('Approved', '已核准') : L('Rejected', '已退件')) + (certs.length ? L(` (incl. ${certs.length} certificate(s))`, `（含 ${certs.length} 張證照）`) : ''), 'success');
     while (modalStack.length) closeTop();
     refreshPage();
   });
@@ -1965,7 +1990,7 @@ function renderPmCerts(pid) {
     <td>${esc(pcType(c.type_id).category)}</td><td><strong>${esc(pcName(c))}</strong>${c.status === 'Rejected' && c.review_note ? `<div class="hint">Reason: ${esc(c.review_note)}</div>` : ''}</td>
     <td class="mono">${esc(c.cert_no || '—')}</td><td class="nowrap">${fmtDate(c.issue_date)}</td><td class="nowrap">${fmtDate(c.expiry_date)}</td>
     <td>${certStatusBadge(c)}</td><td>${fileLink(c.file_id, c.file_name)}</td>
-    <td><div class="acts">${isStaff() && c.status === 'Pending' ? `<button class="btn btn-green btn-sm" onclick="reviewCert('${c.id}','Approved')">Approve</button><button class="btn btn-danger btn-sm" onclick="reviewCert('${c.id}','Rejected')">Reject</button>` : ''}
+    <td><div class="acts">${isStaff() && c.status === 'Pending' ? `${certApproveBtn(c)}<button class="btn btn-danger btn-sm" onclick="reviewCert('${c.id}','Rejected')">Reject</button>` : ''}
       ${canEdit ? `<button class="btn btn-secondary btn-sm" onclick="openPersonCert('${pid}','${c.id}')">Edit</button><button class="btn btn-danger btn-sm" onclick="deletePersonCert('${c.id}')">🗑</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
   el.innerHTML = h;
 }
@@ -2081,7 +2106,7 @@ function openVessel(id, tab) {
     if (x.approval === 'Approved') banner = '';
     else if (x.approval === 'Rejected') banner = `<div class="note bad">✖ ${L('Rejected', '已被退件')} — ${esc(x.approval_note)}</div>`;
     else banner = `<div class="note warn">⏳ ${L('This vessel is awaiting MC approval.', '此船舶等待 MC 核准。')}</div>`;
-    if (isStaff() && !isApproved(x)) banner += `<div class="acts" style="margin:-4px 0 14px"><button class="btn btn-green btn-sm" onclick="reviewRecord('Vessels','${x.id}','Approved')">✔ ${L('Approve vessel', '核准船舶')}</button><button class="btn btn-danger btn-sm" onclick="reviewRecord('Vessels','${x.id}','Rejected')">✖ ${L('Reject', '退件')}</button></div>`;
+    if (isStaff() && !isApproved(x)) banner += `<div class="acts" style="margin:-4px 0 14px">${vesselApproveBtn(x)}<button class="btn btn-danger btn-sm" onclick="reviewRecord('Vessels','${x.id}','Rejected')">✖ ${L('Reject', '退件')}</button></div>`;
   } else if (!isStaff()) banner = `<div class="note warn">${L('New vessels must be approved by MC.', '新增的船舶須經 MC 核准。')}</div>`;
   const specsOk = !!vesselSpecs(x);
   if (!specsOk) banner = `<div class="note info">📋 <b>${L('Step 1 of 2', '步驟 1／2')}</b>　${L('Fill in <b>gross tonnage</b>, <b>max persons on board</b> and <b>flag</b>, then save — the system uses them to work out which certificates this vessel needs, and the Certificates step opens.', '請先填寫<b>總噸位</b>、<b>船上限制員額</b>與<b>船籍</b>並儲存，系統會依這三項判斷需要哪些證書，接著才能進入下一步上傳證書。')}</div>` + banner;
@@ -2479,7 +2504,7 @@ function renderCertificates() {
     return `<tr><td><div class="person-cell">${avatar(p, 28)}<a href="javascript:void(0)" onclick="openPersonnel('${p.id}')"><strong>${esc(p.name)}</strong></a></div></td><td>${esc(p.company)}</td><td>${esc(pcName(c))}</td>
       <td class="mono">${esc(c.cert_no || '—')}</td><td class="nowrap">${fmtDate(c.expiry_date)}${certExpired(c) ? ' <span class="b b-bad">Expired</span>' : ''}</td><td class="hint nowrap">${esc(c.submitted_by)}<br>${fmtDT(c.updated_at)}</td>
       <td>${fileLink(c.file_id, c.file_name)}</td>
-      <td>${staff ? `<div class="acts"><button class="btn btn-green btn-sm" onclick="reviewCert('${c.id}','Approved')">Approve</button><button class="btn btn-danger btn-sm" onclick="reviewCert('${c.id}','Rejected')">Reject</button></div>` : ''}</td></tr>`;
+      <td>${staff ? `<div class="acts">${certApproveBtn(c)}<button class="btn btn-danger btn-sm" onclick="reviewCert('${c.id}','Rejected')">Reject</button></div>` : ''}</td></tr>`;
   }).join('') : '<tr class="empty"><td colspan="8">Nothing pending</td></tr>';
   const rej = S.personCerts.filter(c => c.status === 'Rejected');
   document.getElementById('secRejected').classList.toggle('hidden', !rej.length);

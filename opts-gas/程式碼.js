@@ -950,6 +950,10 @@ function savePersonCert_(u, p) {
     existing = Repo.get('PersonCerts', p.id);
     if (!existing || existing.personnel_id !== person.id) fail_('Record not found', 'NOT_FOUND');
   }
+  if (existing && existing.status === 'Approved' && !isStaff_(u)) {
+    if (!(p.file && p.file.data)) fail_('Please attach the new certificate file');
+    existing = null;   // 換證：保留已核准的舊證照，新的另外送審
+  }
   if (!existing && !(p.file && p.file.data)) fail_('Please attach the certificate file');
   const saved = saveFile_(p.file, person.name + ' - ' + type.name);
   const rec = withLock_(() => {
@@ -996,16 +1000,76 @@ function reviewPersonCert_(u, p) {
 }
 
 // ============ Approval（人員／船舶由 Admin 核准） ============
+/**
+ * 人員／船舶審核：
+ * - 人員：核准＝基本資料與證照一起合格 → 一次核准該人員所有待審證照；退件時待審證照一起退。
+ *   有證照被退件、或必要類別（體檢、海上安全訓練…）沒有有效證照時，不能核准。
+ * - 船舶：本船需要的證書（依噸位／員額／船籍判斷）都已上傳檔案且未過期，才能核准。
+ */
 function reviewRecord_(u, sheet, p) {
   requireRole_(u, ['admin','mc']);
   const status = p.status === 'Approved' ? 'Approved' : 'Rejected';
   if (status === 'Rejected' && !str_(p.note)) fail_('Please give a reason for rejection');
-  const rec = withLock_(() => Repo.update(sheet, p.id, { approval: status, approval_note: str_(p.note), approved_by: u.username, approved_at: nowIso_() }));
+  const target = Repo.get(sheet, p.id);
+  if (!target) fail_('Record not found', 'NOT_FOUND');
+  const now = nowIso_(), today = now.slice(0, 10);
+  let certs = [];
+  if (sheet === 'Personnel') {
+    certs = Repo.all('PersonCerts').filter(c => c.personnel_id === p.id);
+    if (status === 'Approved') {
+      const rej = certs.filter(c => c.status === 'Rejected');
+      if (rej.length) fail_('A certificate of this person was rejected — fix or delete it before approving the person');
+      const types = Repo.all('PersonCertTypes');
+      const cat = c => (types.find(t => t.id === c.type_id) || {}).category;
+      const live = certs.filter(c => (c.status === 'Pending' || c.status === 'Approved') && !(c.expiry_date && c.expiry_date < today));
+      const missing = String(settings_().required_categories || '').split(',').map(s => s.trim()).filter(Boolean).filter(k => !live.some(c => cat(c) === k));
+      if (missing.length) fail_('Missing valid certificate: ' + missing.join(', ') + ' — cannot approve yet');
+    }
+  }
+  if (sheet === 'Vessels' && status === 'Approved') {
+    const miss = vesselMissingCerts_(target, today);
+    if (miss === null) fail_('Fill in gross tonnage, max persons on board and flag before approving');
+    if (miss.length) fail_('Missing / expired / no file: ' + miss.slice(0, 6).join(', ') + (miss.length > 6 ? ' … (+' + (miss.length - 6) + ')' : '') + ' — cannot approve yet');
+  }
+  const updated = [];
+  const rec = withLock_(() => {
+    certs.filter(c => c.status === 'Pending').forEach(c => {
+      updated.push(Repo.update('PersonCerts', c.id, status === 'Approved'
+        ? { status: 'Approved', review_note: '', reviewed_by: u.username, reviewed_at: now }
+        : { status: 'Rejected', review_note: '隨人員退件 Rejected with personnel: ' + str_(p.note), reviewed_by: u.username, reviewed_at: now }));
+    });
+    return Repo.update(sheet, p.id, { approval: status, approval_note: str_(p.note), approved_by: u.username, approved_at: now });
+  });
   const what = sheet === 'Vessels' ? ['Vessel', '船舶'] : ['Personnel', '人員'];
   notify_('review_result', what[0] + ' ' + status.toLowerCase() + '｜' + what[1] + (status === 'Approved' ? '已核准' : '已退件'),
     [[what[0] + '｜' + what[1], rec.name], ['Company｜公司', rec.company || rec.operator], ['Result｜結果', status],
-     ['Reason｜原因', rec.approval_note], ['Reviewed by｜審核人', u.name || u.username]]);
-  return rec;
+     ['Reason｜原因', rec.approval_note], ['Reviewed by｜審核人', u.name || u.username]]
+     .concat(updated.length ? [['Certificates｜證照', updated.length + (status === 'Approved' ? ' 張證照一併核准 approved together' : ' 張證照一併退件 rejected together')]] : []));
+  return Object.assign({}, rec, { _certs: updated });
+}
+/** 船舶需要但缺少（未上傳檔案／已過期）的證書名稱；船的噸位／員額／船籍沒填齊時回傳 null */
+function vesselMissingCerts_(v, today) {
+  const gt = Number(v.gross_tonnage), pob = Number(v.max_persons), flag = str_(v.flag);
+  if (!(gt > 0) || !(pob > 0) || !flag) return null;
+  const tw = /taiwan|\bR\.?\s?O\.?\s?C\b|republic of china|中華民國|台灣|臺灣|^tw$/i.test(flag);
+  const certs = Repo.all('VesselCerts').filter(c => c.vessel_id === v.id);
+  return Repo.all('VesselCertTypes').filter(t => t.active !== 'FALSE' && t.mandatory === 'TRUE').filter(t => {
+    let r = {}; try { r = JSON.parse(t.rule || '{}') || {}; } catch (e) {}
+    if (r.mode === 'never') return false;
+    if (r.mode === 'auto') {
+      if (r.flag === 'tw' && !tw) return false;
+      if (r.flag === 'foreign' && tw) return false;
+      if (r.gt_max && gt >= r.gt_max) return false;
+      const conds = [];
+      if (r.gt_min) conds.push(gt >= r.gt_min);
+      if (r.pob_min) conds.push(pob >= r.pob_min);
+      if (conds.length && !conds.some(Boolean)) return false;
+    }
+    return true;
+  }).filter(t => {
+    const c = certs.find(x => x.type_id === t.id);
+    return !c || !c.file_id || (c.expiry_date && c.expiry_date < today);
+  }).map(t => t.name);
 }
 /** 總噸位、限制員額、船籍：判斷需要哪些證書的依據，三項都必填 */
 function checkVesselSpecs_(m, out) {
