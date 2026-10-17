@@ -851,7 +851,8 @@ const TOKEN_KEY = 'opts_token';
 const MAX_UPLOAD = 10 * 1024 * 1024;
 const ACTIVITIES = ['TRANSFER','INFO','ARRIVAL','DEPARTURE','STANDBY','WEATHER','INCIDENT','OTHER'];
 const LOCATION_TYPES = ['WTG','Substation','Platform','Vessel','Port','Base','Warehouse','Other'];
-const VESSEL_TYPES = ['CTV (Crew Transfer Vessel)','SOV (Service Operation Vessel)','Supply Vessel','Tug','Barge','Crane Vessel','Jack-up','Dive Support Vessel','Survey Vessel','Anchor Handling Tug','Guard Vessel','Other'];
+// 船型清單：系統設定可改（每行一個）；舊資料若是清單外的船型，編輯時仍會保留顯示
+function vesselTypes() { return String((S && S.settings && S.settings.vessel_types) || '').split('\n').map(x => x.trim()).filter(Boolean); }
 const ROLE_LABEL = { admin:'Admin', mc:'MC', contractor:'Contractor' };
 const CAT_SAFETY = 'Offshore Safety Training';
 const SHORE_TYPES = ['Port', 'Base', 'Warehouse'];   // 不算「海上」的位置類型
@@ -2010,7 +2011,7 @@ function openVessel(id, tab) {
     </div>
     <div id="vmTab-info"><div class="form-grid">
       <div class="form-group"><label>Vessel name *</label><input id="vm_name" value="${esc(x.name || '')}" ${ro}></div>
-      <div class="form-group"><label>Vessel type</label><select id="vm_type" ${ro}><option value="">-- Select --</option>${VESSEL_TYPES.concat(x.type && VESSEL_TYPES.indexOf(x.type) < 0 ? [x.type] : []).map(t => `<option value="${esc(t)}" ${t === x.type ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Vessel type</label><select id="vm_type" ${ro}><option value="">-- Select --</option>${vesselTypes().concat(x.type && vesselTypes().indexOf(x.type) < 0 ? [x.type] : []).map(t => `<option value="${esc(t)}" ${t === x.type ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></div>
       <div class="form-group"><label>MMSI</label><input id="vm_mmsi" value="${esc(x.mmsi || '')}" ${ro}></div>
       <div class="form-group"><label>IMO No</label><input id="vm_imo" value="${esc(x.imo || '')}" ${ro}></div>
       <div class="form-group"><label>Flag</label><input id="vm_flag" value="${esc(x.flag || '')}" ${ro}></div>
@@ -2872,6 +2873,9 @@ function adminSys(el) {
     <div class="form-group full"><label>${L('Default meeting title (new meeting minutes)', '預設會議名稱（新增會議紀錄時帶入）')}</label><input id="st_mtitle" class="notr" value="${esc(defaultMeetingTitle())}" placeholder="每日協調會議">
       <span class="hint">${L('Filled in automatically for every new meeting; users can still press “Edit name” to change it for that meeting.', '新增會議紀錄時自動帶入；個別會議仍可按「修改名稱」更改。')}</span></div>
     <div class="form-group full"><label>${L('Project name (shown in the header of notification emails)', '專案名稱（顯示在通知信頁首）')}</label><input id="st_project" class="notr" value="${esc(S.settings.project_name || '')}"></div>
+    <div class="form-group full"><label>${L('Vessel types (one per line — used in the vessel form)', '船型清單（每行一個，新增／編輯船舶時的下拉選項）')}</label>
+      <textarea id="st_vtypes" class="notr" rows="6">${esc(vesselTypes().join('\n'))}</textarea>
+      <span class="hint">${L('Removing a type does not change vessels that already use it.', '刪掉某個船型不會影響已經使用該船型的船舶。')}</span></div>
     <div class="form-group full" style="border-top:1px solid var(--border);padding-top:12px"><label>🌊 ${L('Dashboard sea-state / weather (Open-Meteo data + Windy map)', '儀表板海象天氣（Open-Meteo 預報＋Windy 地圖）')}</label>
       <input id="st_wxname" class="notr" placeholder="${L('Panel title (empty = “Sea state along the pipeline”)', '天氣欄標題（留空＝「沿線海象」）')}" value="${esc(S.settings.weather_name || '')}">
       <textarea id="st_wxpts" class="mono notr" rows="6" style="margin-top:6px" placeholder="KP 0, 24.2500, 120.4800&#10;KP 10, 24.2700, 120.3900&#10;KP 20, 24.2900, 120.3000">${esc(S.settings.weather_points || (S.settings.weather_lat ? (S.settings.weather_name || 'Site') + ', ' + S.settings.weather_lat + ', ' + S.settings.weather_lon : ''))}</textarea>
@@ -2939,7 +2943,7 @@ async function saveSys(btn) {
   const evs = [...document.querySelectorAll('.st_ev')].filter(c => c.checked).map(c => c.value);
   await withBusy(btn, async () => {
     S.settings = await api('settings.save', { ptw_url: v('st_ptw'), required_categories: cats.join(','),
-      notify_emails: v('st_mails'), notify_events: evs.join(','), app_url: v('st_appurl'), meeting_title: v('st_mtitle'), project_name: v('st_project'),
+      notify_emails: v('st_mails'), notify_events: evs.join(','), app_url: v('st_appurl'), meeting_title: v('st_mtitle'), project_name: v('st_project'), vessel_types: document.getElementById('st_vtypes').value,
       weather_name: v('st_wxname'), weather_points: document.getElementById('st_wxpts').value, weather_lat: '', weather_lon: '', weather_wave_limit: v('st_wxwave'), weather_wind_limit: v('st_wxwind') });
     WX.data = null; WX.err = ''; WX.sel = null;
     PTW.data = null; refreshPTW(true).catch(() => {});

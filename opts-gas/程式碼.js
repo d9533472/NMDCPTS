@@ -39,6 +39,8 @@ const DEFAULT_SETTINGS = {
   notify_emails: '',
   notify_events: 'personnel_pending,vessel_pending,cert_pending,review_result,transfer,expiry,meeting',
   meeting_title: '每日協調會議',
+  // 船型清單（每行一個，系統設定可改）
+  vessel_types: ['Pipelay Vessel (PLV)', 'CTV (Crew Transfer Vessel)', 'SOV (Service Operation Vessel)', 'Supply Vessel', 'Tug', 'Barge', 'Crane Vessel', 'Jack-up', 'Dive Support Vessel', 'Survey Vessel', 'Anchor Handling Tug', 'Guard Vessel', 'Other'].join('\n'),
   project_name: '通霄電廠二期更新改建計畫海底輸氣管線統包工程',   // 顯示在通知信頁首
   // 儀表板天氣／海象（Open-Meteo 預報＋Windy 地圖）；座標空白＝不顯示天氣欄
   weather_name: '沿線海象 · 台中－通霄 36" 海管',
@@ -625,6 +627,11 @@ function saveSettings_(u, p) {
       p.notify_emails = list.join(', ');
     }
     if (p.meeting_title !== undefined && !str_(p.meeting_title)) p.meeting_title = DEFAULT_SETTINGS.meeting_title;
+    if (p.vessel_types !== undefined) {
+      const seen = {};
+      p.vessel_types = String(p.vessel_types || '').split(/\r?\n/).map(x => x.trim()).filter(x => x && !seen[x.toLowerCase()] && (seen[x.toLowerCase()] = true)).join('\n');
+      if (!p.vessel_types) p.vessel_types = DEFAULT_SETTINGS.vessel_types;
+    }
     [['weather_lat', 90], ['weather_lon', 180]].forEach(([k, max]) => {
       if (p[k] === undefined || str_(p[k]) === '') return;
       const n = Number(str_(p[k]));
