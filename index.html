@@ -657,7 +657,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
           <div class="section-header"><h3>Vessels</h3>
             <div class="toolbar">
               <div class="search"><span>🔍</span><input id="vSearch" placeholder="Name, MMSI, IMO…" oninput="renderVessels()"></div>
-              <button class="btn btn-green btn-sm" onclick="openVessel()" data-roles="admin,mc">+ Add Vessel</button>
+              <button class="btn btn-green btn-sm" onclick="openVessel()">+ Add Vessel</button>
             </div>
           </div>
           <div class="table-wrap"><table><thead><tr><th>Vessel</th><th>MMSI / IMO</th><th>Operator</th><th>Contact</th><th>Approval</th><th>Certificates</th><th>POB</th><th>PTW</th><th></th></tr></thead><tbody id="vBody"></tbody></table></div>
@@ -756,7 +756,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
 
       <!-- CERTIFICATES -->
       <div class="page" id="page-certificates">
-        <div class="section" id="secApprovals"><div class="section-header"><h3 id="apprTitle">✅ Personnel & Vessels Awaiting Admin Approval</h3></div><div class="table-wrap"><table><thead><tr><th>Type</th><th>Name</th><th>Company / Operator</th><th>Submitted by</th><th>Status</th><th></th></tr></thead><tbody id="apprBody"></tbody></table></div></div>
+        <div class="section" id="secApprovals"><div class="section-header"><h3 id="apprTitle">✅ Personnel & Vessels Awaiting Approval</h3></div><div class="table-wrap"><table><thead><tr><th>Type</th><th>Name</th><th>Company / Operator</th><th>Submitted by</th><th>Status</th><th></th></tr></thead><tbody id="apprBody"></tbody></table></div></div>
         <div class="section" id="secPending"><div class="section-header"><h3 id="pendingTitle">⏳ Pending Approval</h3></div><div class="table-wrap"><table><thead><tr><th>Personnel</th><th>Company</th><th>Certificate</th><th>Cert No</th><th>Expiry</th><th>Submitted</th><th>File</th><th></th></tr></thead><tbody id="pendBody"></tbody></table></div></div>
         <div class="section" id="secRejected"><div class="section-header"><h3>✖ Rejected — needs resubmission</h3></div><div class="table-wrap"><table><thead><tr><th>Personnel</th><th>Certificate</th><th>Reason</th><th>Reviewed by</th><th></th></tr></thead><tbody id="rejBody"></tbody></table></div></div>
         <div class="grid-2">
@@ -1044,6 +1044,8 @@ function enterApp() {
 }
 const isStaff = () => S && (S.user.role === 'admin' || S.user.role === 'mc');
 const isAdmin = () => S && S.user.role === 'admin';
+// 承包商可新增／修改自家公司登錄的船舶；Admin／MC 可改全部
+const canEditVessel = x => isStaff() || !x || !x.id || (!!x.company && String(x.company).toLowerCase() === String(S.user.company || '').toLowerCase());
 // MC 可用的系統管理項目（Admin 在 系統設定 → MC 權限 勾選）
 const MC_PERMS = [['users', 'User accounts (contractor / MC only)', '使用者帳號（僅限承包商／MC 帳號）'], ['companies', 'Companies', '公司'],
   ['vct', 'Vessel certificate requirements', '船舶證書要求'], ['pct', 'Personnel certificate types', '人員證照類型'], ['ann', 'Announcements', '公告'],
@@ -1252,7 +1254,7 @@ document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', 
 function updateBadges() {
   const pending = S.personCerts.filter(c => c.status === 'Pending').length;
   const rejected = S.personCerts.filter(c => c.status === 'Rejected').length;
-  const awaiting = isAdmin() ? S.personnel.filter(p => !isApproved(p)).length + S.vessels.filter(x => !isApproved(x)).length : 0;
+  const awaiting = isStaff() ? S.personnel.filter(p => !isApproved(p)).length + S.vessels.filter(x => !isApproved(x)).length : 0;
   const n = isStaff() ? pending + awaiting : rejected + S.personnel.filter(p => p.approval === 'Rejected').length;
   const b = document.getElementById('certBadge');
   b.textContent = n; b.classList.toggle('hidden', !n);
@@ -1289,9 +1291,9 @@ function animateKPIs() {
 function renderDashPending() {
   const rows = [];
   S.personnel.filter(p => !isApproved(p)).forEach(p => rows.push({ t: p.updated_at || p.created_at, kind: L('Personnel', '人員'), ico: '👷', name: p.name, org: p.company, rec: p,
-    open: `openPersonnel('${p.id}')`, act: isAdmin() && p.approval !== 'Rejected' ? `<button class="btn btn-green btn-sm" onclick="event.stopPropagation();reviewRecord('Personnel','${p.id}','Approved')">✔</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();reviewRecord('Personnel','${p.id}','Rejected')">✖</button>` : '' }));
+    open: `openPersonnel('${p.id}')`, act: isStaff() && p.approval !== 'Rejected' ? `<button class="btn btn-green btn-sm" onclick="event.stopPropagation();reviewRecord('Personnel','${p.id}','Approved')">✔</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();reviewRecord('Personnel','${p.id}','Rejected')">✖</button>` : '' }));
   S.vessels.filter(x => !isApproved(x)).forEach(x => rows.push({ t: x.updated_at || x.created_at, kind: L('Vessel', '船舶'), ico: '🚢', name: x.name, org: x.operator, rec: x,
-    open: `openVessel('${x.id}')`, act: isAdmin() && x.approval !== 'Rejected' ? `<button class="btn btn-green btn-sm" onclick="event.stopPropagation();reviewRecord('Vessels','${x.id}','Approved')">✔</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();reviewRecord('Vessels','${x.id}','Rejected')">✖</button>` : '' }));
+    open: `openVessel('${x.id}')`, act: isStaff() && x.approval !== 'Rejected' ? `<button class="btn btn-green btn-sm" onclick="event.stopPropagation();reviewRecord('Vessels','${x.id}','Approved')">✔</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();reviewRecord('Vessels','${x.id}','Rejected')">✖</button>` : '' }));
   S.personCerts.filter(c => c.status === 'Pending').forEach(c => { const p = S.personnel.find(x => x.id === c.personnel_id) || {};
     rows.push({ t: c.updated_at, kind: L('Certificate', '證照'), ico: '🪪', name: p.name + ' — ' + pcName(c), org: p.company, rec: { approval: 'Pending' },
       open: `openPersonnel('${p.id}')`, act: isStaff() ? `<button class="btn btn-green btn-sm" onclick="event.stopPropagation();reviewCert('${c.id}','Approved')">✔</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();reviewCert('${c.id}','Rejected')">✖</button>` : '' }); });
@@ -1773,12 +1775,12 @@ function openPersonnel(id) {
   const locField = staff && editable ? `<select id="pm_location">${locOptions(p.current_location || '', '-- Not assigned --')}</select>` : `<input value="${esc(locName(p.current_location))}" readonly>`;
   let banner = '';
   if (id) {
-    if (p.approval === 'Approved') banner = `<div class="note">✅ ${L('Approved by Admin', '已由 Admin 核准')}${p.approved_by && p.approved_by !== 'migration' ? ' · ' + esc(p.approved_by) + ' · ' + fmtDT(p.approved_at) : ''}</div>`;
-    else if (p.approval === 'Rejected') banner = `<div class="note bad">✖ ${L('Rejected by Admin', '已被 Admin 退件')} — ${esc(p.approval_note)}<br>${L('Update the record and save to resubmit.', '請修改資料後儲存即可重新送審。')}</div>`;
-    else banner = `<div class="note warn">⏳ ${L('Awaiting Admin approval — this person cannot be transferred until approved.', '等待 Admin 核准 — 核准前不能被轉運。')}</div>`;
-    if (isAdmin() && !isApproved(p)) banner += `<div class="acts" style="margin:-4px 0 14px"><button class="btn btn-green btn-sm" onclick="reviewRecord('Personnel','${p.id}','Approved')">✔ ${L('Approve personnel', '核准人員')}</button><button class="btn btn-danger btn-sm" onclick="reviewRecord('Personnel','${p.id}','Rejected')">✖ ${L('Reject', '退件')}</button></div>`;
+    if (p.approval === 'Approved') banner = `<div class="note">✅ ${L('Approved', '已核准')}${p.approved_by && p.approved_by !== 'migration' ? ' · ' + esc(p.approved_by) + ' · ' + fmtDT(p.approved_at) : ''}</div>`;
+    else if (p.approval === 'Rejected') banner = `<div class="note bad">✖ ${L('Rejected', '已被退件')} — ${esc(p.approval_note)}<br>${L('Update the record and save to resubmit.', '請修改資料後儲存即可重新送審。')}</div>`;
+    else banner = `<div class="note warn">⏳ ${L('Awaiting MC approval — this person cannot be transferred until approved.', '等待 MC 核准 — 核准前不能被轉運。')}</div>`;
+    if (isStaff() && !isApproved(p)) banner += `<div class="acts" style="margin:-4px 0 14px"><button class="btn btn-green btn-sm" onclick="reviewRecord('Personnel','${p.id}','Approved')">✔ ${L('Approve personnel', '核准人員')}</button><button class="btn btn-danger btn-sm" onclick="reviewRecord('Personnel','${p.id}','Rejected')">✖ ${L('Reject', '退件')}</button></div>`;
     if (!editable) banner += `<div class="note">${L('Read-only — you can only edit personnel of your own company.', '唯讀 — 您只能編修自己公司的人員。')}</div>`;
-  } else if (!isAdmin()) banner = `<div class="note warn">${L('New personnel must be approved by Admin before they can be transferred.', '新增的人員須經 Admin 核准後才能轉運。')}</div>`;
+  } else if (!isStaff()) banner = `<div class="note warn">${L('New personnel must be approved by MC before they can be transferred.', '新增的人員須經 MC 核准後才能轉運。')}</div>`;
   const m = openModal(id ? 'Personnel — ' + esc(p.name) : 'Add Personnel', `${banner}
     <div class="photo-box"><span id="pmAvatar">${avatar(p, 84)}</span>
       <div ${editable ? '' : 'class="hidden"'}><input type="file" id="pmPhotoIn" accept="image/*" class="hidden" onchange="pickPhoto(this)">
@@ -1840,7 +1842,7 @@ async function savePersonnel(btn, id) {
   await withBusy(btn, async () => {
     const rec = await api('personnel.save', d);
     upsert(S.personnel, rec);
-    toast(id ? 'Personnel updated' : (isApproved(rec) ? 'Personnel added — now add certificates' : L('Personnel submitted for Admin approval — now add certificates', '人員已送 Admin 核准，請接著新增證照')), 'success');
+    toast(id ? 'Personnel updated' : (isApproved(rec) ? 'Personnel added — now add certificates' : L('Personnel submitted for MC approval — now add certificates', '人員已送 MC 核准，請接著新增證照')), 'success');
     closeTop();
     refreshPage();
     if (!id) openPersonnel(rec.id);
@@ -2003,14 +2005,15 @@ function contactHtml(x) {
 function openVessel(id, tab) {
   const x = id ? vesselById(id) : {};
   if (id && !x) return;
-  const ro = !isStaff() ? 'readonly disabled' : '';
+  const editable = canEditVessel(x);
+  const ro = !editable ? 'readonly disabled' : '';
   let banner = '';
   if (id) {
     if (x.approval === 'Approved') banner = '';
-    else if (x.approval === 'Rejected') banner = `<div class="note bad">✖ ${L('Rejected by Admin', '已被 Admin 退件')} — ${esc(x.approval_note)}</div>`;
-    else banner = `<div class="note warn">⏳ ${L('This vessel is awaiting Admin approval.', '此船舶等待 Admin 核准。')}</div>`;
-    if (isAdmin() && !isApproved(x)) banner += `<div class="acts" style="margin:-4px 0 14px"><button class="btn btn-green btn-sm" onclick="reviewRecord('Vessels','${x.id}','Approved')">✔ ${L('Approve vessel', '核准船舶')}</button><button class="btn btn-danger btn-sm" onclick="reviewRecord('Vessels','${x.id}','Rejected')">✖ ${L('Reject', '退件')}</button></div>`;
-  } else if (!isAdmin()) banner = `<div class="note warn">${L('New vessels must be approved by Admin.', '新增的船舶須經 Admin 核准。')}</div>`;
+    else if (x.approval === 'Rejected') banner = `<div class="note bad">✖ ${L('Rejected', '已被退件')} — ${esc(x.approval_note)}</div>`;
+    else banner = `<div class="note warn">⏳ ${L('This vessel is awaiting MC approval.', '此船舶等待 MC 核准。')}</div>`;
+    if (isStaff() && !isApproved(x)) banner += `<div class="acts" style="margin:-4px 0 14px"><button class="btn btn-green btn-sm" onclick="reviewRecord('Vessels','${x.id}','Approved')">✔ ${L('Approve vessel', '核准船舶')}</button><button class="btn btn-danger btn-sm" onclick="reviewRecord('Vessels','${x.id}','Rejected')">✖ ${L('Reject', '退件')}</button></div>`;
+  } else if (!isStaff()) banner = `<div class="note warn">${L('New vessels must be approved by MC.', '新增的船舶須經 MC 核准。')}</div>`;
   openModal(id ? 'Vessel — ' + esc(x.name) : 'Add Vessel', `${banner}
     <div class="tabs" id="vmTabs">
       <div class="tab" data-t="info">Details & Contact</div>
@@ -2029,7 +2032,7 @@ function openVessel(id, tab) {
       <div class="form-group"><label>WhatsApp</label><input id="vm_whatsapp" value="${esc(x.whatsapp || '')}" placeholder="+886 …" ${ro}></div>
       <div class="form-group"><label>Email</label><input id="vm_email" type="email" value="${esc(x.email || '')}" ${ro}></div>
       <div class="form-group full"><label>Remark</label><textarea id="vm_remark" ${ro}>${esc(x.remark || '')}</textarea></div>
-      ${isStaff() ? `<div class="form-actions"><button class="btn btn-primary" onclick="saveVessel(this,'${id || ''}')">💾 Save vessel</button></div>` : `<div class="full contact">${contactHtml(x)}</div>`}
+      ${editable ? `<div class="form-actions"><button class="btn btn-primary" onclick="saveVessel(this,'${id || ''}')">💾 Save vessel</button></div>` : `<div class="full contact">${contactHtml(x)}</div>`}
     </div></div>
     <div id="vmTab-certs" class="hidden"></div>
     <div id="vmTab-ptw" class="hidden"></div>`, true);
@@ -2047,14 +2050,15 @@ function renderVmCerts(id) {
   if (!el) return;
   const comp = vesselCompliance(id);
   const types = vcTypesActive();
+  const edit = canEditVessel(vesselById(id));
   el.innerHTML = (comp.issues.length ? `<div class="note bad">⛔ ${L(comp.issues.length + ' mandatory certificate issue(s): missing, expired or without an uploaded file.', comp.issues.length + ' 項強制證書有缺失：缺少、已過期或未上傳檔案。')}</div>` : '<div class="note">✅ All mandatory certificates are valid and uploaded.</div>') +
     `<p class="hint" style="margin-bottom:10px">Mandatory items are set by the administrator (Administration → Vessel Certificate Requirements).</p>
-    <div class="table-wrap"><table><thead><tr><th>#</th><th>Certificate</th><th>Required</th><th>Issued</th><th>Expiry</th><th>Status</th><th>File</th><th>Description</th>${isStaff() ? '<th></th>' : ''}</tr></thead><tbody>${types.map((t, i) => {
+    <div class="table-wrap"><table><thead><tr><th>#</th><th>Certificate</th><th>Required</th><th>Issued</th><th>Expiry</th><th>Status</th><th>File</th><th>Description</th>${edit ? '<th></th>' : ''}</tr></thead><tbody>${types.map((t, i) => {
       const s = vcState(id, t), c = s.c || {};
       return `<tr><td class="muted">${i + 1}</td><td>${esc(t.name)}</td><td>${t.mandatory === 'TRUE' ? '<span class="b b-navy">Mandatory</span>' : '<span class="b b-na">Optional</span>'}</td>
         <td class="nowrap">${fmtDate(c.issue_date)}</td><td class="nowrap">${fmtDate(c.expiry_date)}</td><td><span class="b ${s.cls}">${s.text}</span></td>
         <td>${fileLink(c.file_id, c.file_name)}</td><td class="hint">${esc(c.description || '')}</td>
-        ${isStaff() ? `<td><button class="btn btn-secondary btn-sm" onclick="openVesselCert('${id}','${t.id}')">${s.c ? 'Edit' : 'Add'}</button></td>` : ''}</tr>`;
+        ${edit ? `<td><button class="btn btn-secondary btn-sm" onclick="openVesselCert('${id}','${t.id}')">${s.c ? 'Edit' : 'Add'}</button></td>` : ''}</tr>`;
     }).join('')}</tbody></table></div>`;
 }
 function renderVmPTW(id) {
@@ -2409,17 +2413,17 @@ function renderCertificates() {
   const va = vesselAlerts();
   // Admin：人員／船舶待核准
   const sec = document.getElementById('secApprovals');
-  const awaitP = S.personnel.filter(p => !isApproved(p)), awaitV = S.vessels.filter(x => !isApproved(x));
-  sec.classList.toggle('hidden', !(isAdmin() || awaitP.length));
-  document.getElementById('apprTitle').textContent = isAdmin()
-    ? L(`✅ Personnel & Vessels Awaiting Admin Approval (${awaitP.length + awaitV.length})`, `✅ 待 Admin 核准的人員與船舶（${awaitP.length + awaitV.length}）`)
-    : L(`✅ My personnel awaiting Admin approval (${awaitP.length})`, `✅ 等待 Admin 核准的人員（${awaitP.length}）`);
+  const awaitP = S.personnel.filter(p => !isApproved(p)), awaitV = S.vessels.filter(x => !isApproved(x) && (isStaff() || canEditVessel(x)));
+  sec.classList.toggle('hidden', !(isStaff() || awaitP.length || awaitV.length));
+  document.getElementById('apprTitle').textContent = isStaff()
+    ? L(`✅ Personnel & Vessels Awaiting Approval (${awaitP.length + awaitV.length})`, `✅ 待核准的人員與船舶（${awaitP.length + awaitV.length}）`)
+    : L(`✅ My personnel & vessels awaiting MC approval (${awaitP.length + awaitV.length})`, `✅ 等待 MC 核准的人員與船舶（${awaitP.length + awaitV.length}）`);
   const rows = awaitP.map(p => ({ kind: 'Personnel', icon: '👷', rec: p, org: p.company, open: `openPersonnel('${p.id}')` }))
-    .concat((isAdmin() ? awaitV : []).map(x => ({ kind: 'Vessels', icon: '🚢', rec: x, org: x.operator, open: `openVessel('${x.id}')` })));
+    .concat(awaitV.map(x => ({ kind: 'Vessels', icon: '🚢', rec: x, org: x.operator, open: `openVessel('${x.id}')` })));
   document.getElementById('apprBody').innerHTML = rows.length ? rows.map(r => `<tr><td>${r.icon} ${r.kind === 'Vessels' ? L('Vessel', '船舶') : L('Personnel', '人員')}</td>
       <td><a href="javascript:void(0)" onclick="${r.open}"><strong>${esc(r.rec.name)}</strong></a></td><td>${esc(r.org || '—')}</td>
       <td class="hint nowrap">${esc(r.rec.created_by || '')}<br>${fmtDT(r.rec.updated_at || r.rec.created_at)}</td><td>${approvalBadge(r.rec)}${r.rec.approval_note ? `<div class="hint">${esc(r.rec.approval_note)}</div>` : ''}</td>
-      <td>${isAdmin() ? `<div class="acts"><button class="btn btn-green btn-sm" onclick="reviewRecord('${r.kind}','${r.rec.id}','Approved')">Approve</button><button class="btn btn-danger btn-sm" onclick="reviewRecord('${r.kind}','${r.rec.id}','Rejected')">Reject</button></div>` : `<button class="btn btn-secondary btn-sm" onclick="${r.open}">Open</button>`}</td></tr>`).join('')
+      <td>${isStaff() ? `<div class="acts"><button class="btn btn-green btn-sm" onclick="reviewRecord('${r.kind}','${r.rec.id}','Approved')">Approve</button><button class="btn btn-danger btn-sm" onclick="reviewRecord('${r.kind}','${r.rec.id}','Rejected')">Reject</button></div>` : `<button class="btn btn-secondary btn-sm" onclick="${r.open}">Open</button>`}</td></tr>`).join('')
     : '<tr class="empty"><td colspan="6">Nothing pending</td></tr>';
   document.getElementById('vesselAlerts').innerHTML = va.length ? va.map(alertHtml).join('') : '<p class="muted">No vessel certificate alerts 🎉</p>';
 }
@@ -2927,8 +2931,8 @@ async function saveMcPerms(btn) {
   });
 }
 const NOTIFY_EVENTS = [
-  ['personnel_pending', 'New / resubmitted personnel awaiting Admin approval', '有新增（或退件後重送）的人員待 Admin 核准'],
-  ['vessel_pending', 'New / resubmitted vessel awaiting Admin approval', '有新增（或退件後重送）的船舶待 Admin 核准'],
+  ['personnel_pending', 'New / resubmitted personnel awaiting MC approval', '有新增（或退件後重送）的人員待 MC 核准'],
+  ['vessel_pending', 'New / resubmitted vessel awaiting MC approval', '有新增（或退件後重送）的船舶待 MC 核准'],
   ['cert_pending', 'A contractor uploads a certificate for approval', '承包商上傳證照待核准'],
   ['review_result', 'Personnel / vessel / certificate approved or rejected', '人員／船舶／證照被核准或退件'],
   ['transfer', 'Personnel are transferred', '人員轉運'],
@@ -3129,7 +3133,7 @@ const ZH = {
   'Network error — please check your connection': '網路錯誤，請檢查連線', 'Could not read file': '無法讀取檔案',
   // 2.1
   'Meeting Minutes': '會議紀錄', 'New meeting': '新增會議', 'Title, item, attendee…': '會議名稱、議題、參與者…', 'Approval': '核准狀態',
-  'Awaiting approval': '待核准', 'Personnel & Vessels Awaiting Admin Approval': '待 Admin 核准的人員與船舶', 'Submitted by': '送件人',
+  'Awaiting approval': '待核准', 'Personnel & Vessels Awaiting Approval': '待核准的人員與船舶', 'Submitted by': '送件人',
   'Company / Operator': '公司／營運公司', 'Vessel Certificate Alerts': '船舶缺照警示', 'Sending…': '寄送中…', 'Resetting…': '清空中…',
   'Please select a company': '請選擇公司', 'Company is not in the company list — add it under Companies first': '公司不在清單中，請先到「公司」分頁新增',
   'Invalid email address': 'Email 格式錯誤', 'Add at least one recipient email first': '請先填寫至少一個收件者',
@@ -3169,7 +3173,7 @@ const RULES = [
   [/^Wrong verification code \((\d+) tries left\)$/, (m, a) => '驗證碼錯誤（還可再試 ' + a + ' 次）'],
   [/^Invalid email address: (.+)$/, (m, a) => 'Email 格式錯誤：' + a],
   [/^Could not send email: (.+)$/, (m, a) => '寄信失敗：' + a],
-  [/^(.+): not approved by Admin yet$/, (m, a) => a + '：尚未經 Admin 核准']
+  [/^(.+): not approved yet$/, (m, a) => a + '：尚未核准']
 ];
 let LANG = 'en';
 try { LANG = localStorage.getItem('opts_lang') || ((navigator.language || '').toLowerCase().indexOf('zh') === 0 ? 'zh' : 'en'); } catch (e) {}

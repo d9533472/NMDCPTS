@@ -10,14 +10,14 @@
 // 通知信：Settings.notify_emails（共用收件者）＋ notify_events（啟用的事件）；每日到期提醒由 setup() 建立的觸發器執行。
 // ============================================================
 
-const VERSION = '2.4';
+const VERSION = '2.5';
 const CAT_SAFETY = 'Offshore Safety Training';   // 原 'Sea Survival'（2.1 改名，ensureSchema_ 會遷移舊資料）
 
 const SCHEMAS = {
   Users: ['id','username','name','email','role','company','password_hash','password_salt','active','must_change','last_login','created_at','updated_at'],
   Sessions: ['token','user_id','expires_at','created_at'],
   Companies: ['id','name','active','created_at'],
-  Vessels: ['id','name','mmsi','imo','type','flag','operator','contact_person','phone','whatsapp','email','remark','approval','approval_note','approved_by','approved_at','created_by','created_at','updated_at'],
+  Vessels: ['id','name','mmsi','imo','type','flag','operator','company','contact_person','phone','whatsapp','email','remark','approval','approval_note','approved_by','approved_at','created_by','created_at','updated_at'],
   Personnel: ['id','name','company','nationality','position','email','phone','passport','blood_type','emergency','emergency_phone','photo','remark','current_location','approval','approval_note','approved_by','approved_at','created_by','created_at','updated_at'],
   Meetings: ['id','title','time','location','items','attendees','externals','remark','attachments','created_by','created_at','updated_at'],
   Announcements: ['id','text_zh','text_en','level','link_url','link_text','attachments','active','created_by','created_at','updated_at'],
@@ -222,7 +222,7 @@ const ROUTES = {
   'auth.changePassword': (u, p) => changePassword_(u, p),
   'data.load': (u) => loadData_(u),
 
-  'vessel.save': (u, p) => { requireRole_(u, ['admin','mc']); return saveVessel_(u, p); },
+  'vessel.save': (u, p) => saveVessel_(u, p),
   'vessel.review': (u, p) => reviewRecord_(u, 'Vessels', p),
   'personnel.review': (u, p) => reviewRecord_(u, 'Personnel', p),
   'meeting.save': (u, p) => { requireRole_(u, ['admin','mc']); return saveMeeting_(u, p); },
@@ -233,7 +233,7 @@ const ROUTES = {
   'audit.list': (u, p) => auditList_(u, p),
   'reset.request': (u, p) => { requireRole_(u, ['admin']); return resetRequest_(u, p); },
   'reset.confirm': (u, p) => { requireRole_(u, ['admin']); return resetConfirm_(u, p); },
-  'vessel.delete': (u, p) => { requireRole_(u, ['admin','mc']); return deleteVessel_(p.id); },
+  'vessel.delete': (u, p) => { vesselFor_(u, p.id, true); return deleteVessel_(p.id); },
   'location.save': (u, p) => { requireRole_(u, ['admin','mc']); return saveSimple_('Locations', p, ['name','type','linked_vessel','remark'], ['name','type']); },
   'location.delete': (u, p) => { requireRole_(u, ['admin','mc']); return deleteLocation_(p.id); },
 
@@ -242,8 +242,8 @@ const ROUTES = {
   'pcert.save': (u, p) => savePersonCert_(u, p),
   'pcert.delete': (u, p) => deletePersonCert_(u, p.id),
   'pcert.review': (u, p) => reviewPersonCert_(u, p),
-  'vcert.save': (u, p) => { requireRole_(u, ['admin','mc']); return saveVesselCert_(u, p); },
-  'vcert.delete': (u, p) => { requireRole_(u, ['admin','mc']); return deleteVesselCert_(p.id); },
+  'vcert.save': (u, p) => { vesselFor_(u, p.vessel_id); return saveVesselCert_(u, p); },
+  'vcert.delete': (u, p) => { const c = Repo.get('VesselCerts', p.id); if (c) vesselFor_(u, c.vessel_id); return deleteVesselCert_(p.id); },
   'file.get': (u, p) => getFile_(u, p.id),
 
   'transfer.execute': (u, p) => { requireRole_(u, ['admin','mc']); return executeTransfer_(u, p); },
@@ -775,6 +775,15 @@ function deleteCompany_(id) {
 function locationInUse_(cid) {
   return Repo.all('Personnel').some(p => p.current_location === cid);
 }
+/** 承包商只能動自家公司登錄的船；forDelete＝已核准的船只有 Admin／MC 能刪 */
+function vesselFor_(u, id, forDelete) {
+  const v = Repo.get('Vessels', id);
+  if (!v) fail_('Vessel not found', 'NOT_FOUND');
+  if (isStaff_(u)) return v;
+  if (!v.company || !sameCompany_(v.company, u.company)) fail_('You can only change vessels registered by your company', 'FORBIDDEN');
+  if (forDelete && v.approval === 'Approved') fail_('Approved vessels can only be deleted by MC / Admin', 'FORBIDDEN');
+  return v;
+}
 function deleteVessel_(id) {
   if (locationInUse_('vessel_' + id)) fail_('Cannot delete: personnel are on board this vessel');
   return withLock_(() => {
@@ -820,13 +829,13 @@ function savePersonnel_(u, p) {
     if (existing) {
       d.updated_at = nowIso_();
       // 被退件後由送件方修改 → 重新送 Admin 核准
-      if (existing.approval === 'Rejected' && u.role !== 'admin') { d.approval = 'Pending'; d.approval_note = ''; event = 'resubmitted'; }
+      if (existing.approval === 'Rejected' && !isStaff_(u)) { d.approval = 'Pending'; d.approval_note = ''; event = 'resubmitted'; }
       return Repo.update('Personnel', p.id, d);
     }
     d.id = genId_();
     d.created_by = u.username;
     d.created_at = d.updated_at = nowIso_();
-    if (u.role === 'admin') { d.approval = 'Approved'; d.approved_by = u.username; d.approved_at = d.created_at; }
+    if (isStaff_(u)) { d.approval = 'Approved'; d.approved_by = u.username; d.approved_at = d.created_at; }
     else { d.approval = 'Pending'; event = 'new'; }
     return Repo.insert('Personnel', d);
   });
@@ -955,7 +964,7 @@ function reviewPersonCert_(u, p) {
 
 // ============ Approval（人員／船舶由 Admin 核准） ============
 function reviewRecord_(u, sheet, p) {
-  requireRole_(u, ['admin']);
+  requireRole_(u, ['admin','mc']);
   const status = p.status === 'Approved' ? 'Approved' : 'Rejected';
   if (status === 'Rejected' && !str_(p.note)) fail_('Please give a reason for rejection');
   const rec = withLock_(() => Repo.update(sheet, p.id, { approval: status, approval_note: str_(p.note), approved_by: u.username, approved_at: nowIso_() }));
@@ -975,13 +984,16 @@ function saveVessel_(u, p) {
       const existing = Repo.get('Vessels', p.id);
       if (!existing) fail_('Record not found', 'NOT_FOUND');
       if (d.name === '') fail_('name is required');
+      if (!isStaff_(u) && !sameCompany_(existing.company, u.company)) fail_('You can only edit vessels registered by your company', 'FORBIDDEN');
+      delete d.company;
       d.updated_at = nowIso_();
-      if (existing.approval === 'Rejected' && u.role !== 'admin') { d.approval = 'Pending'; d.approval_note = ''; event = 'resubmitted'; }
+      if (existing.approval === 'Rejected' && !isStaff_(u)) { d.approval = 'Pending'; d.approval_note = ''; event = 'resubmitted'; }
       return Repo.update('Vessels', p.id, d);
     }
     if (!d.name) fail_('name is required');
     d.id = genId_(); d.created_by = u.username; d.created_at = d.updated_at = nowIso_();
-    if (u.role === 'admin') { d.approval = 'Approved'; d.approved_by = u.username; d.approved_at = d.created_at; }
+    d.company = isStaff_(u) ? '' : u.company;
+    if (isStaff_(u)) { d.approval = 'Approved'; d.approved_by = u.username; d.approved_at = d.created_at; }
     else { d.approval = 'Pending'; event = 'new'; }
     return Repo.insert('Vessels', d);
   });
@@ -1344,7 +1356,7 @@ function executeTransfer_(u, p) {
       const cur = person.current_location || '';
       if (from && from !== cur) { skipped.push(person.name + ': not at the selected From location'); return; }
       if (cur === to) { skipped.push(person.name + ': already at destination'); return; }
-      if (person.approval !== 'Approved') { skipped.push(person.name + ': not approved by Admin yet'); return; }
+      if (person.approval !== 'Approved') { skipped.push(person.name + ': not approved yet'); return; }
       transfers.push({ id: genId_(), personnel_id: person.id, personnel_name: person.name, company: person.company,
         from_location: cur, to_location: to, time: str_(p.time), type: str_(p.type), transport: str_(p.transport),
         approved_by: str_(p.approved_by), reason: str_(p.reason), remark: str_(p.remark), logged_by: u.username, created_at: now });
