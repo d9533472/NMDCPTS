@@ -40,7 +40,20 @@ const DEFAULT_SETTINGS = {
   notify_events: 'personnel_pending,vessel_pending,cert_pending,review_result,transfer,expiry,meeting',
   meeting_title: '每日協調會議',
   // 儀表板天氣／海象（Open-Meteo 預報＋Windy 地圖）；座標空白＝不顯示天氣欄
-  weather_name: '',
+  weather_name: '台中－通霄 36" 海管',
+  // 每行「名稱, 緯度, 經度」，依管線順序（預設：台中接收站→通霄電廠沿線約每 5 km 一點，依路線圖估計）
+  weather_points: [
+    'KP 5, 24.2483, 120.4217',
+    'KP 10, 24.2863, 120.4075',
+    'KP 14, 24.3277, 120.4199',
+    'KP 19, 24.3691, 120.4322',
+    'KP 24, 24.4106, 120.4443',
+    'KP 29, 24.4509, 120.4596',
+    'KP 34, 24.4789, 120.4946',
+    'KP 38, 24.5030, 120.5341',
+    'KP 43, 24.5214, 120.5767',
+    'KP 48, 24.5199, 120.6225'
+  ].join('\n'),
   weather_lat: '',
   weather_lon: '',
   weather_wave_limit: '1.5',
@@ -582,6 +595,17 @@ function saveSettings_(u, p) {
       if (!isFinite(n) || Math.abs(n) > max) fail_((k === 'weather_lat' ? 'Latitude' : 'Longitude') + ' must be a number between -' + max + ' and ' + max);
       p[k] = String(n);
     });
+    if (p.weather_points !== undefined) {
+      const lines = String(p.weather_points || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      if (lines.length > 30) fail_('Up to 30 weather points');
+      p.weather_points = lines.map((l, i) => {
+        const a = l.split(/[,\t;]/).map(x => x.trim());
+        const lat = Number(a[1]), lon = Number(a[2]);
+        if (a.length < 3 || !a[0] || !isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180)
+          fail_('Weather point line ' + (i + 1) + ' must be: name, latitude, longitude — got "' + l + '"');
+        return a[0] + ', ' + lat + ', ' + lon;
+      }).join('\n');
+    }
     ['weather_wave_limit', 'weather_wind_limit'].forEach(k => {
       if (p[k] !== undefined && !(Number(str_(p[k])) > 0)) p[k] = DEFAULT_SETTINGS[k];
     });
