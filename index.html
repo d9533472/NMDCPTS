@@ -584,7 +584,6 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
       <div class="nav-title">Operations</div>
       <div class="nav-item" data-page="transfer" data-roles="admin,mc"><span class="ico">🔄</span>Transfer</div>
       <div class="nav-item" data-page="sitelog"><span class="ico">📒</span>Site Log</div>
-      <div class="nav-item" data-page="history"><span class="ico">📋</span>Transfer History</div>
       <div class="nav-item" data-page="pob" data-roles="admin,mc"><span class="ico">🧑‍🤝‍🧑</span>POB Viewer</div>
       <div class="nav-item" data-page="meetings"><span class="ico">🗂️</span>Meeting Minutes</div>
       <div class="nav-title">Safety</div>
@@ -709,8 +708,12 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
 
       <!-- SITE LOG -->
       <div class="page" id="page-sitelog">
-        <div class="section">
-          <div class="section-header"><h3>Site Log</h3>
+        <div class="tabs" id="slTabs">
+          <div class="tab active" data-t="log" onclick="setLogTab('log')">📒 Operations log</div>
+          <div class="tab" data-t="transfers" onclick="setLogTab('transfers')">🔄 Personnel transfers</div>
+        </div>
+        <div class="section" id="slTabLog">
+          <div class="section-header"><h3>Operations Log</h3>
             <div class="toolbar">
               <select class="fi" id="slAsset" onchange="renderSiteLog()"></select>
               <select class="fi" id="slTransport" onchange="renderSiteLog()"></select>
@@ -725,12 +728,8 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
           <div class="table-wrap"><table><thead><tr><th>Date / Time</th><th>Activity</th><th>Source</th><th>Detail</th><th>Asset</th><th>Transport</th><th>Personnel</th><th>Logged by</th><th data-roles="admin,mc"></th></tr></thead><tbody id="slBody"></tbody></table></div>
           <div class="section-body hint" id="slFoot"></div>
         </div>
-      </div>
-
-      <!-- HISTORY -->
-      <div class="page" id="page-history">
-        <div class="section">
-          <div class="section-header"><h3>Transfer History</h3>
+        <div class="section" id="slTabTransfers" hidden>
+          <div class="section-header"><h3>Personnel Transfers</h3>
             <div class="toolbar">
               <div class="search"><span>🔍</span><input id="hSearch" placeholder="Search…" oninput="renderHistory()"></div>
               <input type="date" class="fi" id="hDate" onchange="renderHistory()">
@@ -1006,7 +1005,7 @@ async function reloadData(showSpinner) {
 }
 // 背景自動同步：每 60 秒（分頁在前景時）或切回分頁時重新抓資料。
 // 只有純顯示的頁面會立即重畫；有表單的頁面只更新資料，避免打斷正在填寫的內容。
-const LIVE_EVERY = 60000, LIVE_PAGES = ['dashboard', 'pob', 'history', 'ptw'];
+const LIVE_EVERY = 60000, LIVE_PAGES = ['dashboard', 'pob', 'sitelog', 'ptw'];
 let liveAt = Date.now(), liveBusy = false, kpiQuiet = false;
 async function liveSync() {
   if (!S || !TOKEN || liveBusy || document.hidden || modalStack.length) return;
@@ -1225,6 +1224,7 @@ function vesselCertBadge(vid) {
 // ==================== NAV ====================
 const TITLES = { dashboard:'Dashboard', personnel:'Personnel', vessels:'Vessels', locations:'Locations / Assets', transfer:'Personnel Transfer', sitelog:'Site Log', history:'Transfer History', pob:'POB Viewer', meetings:'Meeting Minutes', audit:'Activity Log', certificates:'Certificates', ptw:'PTW Monitor', admin:'Administration' };
 function go(page) {
+  if (page === 'history') { logTab = 'transfers'; page = 'sitelog'; }
   currentPage = page;
   document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
@@ -1235,7 +1235,7 @@ function go(page) {
 function refreshPage() {
   if (!S) return;
   ({ dashboard: renderDashboard, personnel: renderPersonnel, vessels: renderVessels, locations: renderLocations, transfer: initTransfer,
-     sitelog: initSiteLog, history: renderHistory, pob: initPOB, meetings: renderMeetings, audit: initAudit, certificates: renderCertificates, ptw: initPTW, admin: renderAdmin }[currentPage] || renderDashboard)();
+     sitelog: initLogPage, pob: initPOB, meetings: renderMeetings, audit: initAudit, certificates: renderCertificates, ptw: initPTW, admin: renderAdmin }[currentPage] || renderDashboard)();
   updateBadges();
 }
 document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => go(n.dataset.page)));
@@ -2219,6 +2219,15 @@ async function executeTransfer(btn) {
 
 // ==================== SITE LOG ====================
 function sortedLog() { return [...S.siteLog].sort((a, b) => String(b.time).localeCompare(String(a.time)) || String(b.created_at).localeCompare(String(a.created_at))); }
+// 現場日誌頁：作業日誌／人員轉運明細 兩個分頁
+let logTab = 'log';
+function setLogTab(t) { logTab = t; initLogPage(); }
+function initLogPage() {
+  document.querySelectorAll('#slTabs .tab').forEach(x => x.classList.toggle('active', x.dataset.t === logTab));
+  document.getElementById('slTabLog').hidden = logTab !== 'log';
+  document.getElementById('slTabTransfers').hidden = logTab !== 'transfers';
+  if (logTab === 'log') initSiteLog(); else renderHistory();
+}
 function initSiteLog() {
   document.getElementById('slAsset').innerHTML = locOptions(v('slAsset'), 'All assets');
   document.getElementById('slTransport').innerHTML = vesselOptions(v('slTransport'), 'All transports');
@@ -2951,7 +2960,7 @@ const ZH = {
   'Save and continue': '儲存並繼續', 'Connecting…': '連線中…', 'Current password': '目前密碼', 'New passwords do not match': '兩次輸入的新密碼不一致',
   'Password changed': '密碼已變更', 'Change password': '變更密碼', 'Sign out': '登出',
   'Overview': '總覽', 'Dashboard': '儀表板', 'Management': '管理', 'Personnel': '人員', 'Vessels': '船舶', 'Locations': '位置',
-  'Operations': '作業', 'Transfer': '轉運', 'Site Log': '現場日誌', 'Transfer History': '轉運紀錄', 'POB Viewer': '在場人數（POB）',
+  'Operations': '作業', 'Transfer': '轉運', 'Site Log': '現場日誌', 'Transfer History': '轉運紀錄', 'Operations log': '作業日誌', 'Operations Log': '作業日誌', 'Personnel transfers': '人員轉運明細', 'Personnel Transfers': '人員轉運明細', 'POB Viewer': '在場人數（POB）',
   'Safety': '安全', 'Certificates': '證照', 'PTW Monitor': 'PTW 監控', 'System': '系統', 'Administration': '系統管理',
   'Refresh': '重新整理', 'Reload data from server': '從伺服器重新載入資料', 'Loading…': '載入中…', 'Loading data…': '載入資料中…',
   'Saving…': '儲存中…', 'Deleting…': '刪除中…', 'Uploading…': '上傳中…', 'Executing transfer…': '執行轉運中…', 'Loading file…': '檔案載入中…',
