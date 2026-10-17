@@ -2871,6 +2871,7 @@ function adminSys(el) {
       <span class="hint">${L('The PTW System uses this key to read approved vessels and to send vessel applications here. After regenerating, paste the new key into PTW or vessel sync stops.', 'PTW 系統用這組金鑰讀取已核准船舶、並把暫存船舶送來這裡申請。重新產生後，要把新金鑰貼到 PTW，否則船舶同步會中斷。')}</span></div>
     <div class="form-group full"><label>${L('Default meeting title (new meeting minutes)', '預設會議名稱（新增會議紀錄時帶入）')}</label><input id="st_mtitle" class="notr" value="${esc(defaultMeetingTitle())}" placeholder="每日協調會議">
       <span class="hint">${L('Filled in automatically for every new meeting; users can still press “Edit name” to change it for that meeting.', '新增會議紀錄時自動帶入；個別會議仍可按「修改名稱」更改。')}</span></div>
+    <div class="form-group full"><label>${L('Project name (shown in the header of notification emails)', '專案名稱（顯示在通知信頁首）')}</label><input id="st_project" class="notr" value="${esc(S.settings.project_name || '')}"></div>
     <div class="form-group full" style="border-top:1px solid var(--border);padding-top:12px"><label>🌊 ${L('Dashboard sea-state / weather (Open-Meteo data + Windy map)', '儀表板海象天氣（Open-Meteo 預報＋Windy 地圖）')}</label>
       <input id="st_wxname" class="notr" placeholder="${L('Panel title (empty = “Sea state along the pipeline”)', '天氣欄標題（留空＝「沿線海象」）')}" value="${esc(S.settings.weather_name || '')}">
       <textarea id="st_wxpts" class="mono notr" rows="6" style="margin-top:6px" placeholder="KP 0, 24.2500, 120.4800&#10;KP 10, 24.2700, 120.3900&#10;KP 20, 24.2900, 120.3000">${esc(S.settings.weather_points || (S.settings.weather_lat ? (S.settings.weather_name || 'Site') + ', ' + S.settings.weather_lat + ', ' + S.settings.weather_lon : ''))}</textarea>
@@ -2938,7 +2939,7 @@ async function saveSys(btn) {
   const evs = [...document.querySelectorAll('.st_ev')].filter(c => c.checked).map(c => c.value);
   await withBusy(btn, async () => {
     S.settings = await api('settings.save', { ptw_url: v('st_ptw'), required_categories: cats.join(','),
-      notify_emails: v('st_mails'), notify_events: evs.join(','), app_url: v('st_appurl'), meeting_title: v('st_mtitle'),
+      notify_emails: v('st_mails'), notify_events: evs.join(','), app_url: v('st_appurl'), meeting_title: v('st_mtitle'), project_name: v('st_project'),
       weather_name: v('st_wxname'), weather_points: document.getElementById('st_wxpts').value, weather_lat: '', weather_lon: '', weather_wave_limit: v('st_wxwave'), weather_wind_limit: v('st_wxwind') });
     WX.data = null; WX.err = ''; WX.sel = null;
     PTW.data = null; refreshPTW(true).catch(() => {});
