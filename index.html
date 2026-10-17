@@ -191,6 +191,52 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
 .wx-dhead b{font-size:14px;margin-right:auto}
 .wx-detail .wx-tiles{grid-template-columns:repeat(auto-fit,minmax(100px,1fr))}
 .wx-empty{background:var(--card);border:1px dashed var(--border-2);border-radius:var(--radius-lg);padding:12px 16px;margin-bottom:14px;color:var(--muted);font-size:13px}
+/* 海象欄（地圖＋時段）*/
+.wxc{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,32,56,.06)}
+.wxc [hidden]{display:none!important}
+.wxc-head{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--border)}
+.wxc-head h3{font-size:15px;color:var(--navy);margin:0 auto 0 0;display:flex;align-items:center;gap:6px}
+.wxc-upd{font-size:12px;color:var(--muted)}
+.wxc-pill{display:inline-flex;align-items:center;gap:7px;padding:4px 12px;border-radius:14px;font-size:12px;font-weight:700}
+.wxc-pill i{width:9px;height:9px;border-radius:50%}
+.wxc-pill.ok{background:#e6f4ec;color:#0a6b35}.wxc-pill.ok i{background:#0a8a43}
+.wxc-pill.bad{background:#fdecec;color:#a11d1d}.wxc-pill.bad i{background:#c62828}
+.wxc-fold{width:36px;height:36px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--navy);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.wxc-fold svg{transition:transform .2s}.wxc-fold.closed svg{transform:rotate(180deg)}
+.wxc-map{position:relative}
+#wxMap{height:420px;background:#cfe3ef}
+@media(max-width:700px){#wxMap{height:320px}}
+.wxc-legend{position:absolute;left:10px;bottom:10px;z-index:500;background:rgba(255,255,255,.93);border-radius:8px;padding:6px 10px;font-size:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;max-width:calc(100% - 20px)}
+.wxc-legend span{display:inline-flex;align-items:center;gap:4px}.wxc-legend i{width:10px;height:10px;border-radius:50%}
+.wxc-legend i.ok{background:#0a8a43}.wxc-legend i.warn{background:#d98a00}.wxc-legend i.bad{background:#c62828}
+.wxc-foot{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;padding:10px 14px}
+.wxc-hint{font-size:12px;color:var(--muted)}
+.wx-tabs{display:inline-flex;flex-wrap:wrap;background:var(--bg);border-radius:10px;padding:3px;gap:3px}
+.wx-tabs button{border:0;border-radius:8px;padding:8px 14px;font:inherit;font-size:13px;background:transparent;color:var(--text);cursor:pointer;min-height:36px}
+.wx-tabs button.on{background:var(--navy);color:#fff;font-weight:700}
+.wxc-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:10px 14px}
+.wxc-chip{border:0;border-radius:14px;padding:4px 10px;font:inherit;font-size:12px;color:#fff;cursor:pointer}
+.wxc-chip b{font-family:'JetBrains Mono',monospace;margin-left:3px}
+.wxc-chip.ok{background:#0a8a43}.wxc-chip.warn{background:#d98a00}.wxc-chip.bad{background:#c62828}.wxc-chip.na{background:#78909c}
+.wx-pin.ok{background:#0a8a43}.wx-pin.warn{background:#d98a00}.wx-pin.bad{background:#c62828}
+.wx-pin{min-width:36px;padding:3px 6px;font-size:12px}
+.wx-modal{max-width:860px}
+.wxm-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:12px}
+.wxm-t{background:#f4f7fa;border:1px solid #e1e8ef;border-radius:8px;padding:8px 10px}
+.wxm-t.bad{background:var(--danger-bg);border-color:#f2b8b8}
+.wxm-t .k{font-size:12px;color:var(--muted)}.wxm-t .v{font:700 20px 'JetBrains Mono',monospace;color:var(--navy)}.wxm-t .s{font-size:11px;color:var(--muted)}
+.wxm-work{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:10px 14px;border-radius:8px;margin-top:10px;font-size:14px}
+.wxm-work small{margin-left:auto;opacity:.8}
+.wxm-work.ok{background:#e6f4ec;color:#0a6b35}.wxm-work.warn{background:#fff4e0;color:#8a5200}.wxm-work.bad{background:#fdecec;color:#a11d1d}
+.wxm-chart{margin-top:12px}
+.wxm-chart .cap{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:6px}
+.wxm-chart .plot{position:relative;display:flex;align-items:flex-end;gap:2px;border-bottom:1px solid var(--border-2)}
+.wxm-chart .lim{position:absolute;left:0;right:0;border-top:2px dashed #c62828}
+.wxm-chart .b{flex:1 1 0;border-radius:3px 3px 0 0;min-height:1px}
+.wxm-chart .b.ok{background:#0a8a43}.wxm-chart .b.warn{background:#d98a00}.wxm-chart .b.bad{background:#c62828}.wxm-chart .b.na{background:#b0bec5}
+.wxm-chart .row{display:flex;gap:2px;margin-top:3px}
+.wxm-chart .row div{flex:1 1 0;text-align:center;font-size:10px;color:var(--muted);white-space:nowrap;overflow:visible}
+.wxm-chart .row.wind div{color:var(--info)}
 /* 公告欄 */
 .ann-board{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:14px}
 .ann-board h3{font-size:14px;color:var(--navy);margin-bottom:8px}
@@ -1288,8 +1334,9 @@ function renderDashboard() {
 }
 // ==================== WEATHER（儀表板海象：沿管線多點）====================
 // 數值來自 Open-Meteo（免費、免金鑰，ECMWF／Météo-France 等模式），一次請求取回所有座標點；
-// 地圖用 Leaflet＋Esri 海洋底圖，標記只顯示浪高 Hs，點選後才顯示該點的詳細資料。
-const WX = { data: null, at: 0, tried: 0, key: '', loading: null, err: '', part: false, sel: null, map: null, layer: null, built: '' };
+// 地圖用 Leaflet＋Esri 海洋底圖，標記只顯示所選時段的最大浪高 Hs，點選後跳出該點的詳細視窗。
+const WX = { data: null, off: 0, at: 0, tried: 0, key: '', loading: null, err: '', part: false, win: 'h24', map: null, layer: null, bounds: null, built: '', editing: false,
+  collapsed: (() => { try { return localStorage.getItem('opts_wx_collapsed') === '1'; } catch (e) { return false; } })() };
 const WX_CODES = { 0: ['☀️', 'Clear', '晴'], 1: ['🌤', 'Mainly clear', '晴時多雲'], 2: ['⛅', 'Partly cloudy', '多雲'], 3: ['☁️', 'Overcast', '陰'],
   45: ['🌫', 'Fog', '霧'], 48: ['🌫', 'Fog', '霧'], 51: ['🌦', 'Drizzle', '毛毛雨'], 53: ['🌦', 'Drizzle', '毛毛雨'], 55: ['🌦', 'Drizzle', '毛毛雨'],
   61: ['🌧', 'Rain', '雨'], 63: ['🌧', 'Rain', '雨'], 65: ['🌧', 'Heavy rain', '大雨'], 80: ['🌦', 'Showers', '陣雨'], 81: ['🌧', 'Showers', '陣雨'], 82: ['⛈', 'Heavy showers', '強陣雨'],
@@ -1319,7 +1366,7 @@ function loadWeather(force) {
   if (!force && WX.key === c.key && WX.data && Date.now() - WX.at < 30 * 60000) return Promise.resolve(WX.data);
   if (WX.loading) return WX.loading;
   WX.tried = Date.now();
-  const q = `latitude=${c.pts.map(p => p.lat).join(',')}&longitude=${c.pts.map(p => p.lon).join(',')}&timezone=auto&timeformat=unixtime&forecast_days=2`;
+  const q = `latitude=${c.pts.map(p => p.lat).join(',')}&longitude=${c.pts.map(p => p.lon).join(',')}&timezone=auto&timeformat=unixtime&forecast_days=3`;
   const get = u => fetch(u).then(r => r.json()).then(j => { if (j.error) throw new Error(j.reason || 'weather error'); return Array.isArray(j) ? j : [j]; });
   WX.loading = Promise.allSettled([
     get(`https://marine-api.open-meteo.com/v1/marine?${q}&hourly=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_period,swell_wave_direction`),
@@ -1329,6 +1376,7 @@ function loadWeather(force) {
     if (m.status === 'rejected' && f.status === 'rejected') throw m.reason;
     const blank = t => new Proxy({ time: t }, { get: (o, k) => k in o ? o[k] : [] });
     const ms = m.status === 'fulfilled' ? m.value : null, fs = f.status === 'fulfilled' ? f.value : null;
+    WX.off = ((ms || fs)[0].utc_offset_seconds) || 0;
     WX.data = c.pts.map((p, i) => {
       const mh = ms && ms[i] ? ms[i].hourly : null, fh = fs && fs[i] ? fs[i].hourly : null;
       return { m: mh || blank(fh ? fh.time : []), f: fh || blank(mh ? mh.time : []) };
@@ -1340,51 +1388,73 @@ function loadWeather(force) {
     .finally(() => { WX.loading = null; if (currentPage === 'dashboard') renderWeather(); });
   return WX.loading;
 }
-/** 單點目前值與未來 12 小時最大值 */
-function wxNow(d, c) {
+const wxNum = (v, d) => (v === null || v === undefined || isNaN(v)) ? '—' : Number(v).toFixed(d);
+const wxLocal = t => new Date((t + WX.off) * 1000).toISOString();   // 場址當地時間（ISO 字串的 Z 只是格式，數字已換成當地）
+function wxDay(n) { return new Date(Date.now() + WX.off * 1000 + n * 864e5).toISOString().slice(0, 10); }
+function wxWins() {
+  const md = d => d.slice(5).replace('-', '/');
+  return [['h12', L('Next 12 h', '未來 12 小時'), L('next 12 h', '未來 12 小時')], ['h24', L('Next 24 h', '未來 24 小時'), L('next 24 h', '未來 24 小時')],
+    ['d1', L('Tomorrow ', '明天 ') + md(wxDay(1)), L('tomorrow', '明天')], ['d2', L('Day after ', '後天 ') + md(wxDay(2)), L('day after tomorrow', '後天')]];
+}
+/** 所選時段在這個時間軸上的索引 */
+function wxIdx(times, win) {
   const now = Date.now() / 1000;
-  const idx = arr => { let i = 0; for (let k = 0; k < arr.length; k++) if (arr[k] <= now) i = k; return i; };
-  const im = idx(d.m.time), iff = idx(d.f.time);
-  const hs = d.m.wave_height[im], wind = d.f.wind_speed_10m[iff];
-  let maxHs = hs || 0, maxWind = wind || 0;
-  for (let k = 1; k <= 12; k++) { if (d.m.wave_height[im + k] > maxHs) maxHs = d.m.wave_height[im + k]; if (d.f.wind_speed_10m[iff + k] > maxWind) maxWind = d.f.wind_speed_10m[iff + k]; }
-  return { im, iff, hs, wind, maxHs, maxWind, over: (hs || 0) >= c.wave || (wind || 0) >= c.wind, over12: maxHs >= c.wave || maxWind >= c.wind };
+  if (win === 'h12' || win === 'h24') {
+    let i0 = 0; for (let k = 0; k < times.length; k++) if (times[k] <= now) i0 = k;
+    const n = win === 'h12' ? 12 : 24, out = [];
+    for (let k = i0; k < Math.min(times.length, i0 + n); k++) out.push(k);
+    return out;
+  }
+  const day = wxDay(win === 'd1' ? 1 : 2);
+  return times.map((t, k) => wxLocal(t).slice(0, 10) === day ? k : -1).filter(k => k >= 0);
+}
+/** 一個點在所選時段的統計：最大浪高／風速、逐時資料、可作業時段 */
+function wxStats(d, c, win) {
+  const m = d.m, f = d.f, mt = m.time.length ? m.time : f.time;
+  const fIdx = {}; f.time.forEach((t, k) => { fIdx[t] = k; });
+  const hours = wxIdx(mt, win).map(k => {
+    const fk = fIdx[mt[k]];
+    const g = (arr, idx) => (idx === undefined || arr[idx] === undefined) ? null : arr[idx];
+    return { t: mt[k], hs: g(m.wave_height, k), per: g(m.wave_period, k), dir: g(m.wave_direction, k), sw: g(m.swell_wave_height, k), swp: g(m.swell_wave_period, k), swd: g(m.swell_wave_direction, k),
+      wind: g(f.wind_speed_10m, fk), gust: g(f.wind_gusts_10m, fk), wdir: g(f.wind_direction_10m, fk), temp: g(f.temperature_2m, fk), code: g(f.weather_code, fk), vis: g(f.visibility, fk), rain: g(f.precipitation, fk) };
+  });
+  const max = k => { let v = null; hours.forEach(h => { if (h[k] !== null && (v === null || h[k] > v)) v = h[k]; }); return v; };
+  const min = k => { let v = null; hours.forEach(h => { if (h[k] !== null && (v === null || h[k] < v)) v = h[k]; }); return v; };
+  const peak = hours.reduce((a, h) => (h.hs !== null && (a === null || h.hs > a.hs)) ? h : a, null) || hours[0] || {};
+  const codes = hours.map(h => h.code).filter(x => x !== null);
+  const ok = h => (h.hs === null || h.hs < c.wave) && (h.wind === null || h.wind < c.wind);
+  const lab = t => wxLocal(t).slice(11, 16);
+  const ranges = []; let a = null;
+  hours.forEach((h, i) => {
+    if (ok(h)) { if (a === null) a = h.t; }
+    else if (a !== null) { ranges.push(lab(a) + '–' + lab(h.t)); a = null; }
+    if (i === hours.length - 1 && a !== null) ranges.push(lab(a) + '–' + lab(h.t + 3600).replace('00:00', '24:00'));
+  });
+  return { hours, peak, maxHs: max('hs'), maxWind: max('wind'), maxGust: max('gust'), maxTemp: max('temp'), minTemp: min('temp'), minVis: min('vis'),
+    rain: hours.reduce((s, h) => s + (h.rain || 0), 0), code: codes.length ? Math.max(...codes) : null,
+    over: hours.some(h => !ok(h)), allOk: hours.length && hours.every(ok), noneOk: !hours.some(ok), work: ranges, lab };
 }
 function wxTone(hs, c) { return hs === null || hs === undefined ? 'na' : hs >= c.wave ? 'bad' : hs >= c.wave * 0.8 ? 'warn' : 'ok'; }
-const wxNum = (v, d) => (v === null || v === undefined || isNaN(v)) ? '—' : Number(v).toFixed(d);
-function wxDetail(i, c) {
-  const p = c.pts[i], d = WX.data[i], n = wxNow(d, c), m = d.m, f = d.f, im = n.im, iff = n.iff;
-  const wc = WX_CODES[f.weather_code[iff]] || ['🌡', '', ''];
-  const tile = (k, v, s, over) => `<div class="wx-t ${over ? 'over' : ''}"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s || '&nbsp;'}</div></div>`;
-  const tiles = [
-    tile(L('Wave height (Hs)', '浪高 Hs'), wxNum(n.hs, 1) + '<small>m</small>', L('Limit ', '限制 ') + c.wave + ' m', n.hs >= c.wave),
-    tile(L('Wave period / dir.', '浪週期／浪向'), wxNum(m.wave_period[im], 0) + '<small>s</small>', compass(m.wave_direction[im]) + ' ' + wxNum(m.wave_direction[im], 0) + '°'),
-    tile(L('Swell', '湧浪'), wxNum(m.swell_wave_height[im], 1) + '<small>m</small>', wxNum(m.swell_wave_period[im], 0) + ' s · ' + compass(m.swell_wave_direction[im])),
-    tile(L('Wind', '風速'), wxNum(n.wind, 0) + '<small>kn</small>', L('Gust ', '陣風 ') + wxNum(f.wind_gusts_10m[iff], 0) + ' kn · ' + compass(f.wind_direction_10m[iff]), n.wind >= c.wind),
-    tile(L('Weather', '天氣'), wc[0] + ' <small>' + wxNum(f.temperature_2m[iff], 0) + '°C</small>', LANG === 'zh' ? wc[2] : wc[1]),
-    tile(L('Visibility', '能見度'), (f.visibility[iff] === null || f.visibility[iff] === undefined) ? '—' : wxNum(f.visibility[iff] / 1000, f.visibility[iff] < 10000 ? 1 : 0) + '<small>km</small>', L('Rain ', '降雨 ') + wxNum(f.precipitation[iff], 1) + ' mm')
-  ].join('');
-  let fc = '';
-  for (let k = 3; k <= 24; k += 3) {
-    const a = m.wave_height[im + k], w = f.wind_speed_10m[iff + k], t = (m.time.length ? m.time : f.time)[(m.time.length ? im : iff) + k];
-    if (t === undefined) break;
-    const hh = new Date(t * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-    fc += `<div class="${a >= c.wave || w >= c.wind ? 'over' : ''}">${hh}<b>${wxNum(a, 1)} m</b>${wxNum(w, 0)} kn</div>`;
-  }
-  return `<div class="wx-dhead"><b class="notr">📍 ${esc(p.name)}</b><span class="wx-sub mono">${p.lat.toFixed(4)}, ${p.lon.toFixed(4)}</span>
-    <a class="btn btn-sm" href="https://www.windy.com/?waves,${p.lat},${p.lon},10" target="_blank" rel="noopener">Windy ↗</a></div>
-    <div class="wx-tiles">${tiles}</div><div class="wx-fc">${fc}</div>`;
+let L_ = window.LEAFLET || null;   // Leaflet（window.L 會跟翻譯函式 L() 撞名，所以載入時另存一份）
+function wxPin(hs, c) {
+  return L_.divIcon({ className: '', iconSize: null, html: `<div class="wx-pin ${wxTone(hs, c)}">${wxNum(hs, 1)}</div>` });
 }
-function wxPin(hs, c, sel) {
-  return L_ ? L_.divIcon({ className: '', iconSize: null, html: `<div class="wx-pin ${wxTone(hs, c)} ${sel ? 'sel' : ''}">${wxNum(hs, 1)}</div>` }) : null;
+function wxSetWin(w) {
+  WX.win = w;
+  renderWeather();
+  if (document.getElementById('wxModal')) wxRenderModal();
 }
-let L_ = window.LEAFLET || null;   // Leaflet（window.L 會跟翻譯函式 L() 撞名，所以載入後另存一份）
+function wxToggle() {
+  WX.collapsed = !WX.collapsed;
+  try { localStorage.setItem('opts_wx_collapsed', WX.collapsed ? '1' : '0'); } catch (e) {}
+  renderWeather();
+}
 function wxEditTitle() {
   const h = document.getElementById('wxTitle');
   if (!h) return;
   WX.editing = true;
-  h.innerHTML = `🌊 <input id="wxTitleIn" class="notr" style="font:inherit;font-size:14px;padding:2px 8px;border-radius:6px;border:0;min-width:240px;color:var(--navy)" value="${esc(S.settings.weather_name || '')}" placeholder="${L('Sea state along the pipeline', '沿線海象')}">
-    <button type="button" class="btn btn-sm" onclick="wxSaveTitle(this)">💾</button> <button type="button" class="btn btn-sm" onclick="WX.editing=false;renderWeather()">✕</button>`;
+  h.innerHTML = `<input id="wxTitleIn" class="notr" style="font:inherit;font-size:14px;padding:4px 8px;border-radius:6px;border:1px solid var(--border-2);min-width:240px" value="${esc(S.settings.weather_name || '')}" placeholder="${L('Sea state along the pipeline', '沿線海象')}">
+    <button type="button" class="btn btn-primary btn-sm" onclick="wxSaveTitle(this)">💾</button> <button type="button" class="btn btn-secondary btn-sm" onclick="WX.editing=false;renderWeather()">✕</button>`;
   const i = document.getElementById('wxTitleIn');
   i.focus(); i.select();
   i.onkeydown = e => { if (e.key === 'Enter') wxSaveTitle(i.nextElementSibling); else if (e.key === 'Escape') { WX.editing = false; renderWeather(); } };
@@ -1398,7 +1468,9 @@ async function wxSaveTitle(btn) {
     toast(L('Title saved', '標題已儲存'), 'success');
   });
 }
-function wxSelect(i) { WX.sel = i; renderWeather(); }
+function wxTabsHtml() {
+  return `<div class="wx-tabs" role="group" aria-label="${L('Time window', '時段')}">${wxWins().map(w => `<button type="button" class="${WX.win === w[0] ? 'on' : ''}" onclick="wxSetWin('${w[0]}')">${esc(w[1])}</button>`).join('')}</div>`;
+}
 function renderWeather() {
   const el = document.getElementById('dashWeather');
   if (!el) return;
@@ -1411,58 +1483,108 @@ function renderWeather() {
   const buildKey = c.key + '|' + LANG;
   if (WX.built !== buildKey || !document.getElementById('wxMap')) {
     if (WX.map) { WX.map.remove(); WX.map = null; }
-    el.innerHTML = `<div class="wx"><div class="wx-head" id="wxHead"></div>
-      <div class="wx-body"><div class="wx-mapbox"><div id="wxMap"></div><div class="wx-chips" id="wxChips"></div></div><div class="wx-detail" id="wxDetail"></div></div>
-      <div class="wx-sub" id="wxFoot" style="margin-top:6px"></div></div>`;
+    el.innerHTML = `<div class="wxc"><div class="wxc-head"><h3 class="notr" id="wxTitle"></h3><span id="wxStatus"></span><span class="wxc-upd" id="wxUpd"></span>
+        <button type="button" class="wxc-fold" id="wxFold" onclick="wxToggle()"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 11 L9 6 L14 11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button></div>
+      <div id="wxCollapsed" class="wxc-chips"></div>
+      <div id="wxExpanded"><div class="wxc-map"><div id="wxMap"></div><div class="wxc-legend" id="wxLegend"></div></div>
+        <div class="wxc-foot"><span id="wxTabs"></span><span class="wxc-hint" id="wxHint"></span></div></div></div>`;
     WX.built = buildKey;
     WX.editing = false;
     if (L_) {
-      WX.map = L_.map('wxMap', { scrollWheelZoom: false, attributionControl: true, zoomControl: true });
+      WX.map = L_.map('wxMap', { scrollWheelZoom: false, zoomControl: true });
+      WX.map.zoomControl.setPosition('topright');
       L_.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 13, attribution: 'Esri, GEBCO, NOAA' }).addTo(WX.map);
       L_.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 13 }).addTo(WX.map);
-      if (c.pts.length > 1) L_.polyline(c.pts.map(p => [p.lat, p.lon]), { color: '#ffb000', weight: 3, opacity: .9, dashArray: '6 6' }).addTo(WX.map);
+      if (c.pts.length > 1) L_.polyline(c.pts.map(p => [p.lat, p.lon]), { color: '#002038', weight: 3, opacity: .55, dashArray: '7 6' }).addTo(WX.map);
       WX.layer = L_.layerGroup().addTo(WX.map);
       WX.bounds = L_.latLngBounds(c.pts.map(p => [p.lat, p.lon])).pad(0.12);
       WX.map.fitBounds(WX.bounds, { maxZoom: 11 });
       // 版面排好之後再對一次範圍（剛建立時容器尺寸可能還是 0，地圖會縮得太小）
       setTimeout(() => { if (WX.map) { WX.map.invalidateSize(); WX.map.fitBounds(WX.bounds, { maxZoom: 11 }); } }, 50);
     } else {
-      document.getElementById('wxMap').innerHTML = `<div class="wx-sub" style="padding:20px">${L('Map could not be loaded.', '地圖無法載入。')}</div>`;
+      document.getElementById('wxMap').innerHTML = `<div class="hint" style="padding:20px">${L('Map could not be loaded.', '地圖無法載入。')}</div>`;
     }
   }
-  if (WX.map) setTimeout(() => WX.map && WX.map.invalidateSize(), 0);
-  const head = document.getElementById('wxHead'), det = document.getElementById('wxDetail'), foot = document.getElementById('wxFoot'), chips = document.getElementById('wxChips');
-  // 標題：系統設定的「天氣欄標題」整段取代預設文字；Admin 可直接在儀表板按 ✏️ 修改
-  const title = `<h3 class="notr" id="wxTitle">🌊 ${c.name ? esc(c.name) : L('Sea state along the pipeline', '沿線海象')}${isAdmin() ? ` <button type="button" class="btn btn-sm" style="padding:0 6px;font-size:11px" title="${L('Edit title', '修改標題')}" onclick="wxEditTitle()">✏️</button>` : ''}</h3>`;
+  const $ = id => document.getElementById(id);
+  const wins = wxWins(), win = wins.find(w => w[0] === WX.win) || wins[1];
+  // 標題（Admin 可按 ✏️ 修改）
+  if (!WX.editing) $('wxTitle').innerHTML = `🌊 ${c.name ? esc(c.name) : L('Sea state along the pipeline', '沿線海象')}${isAdmin() ? ` <button type="button" class="btn btn-secondary btn-sm" style="padding:0 6px;font-size:11px" title="${L('Edit title', '修改標題')}" onclick="wxEditTitle()">✏️</button>` : ''}`;
+  // 收合／展開
+  const fold = $('wxFold');
+  fold.classList.toggle('closed', WX.collapsed);
+  fold.title = fold.ariaLabel = WX.collapsed ? L('Expand', '展開') : L('Collapse', '收合');
+  $('wxExpanded').hidden = WX.collapsed;
+  $('wxCollapsed').hidden = !WX.collapsed;
+  if (!WX.collapsed && WX.map) setTimeout(() => { if (WX.map) { const z = WX.map.getZoom(); WX.map.invalidateSize(); if (!z) WX.map.fitBounds(WX.bounds, { maxZoom: 11 }); } }, 0);
+  $('wxTabs').innerHTML = wxTabsHtml();
   if (!WX.data || WX.key !== c.key) {
-    if (!WX.editing) head.innerHTML = title;
-    det.innerHTML = `<div class="wx-sub">${WX.err ? '⚠ ' + L('Could not load weather: ', '無法取得天氣資料：') + esc(WX.err) : L('Loading weather…', '天氣資料載入中…')}</div>`;
-    chips.innerHTML = ''; foot.innerHTML = '';
+    $('wxStatus').innerHTML = ''; $('wxUpd').textContent = '';
+    $('wxHint').textContent = WX.err ? '⚠ ' + L('Could not load weather: ', '無法取得天氣資料：') + WX.err : L('Loading weather…', '天氣資料載入中…');
+    $('wxCollapsed').innerHTML = `<span class="hint">${esc($('wxHint').textContent)}</span>`;
     if (WX.layer) WX.layer.clearLayers();
     if (!WX.err || Date.now() - WX.tried > 5 * 60000) loadWeather(true).catch(() => {});
     return;
   }
   if (Date.now() - WX.tried > (WX.part ? 5 : 30) * 60000) loadWeather(true).catch(() => {});   // 每 30 分鐘背景更新（缺資料時 5 分鐘重試）
-  const now = c.pts.map((p, i) => wxNow(WX.data[i], c));
-  // 預設選浪高最大的點
-  let worst = 0; now.forEach((n, i) => { if ((n.hs || 0) > (now[worst].hs || 0)) worst = i; });
-  if (WX.sel === null || WX.sel >= c.pts.length) WX.sel = worst;
-  const anyNow = now.some(n => n.over), any12 = now.some(n => n.over12);
-  const maxWind = Math.max(...now.map(n => n.wind || 0));
-  const pill = !anyNow && !any12 ? `<span class="wx-pill ok">✅ ${L('All points within limits (next 12 h)', '全線未來 12 小時在作業限制內')}</span>`
-    : `<span class="wx-pill no">⚠️ ${anyNow ? L('Above operating limit at ', '目前超過作業限制：') + now.map((n, i) => n.over ? c.pts[i].name : '').filter(Boolean).join(L(', ', '、')) : L('Limit exceeded within 12 h', '12 小時內將超過作業限制')}</span>`;
-  if (!WX.editing) head.innerHTML = title + `<span class="wx-sum notr">${L('Max Hs ', '最大浪高 ')}<b>${wxNum(now[worst].hs, 1)} m</b> @ ${esc(c.pts[worst].name)} · ${L('Max wind ', '最大風速 ')}<b>${wxNum(maxWind, 0)} kn</b></span>` + pill;
+  const st = c.pts.map((p, i) => wxStats(WX.data[i], c, win[0]));
+  const over = c.pts.filter((p, i) => st[i].over).map(p => p.name);
+  $('wxStatus').innerHTML = over.length
+    ? `<span class="wxc-pill bad"><i></i>${esc(over.length > 2 ? over[0] + ' – ' + over[over.length - 1] : over.join(L(', ', '、')))} ${L('over limit', '超過作業限制')}（${esc(win[2])}）</span>`
+    : `<span class="wxc-pill ok"><i></i>${L('All points within limits', '全線在作業限制內')}（${esc(win[2])}）</span>`;
+  $('wxUpd').textContent = L('Updated ', '更新 ') + new Date(WX.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' · Open-Meteo' + (WX.part ? ' · ⚠ ' + L('partial data', '部分資料暫缺') : '');
+  $('wxLegend').innerHTML = `<b>${L('Numbers = max Hs (m), ', '數字＝')}${esc(win[2])}${L('', '最大浪高 Hs（m）')}</b>
+    <span><i class="ok"></i>&lt; ${(c.wave * 0.8).toFixed(1)}</span><span><i class="warn"></i>${(c.wave * 0.8).toFixed(1)} – ${c.wave}</span><span><i class="bad"></i>≥ ${c.wave} ${L('over limit', '超過限制')}</span>`;
+  $('wxHint').textContent = L('Tap a number on the map for details · zoom with + / − (top right)', '點地圖上的數字看該點詳細資料 · 用右上 + / − 縮放地圖');
   if (WX.layer) {
     WX.layer.clearLayers();
     c.pts.forEach((p, i) => {
-      L_.marker([p.lat, p.lon], { icon: wxPin(now[i].hs, c, i === WX.sel), title: p.name, zIndexOffset: i === WX.sel ? 1000 : 0 })
-        .on('click', () => wxSelect(i)).bindTooltip(esc(p.name), { direction: 'top', offset: [0, -14] }).addTo(WX.layer);
+      L_.marker([p.lat, p.lon], { icon: wxPin(st[i].maxHs, c), title: p.name + ' · Hs ' + wxNum(st[i].maxHs, 1) + ' m' })
+        .on('click', () => wxOpen(i)).bindTooltip(esc(p.name), { direction: 'top', offset: [0, -14] }).addTo(WX.layer);
     });
   }
-  chips.innerHTML = c.pts.map((p, i) => `<button type="button" class="wx-chip notr ${wxTone(now[i].hs, c)} ${i === WX.sel ? 'sel' : ''}" onclick="wxSelect(${i})">${esc(p.name)} <b>${wxNum(now[i].hs, 1)}</b></button>`).join('');
-  det.innerHTML = wxDetail(WX.sel, c);
-  const upd = new Date(WX.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-  foot.innerHTML = `${L('Map numbers = Hs (m). Tap a point for details. Data: Open-Meteo (ECMWF / Météo-France models), updated ', '地圖數字＝浪高 Hs（m），點選座標點看詳細資料。資料：Open-Meteo（ECMWF／Météo-France 模式）· 更新於 ')}${upd} · ${L('For reference only — follow the Marine Coordinator’s decision.', '僅供參考，實際以 MC 判斷為準。')}${WX.part ? ' · ⚠ ' + L('part of the data is temporarily unavailable', '部分資料暫時無法取得') : ''}`;
+  $('wxCollapsed').innerHTML = `<span class="hint">${esc(win[2])}${L(' max Hs', '最大浪高')}</span>` +
+    c.pts.map((p, i) => `<button type="button" class="wxc-chip ${wxTone(st[i].maxHs, c)} notr" onclick="wxOpen(${i})">${esc(p.name)} <b>${wxNum(st[i].maxHs, 1)}</b></button>`).join('');
+}
+// ---- 點選後的詳細視窗 ----
+let wxSel = 0;
+function wxOpen(i) {
+  wxSel = i;
+  const ov = openModal('<span id="wxModalTitle"></span>', '<div id="wxModal"></div>', true);
+  ov.querySelector('.modal').classList.add('wx-modal');
+  wxRenderModal();
+}
+function wxRenderModal() {
+  const box = document.getElementById('wxModal'), c = wxCfg();
+  if (!box || !c || !WX.data || !WX.data[wxSel]) return;
+  const p = c.pts[wxSel], wins = wxWins(), win = wins.find(w => w[0] === WX.win) || wins[1];
+  const s = wxStats(WX.data[wxSel], c, win[0]), pk = s.peak || {};
+  document.getElementById('wxModalTitle').innerHTML = `📍 <span class="notr">${esc(p.name)}</span> <span class="hint mono" style="font-weight:400">${p.lat.toFixed(4)}, ${p.lon.toFixed(4)}</span>`;
+  const wc = WX_CODES[s.code] || ['🌡', '—', '—'];
+  const tile = (k, val, sub, bad) => `<div class="wxm-t ${bad ? 'bad' : ''}"><div class="k">${k}</div><div class="v">${val}</div><div class="s">${sub || '&nbsp;'}</div></div>`;
+  const tiles = [
+    tile(L('Max wave height Hs', '最大浪高 Hs'), wxNum(s.maxHs, 1) + ' m', L('Limit ', '限制 ') + c.wave + ' m', s.maxHs >= c.wave),
+    tile(L('Max wind', '最大風速'), wxNum(s.maxWind, 0) + ' kn', L('Gust ', '陣風 ') + wxNum(s.maxGust, 0) + ' kn · ' + compass(pk.wdir), s.maxWind >= c.wind),
+    tile(L('Wave period / dir.', '浪週期／浪向'), wxNum(pk.per, 0) + ' s', compass(pk.dir) + ' ' + wxNum(pk.dir, 0) + '°'),
+    tile(L('Swell', '湧浪'), wxNum(pk.sw, 1) + ' m', wxNum(pk.swp, 0) + ' s · ' + compass(pk.swd)),
+    tile(L('Weather', '天氣'), wc[0] + ' ' + wxNum(s.maxTemp, 0) + '°C', (LANG === 'zh' ? wc[2] : wc[1]) + ' · ' + L('rain ', '降雨 ') + wxNum(s.rain, 1) + ' mm'),
+    tile(L('Min visibility', '最低能見度'), s.minVis === null ? '—' : wxNum(s.minVis / 1000, s.minVis < 10000 ? 1 : 0) + ' km', '')
+  ].join('');
+  const work = !s.hours.length ? '—' : s.allOk ? L('Workable for the whole period', '全時段可作業') : s.noneOk ? L('No workable window in this period', '此時段無可作業窗口') : s.work.join(L(', ', '、'));
+  const scale = Math.max(c.wave * 2, Math.ceil((s.maxHs || 0) * 1.15 * 2) / 2), H = 140;
+  const bars = s.hours.map((h, i) => `<div class="b ${wxTone(h.hs, c)}" style="height:${Math.round((h.hs || 0) / scale * H)}px" title="${s.lab(h.t)} · Hs ${wxNum(h.hs, 1)} m · ${wxNum(h.wind, 0)} kn"></div>`).join('');
+  const every = s.hours.length > 12 ? 3 : 1;
+  const row = fn => s.hours.map((h, i) => `<div>${i % every === 0 ? fn(h) : ''}</div>`).join('');
+  box.innerHTML = `${wxTabsHtml()}
+    <div class="wxm-tiles">${tiles}</div>
+    <div class="wxm-work ${s.allOk ? 'ok' : s.noneOk ? 'bad' : 'warn'}"><b>${L('Workable window', '可作業時段')}</b><span class="notr">${esc(work)}</span><small>${L('Hs < ', '浪高 < ')}${c.wave} m ${L('and wind < ', '且風速 < ')}${c.wind} kn</small></div>
+    <div class="wxm-chart"><div class="cap"><span>${L('Hourly wave height Hs (m)', '逐時浪高 Hs（m）')}</span><span>${L('Red line = limit ', '紅線＝限制 ')}${c.wave} m</span></div>
+      <div class="plot" style="height:${H}px"><div class="lim" style="bottom:${Math.round(c.wave / scale * H)}px"></div>${bars}</div>
+      <div class="row mono">${row(h => s.lab(h.t).slice(0, 2))}</div>
+      <div class="row mono">${row(h => wxNum(h.hs, 1))}</div>
+      <div class="row mono wind">${row(h => wxNum(h.wind, 0))}</div>
+      <div class="hint" style="margin-top:4px">${L('Rows: hour · Hs (m) · wind (kn)', '下方三排：時間 · 浪高（m）· 風速（kn）')}</div></div>
+    <div class="acts" style="margin-top:12px"><a class="btn btn-secondary" href="https://www.windy.com/?waves,${p.lat},${p.lon},10" target="_blank" rel="noopener">${L('Open in Windy', '在 Windy 開啟')} ↗</a>
+      <span class="hint">${L('Forecast: Open-Meteo (ECMWF / Météo-France models) — for reference only; follow the Marine Coordinator’s decision.', '預報：Open-Meteo（ECMWF／Météo-France 模式）— 僅供參考，實際以 MC 判斷為準。')}</span></div>`;
 }
 
 // ==================== ANNOUNCEMENTS（公告欄）====================
