@@ -2214,17 +2214,23 @@ async function resetUserPw(id) {
   });
 }
 function adminCompanies(el) {
-  el.innerHTML = `<div class="section"><div class="section-header"><h3>Companies (contractors)</h3><div class="toolbar"><input class="fi" id="newCo" placeholder="Company name"><button class="btn btn-green btn-sm" onclick="addCompany(this)">+ Add</button></div></div>
-    <div class="table-wrap"><table><thead><tr><th>Company</th><th>Personnel</th><th>Users</th><th>Status</th><th></th></tr></thead><tbody>${S.companies.sort((a, b) => a.name.localeCompare(b.name)).map(c => `<tr>
+  el.innerHTML = `<div class="section"><div class="section-header"><h3>Companies (contractors)</h3><div class="toolbar"><input class="fi" id="newCo" placeholder="Company name" onkeydown="if(event.key==='Enter')addCompany(this.nextElementSibling)"><button class="btn btn-green btn-sm" onclick="addCompany(this)">+ Add</button></div></div>
+    <div class="table-wrap"><table><thead><tr><th>Company</th><th>Personnel</th><th>Users</th><th>Status</th><th></th></tr></thead><tbody>${[...S.companies].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))).map(c => `<tr>
       <td><strong>${esc(c.name)}</strong></td><td>${S.personnel.filter(p => p.company === c.name).length}</td><td>${S.users.filter(u => u.company === c.name).length}</td>
       <td>${c.active === 'FALSE' ? '<span class="b b-na">Inactive</span>' : '<span class="b b-ok">Active</span>'}</td>
       <td><div class="acts"><button class="btn btn-secondary btn-sm" onclick="toggleCompany('${c.id}')">${c.active === 'FALSE' ? 'Activate' : 'Deactivate'}</button><button class="btn btn-danger btn-sm" onclick="deleteCompany('${c.id}')">🗑</button></div></td></tr>`).join('') || '<tr class="empty"><td colspan="5">No companies yet</td></tr>'}</tbody></table></div></div>`;
 }
 async function addCompany(btn) {
   const name = v('newCo');
-  if (!name) return;
-  if (S.companies.some(c => c.name.toLowerCase() === name.toLowerCase())) { toast('Company already exists', 'error'); return; }
-  await withBusy(btn, async () => { upsert(S.companies, await api('company.save', { name })); renderAdmin(); });
+  if (!name) { toast(L('Please enter a company name', '請輸入公司名稱'), 'error'); document.getElementById('newCo')?.focus(); return; }
+  if ((S.companies || []).some(c => String(c.name || '').toLowerCase() === name.toLowerCase())) { toast('Company already exists', 'error'); return; }
+  await withBusy(btn, async () => {
+    const rec = await api('company.save', { name });
+    S.companies = S.companies || [];
+    upsert(S.companies, rec);
+    renderAdmin();
+    toast(L(`Company added: ${name}`, `已新增公司：${name}`));
+  });
 }
 async function deleteCompany(id) {
   const c = S.companies.find(x => x.id === id);
