@@ -36,7 +36,8 @@ const DEFAULT_SETTINGS = {
   required_categories: 'Medical,' + CAT_SAFETY,
   app_url: 'https://d9533472.github.io/NMDCPTS/',
   notify_emails: '',
-  notify_events: 'personnel_pending,vessel_pending,cert_pending,review_result,transfer,expiry,meeting'
+  notify_events: 'personnel_pending,vessel_pending,cert_pending,review_result,transfer,expiry,meeting',
+  meeting_title: '每日協調會議'
 };
 const NOTIFY_EVENTS = ['personnel_pending','vessel_pending','cert_pending','review_result','transfer','expiry','meeting'];
 const EXPIRY_ALERT_DAYS = [30, 14, 7, 1, 0];
@@ -564,6 +565,7 @@ function saveSettings_(u, p) {
       if (bad.length) fail_('Invalid email address: ' + bad.join(', '));
       p.notify_emails = list.join(', ');
     }
+    if (p.meeting_title !== undefined && !str_(p.meeting_title)) p.meeting_title = DEFAULT_SETTINGS.meeting_title;
     Object.keys(DEFAULT_SETTINGS).forEach(k => {
       if (p[k] === undefined) return;
       if (Repo.get('Settings', k)) Repo.update('Settings', k, { value: str_(p[k]) });

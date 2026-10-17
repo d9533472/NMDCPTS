@@ -2048,12 +2048,20 @@ function printMeeting(id) {
   w.document.close();
 }
 let MT = null;   // 編輯中的會議狀態
+function defaultMeetingTitle() { return (S.settings && S.settings.meeting_title) || '每日協調會議'; }
+function unlockMeetingTitle(btn) {
+  const el = document.getElementById('mt_title');
+  el.readOnly = false; el.style.background = ''; el.focus(); el.select();
+  btn.remove();
+}
 function openMeeting(id) {
   const m = id ? S.meetings.find(x => x.id === id) : { time: nowLocal() };
   MT = { id: id || '', items: id ? jlist(m.items) : [{ topic: '', discussion: '', action: '', owner: '', due: '' }], att: new Set(id ? jlist(m.attendees) : []), ext: id ? jlist(m.externals) : [] };
   openModal(id ? L('Edit meeting minutes', '編輯會議紀錄') : L('New meeting minutes', '新增會議紀錄'), `
     <div class="form-grid">
-      <div class="form-group" style="grid-column:span 2"><label>${L('Meeting title *', '會議名稱 *')}</label><input id="mt_title" value="${esc(m.title || '')}" placeholder="${L('e.g. Daily toolbox / MC coordination meeting', '例：每日工具箱會議／MC 協調會')}"></div>
+      <div class="form-group" style="grid-column:span 2"><label>${L('Meeting title *', '會議名稱 *')}</label>
+        <div class="toolbar"><input id="mt_title" class="notr" readonly style="flex:1;min-width:200px;background:var(--na-bg)" value="${esc(id ? (m.title || '') : defaultMeetingTitle())}" placeholder="${L('e.g. Daily toolbox / MC coordination meeting', '例：每日工具箱會議／MC 協調會')}">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="unlockMeetingTitle(this)">✏️ ${L('Edit name', '修改名稱')}</button></div></div>
       <div class="form-group"><label>${L('Date / time *', '日期／時間 *')}</label><input id="mt_time" type="datetime-local" value="${esc(String(m.time || '').slice(0, 16))}"></div>
       <div class="form-group"><label>${L('Location', '地點')}</label><input id="mt_loc" value="${esc(m.location || '')}" placeholder="${L('e.g. Taichung port office / SOV', '例：台中港辦公室／SOV')}"></div>
     </div>
@@ -2354,6 +2362,8 @@ function adminSys(el) {
     <div class="form-group full"><label>${L('PTW link key (paste into PTW System → Administration → Vessels)', 'PTW 連結金鑰（貼到 PTW 系統 → 系統管理 → 船舶）')}</label>
       <div class="toolbar"><input id="st_ptwkey" class="mono" readonly placeholder="••••••••" style="flex:1;min-width:220px"><button class="btn btn-secondary btn-sm" onclick="showPtwKey(this,false)">👁 ${L('Show', '顯示')}</button><button class="btn btn-secondary btn-sm" onclick="showPtwKey(this,true)">🔄 ${L('Regenerate', '重新產生')}</button></div>
       <span class="hint">${L('The PTW System uses this key to read approved vessels and to send vessel applications here. After regenerating, paste the new key into PTW or vessel sync stops.', 'PTW 系統用這組金鑰讀取已核准船舶、並把暫存船舶送來這裡申請。重新產生後，要把新金鑰貼到 PTW，否則船舶同步會中斷。')}</span></div>
+    <div class="form-group full"><label>${L('Default meeting title (new meeting minutes)', '預設會議名稱（新增會議紀錄時帶入）')}</label><input id="st_mtitle" class="notr" value="${esc(defaultMeetingTitle())}" placeholder="每日協調會議">
+      <span class="hint">${L('Filled in automatically for every new meeting; users can still press “Edit name” to change it for that meeting.', '新增會議紀錄時自動帶入；個別會議仍可按「修改名稱」更改。')}</span></div>
     <div class="form-group full"><label>Certificate categories required for transfer</label><div class="toolbar">${cats.map(c => `<label class="chk"><input type="checkbox" class="st_cat" value="${esc(c)}" ${req.indexOf(c) >= 0 ? 'checked' : ''}> ${esc(c)}</label>`).join('')}</div></div>
     <div class="form-actions"><button class="btn btn-primary" onclick="saveSys(this)">💾 Save settings</button></div></div></div></div>
     <div class="section"><div class="section-header"><h3>📧 ${L('Email notifications', '通知信設定')}</h3></div><div class="section-body"><div class="form-grid">
@@ -2415,7 +2425,7 @@ async function saveSys(btn) {
   const evs = [...document.querySelectorAll('.st_ev')].filter(c => c.checked).map(c => c.value);
   await withBusy(btn, async () => {
     S.settings = await api('settings.save', { ptw_url: v('st_ptw'), required_categories: cats.join(','),
-      notify_emails: v('st_mails'), notify_events: evs.join(','), app_url: v('st_appurl') });
+      notify_emails: v('st_mails'), notify_events: evs.join(','), app_url: v('st_appurl'), meeting_title: v('st_mtitle') });
     PTW.data = null; refreshPTW(true).catch(() => {});
     toast('Settings saved', 'success'); renderAdmin();
   });
