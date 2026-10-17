@@ -276,9 +276,10 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
 @keyframes wave{from{transform:translateX(0)}to{transform:translateX(-480px)}}
 .scene .ship{animation:bob 3.2s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 100%}
 @keyframes bob{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(4px) rotate(-.6deg)}}
-.scene .walker{animation:walk 15s linear infinite;opacity:0}
-.scene .w2{animation-delay:-5s}.scene .w3{animation-delay:-10s}
-@keyframes walk{0%{transform:translate(60px,212px);opacity:0}4%{opacity:1}36%{transform:translate(535px,212px)}44%{transform:translate(640px,207px)}48%{transform:translate(680px,211px)}74%{transform:translate(905px,211px);opacity:1}79%{transform:translate(945px,211px);opacity:0}100%{transform:translate(945px,211px);opacity:0}}
+.scene .walker{animation:walk 18s linear infinite;opacity:0}
+.scene .w2{animation-delay:-6s}.scene .w3{animation-delay:-12s}
+/* 岸上 → 舷梯 → CTV → 船對船舷梯 → 鋪管船 PLV → 進鋪管作業線 */
+@keyframes walk{0%{transform:translate(60px,212px);opacity:0}3%{opacity:1}34%{transform:translate(535px,212px)}41.6%{transform:translate(640px,207px)}44.5%{transform:translate(680px,211px)}67.4%{transform:translate(1000px,211px)}72.8%{transform:translate(1078px,207px)}88.6%{transform:translate(1250px,208px);opacity:1}90%{transform:translate(1262px,208px);opacity:0}100%{transform:translate(1262px,208px);opacity:0}}
 .scene .bodybob{animation:bodybob .36s ease-in-out infinite alternate}
 @keyframes bodybob{from{transform:translateY(0)}to{transform:translateY(-1.6px)}}
 .scene .legA,.scene .legB,.scene .armA,.scene .armB{transform-box:fill-box;transform-origin:50% 0}
@@ -291,8 +292,8 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
 @keyframes blink{50%{opacity:.15}}
 .scene .twinkle{animation:twinkle 3s ease-in-out infinite}
 @keyframes twinkle{50%{opacity:.2}}
-.scene .radar{transform-box:fill-box;transform-origin:50% 100%;animation:radar 4s linear infinite}
-@keyframes radar{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.scene .flame{transform-box:fill-box;transform-origin:50% 100%;animation:flame .45s ease-in-out infinite alternate}
+@keyframes flame{from{transform:scale(1,1)}to{transform:scale(.8,1.25)}}
 @media (prefers-reduced-motion:reduce){.scene *{animation:none!important}.scene .walker{opacity:1;transform:translate(300px,212px)}}
 </style>
 </head>
@@ -307,6 +308,8 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
         <linearGradient id="seaG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a4a7a"/><stop offset="1" stop-color="#021a33"/></linearGradient>
         <linearGradient id="quayG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d4d74"/><stop offset="1" stop-color="#0b2a46"/></linearGradient>
         <linearGradient id="hullG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f7fb"/><stop offset="1" stop-color="#b9c6d6"/></linearGradient>
+        <radialGradient id="flareG"><stop offset="0" stop-color="#ffb03a" stop-opacity=".5"/><stop offset="1" stop-color="#ffb03a" stop-opacity="0"/></radialGradient>
+        <linearGradient id="hullG2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1f6fb5"/><stop offset="1" stop-color="#0b3a66"/></linearGradient>
         <radialGradient id="glowG"><stop offset="0" stop-color="#19b5c9" stop-opacity=".55"/><stop offset="1" stop-color="#19b5c9" stop-opacity="0"/></radialGradient>
         <!-- Q 版工作人員（腳底在原點） -->
         <g id="chibi">
@@ -333,14 +336,18 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
         <circle class="twinkle" cx="760" cy="30" r="1.3" style="animation-delay:-2s"/><circle class="twinkle" cx="1100" cy="60" r="1.2" style="animation-delay:-.5s"/>
         <circle class="twinkle" cx="1320" cy="35" r="1.5" style="animation-delay:-1.6s"/><circle class="twinkle" cx="980" cy="95" r="1" style="animation-delay:-2.4s"/>
       </g>
-      <!-- offshore wind turbines on the horizon -->
-      <g stroke="#3d6f99" stroke-width="2" opacity=".7">
-        <line x1="1210" y1="232" x2="1210" y2="150"/><line x1="1330" y1="232" x2="1330" y2="165"/>
+      <!-- offshore gas platform on the horizon -->
+      <g stroke="#3d6f99" stroke-width="2" fill="none" opacity=".7">
+        <path d="M1190 228 L1198 150 M1290 228 L1282 150 M1225 228 L1228 150 M1255 228 L1252 150"/>
+        <path d="M1194 190 L1286 190 M1196 170 L1284 170 M1194 190 L1228 150 M1286 190 L1252 150"/>
+        <path d="M1284 140 L1336 92" stroke-width="2.5"/>
       </g>
       <g fill="#3d6f99" opacity=".75">
-        <g transform="translate(1210 150)"><g class="radar" style="animation-duration:7s"><rect x="-1.5" y="-34" width="3" height="34" rx="1.5"/><rect x="-1.5" y="-34" width="3" height="34" rx="1.5" transform="rotate(120)"/><rect x="-1.5" y="-34" width="3" height="34" rx="1.5" transform="rotate(240)"/></g></g>
-        <g transform="translate(1330 165)"><g class="radar" style="animation-duration:9s"><rect x="-1.2" y="-28" width="2.4" height="28" rx="1.2"/><rect x="-1.2" y="-28" width="2.4" height="28" rx="1.2" transform="rotate(120)"/><rect x="-1.2" y="-28" width="2.4" height="28" rx="1.2" transform="rotate(240)"/></g></g>
+        <rect x="1188" y="140" width="108" height="10"/><rect x="1196" y="118" width="38" height="22"/><rect x="1240" y="126" width="30" height="14"/>
+        <rect x="1214" y="96" width="4" height="22"/>
       </g>
+      <path class="flame" d="M1336 92 C1328 82 1334 72 1338 62 C1340 72 1348 80 1336 92 Z" fill="#ffb03a"/>
+      <circle cx="1337" cy="80" r="16" fill="url(#flareG)"/>
       <!-- sea -->
       <rect x="0" y="228" width="1440" height="92" fill="url(#seaG)"/>
       <line x1="0" y1="228" x2="1440" y2="228" stroke="#19b5c9" stroke-opacity=".5" stroke-width="1"/>
@@ -380,6 +387,35 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
         <circle class="blink" cx="852" cy="126" r="3" fill="#00ff88" style="animation-delay:-.8s"/>
         <text x="935" y="218" font-family="JetBrains Mono,monospace" font-size="11" fill="#002038" font-weight="600">NMDC</text>
       </g>
+      <!-- second vessel: pipelay vessel (PLV) laying a subsea gas pipeline over the stern stinger -->
+      <g class="ship" style="animation-duration:3.8s;animation-delay:-1.3s">
+        <path d="M1345 209 Q1392 218 1412 250 Q1428 278 1440 320" stroke="#2b3e52" stroke-width="5" fill="none" opacity=".9"/>
+        <g stroke="#c9d3de" stroke-width="2" fill="none">
+          <path d="M1350 204 Q1388 212 1414 242"/><path d="M1350 214 Q1380 222 1404 250"/>
+          <path d="M1370 208 L1366 218 M1388 214 L1382 226 M1402 226 L1394 238"/>
+        </g>
+        <path d="M1062 203 L1358 203 L1350 248 L1088 248 Z" fill="url(#hullG2)"/>
+        <rect x="1064" y="216" width="290" height="5" fill="#00B050"/>
+        <rect x="1092" y="138" width="78" height="65" rx="6" fill="#e7edf4" stroke="#9fb3c8"/>
+        <g fill="#0b3a66"><rect x="1100" y="148" width="18" height="11" rx="2"/><rect x="1122" y="148" width="18" height="11" rx="2"/><rect x="1144" y="148" width="18" height="11" rx="2"/></g>
+        <rect x="1128" y="112" width="4" height="26" fill="#9fb3c8"/>
+        <circle class="blink" cx="1130" cy="110" r="3" fill="#ff4d4d" style="animation-delay:-.3s"/>
+        <rect x="1182" y="185" width="56" height="18" rx="3" fill="#5c7591"/>
+        <g fill="#c9d3de" stroke="#3d5670" stroke-width="1">
+          <circle cx="1190" cy="191" r="3.6"/><circle cx="1199" cy="191" r="3.6"/><circle cx="1208" cy="191" r="3.6"/><circle cx="1217" cy="191" r="3.6"/><circle cx="1226" cy="191" r="3.6"/>
+          <circle cx="1194" cy="198" r="3.6"/><circle cx="1203" cy="198" r="3.6"/><circle cx="1212" cy="198" r="3.6"/><circle cx="1221" cy="198" r="3.6"/><circle cx="1230" cy="198" r="3.6"/>
+        </g>
+        <path d="M1240 185 L1240 146 L1290 126" stroke="#ffd23f" stroke-width="3" fill="none"/>
+        <line x1="1288" y1="127" x2="1288" y2="150" stroke="#9fb3c8" stroke-width="1"/>
+        <rect x="1268" y="150" width="40" height="5" rx="2.5" fill="#c9d3de"/>
+        <rect x="1252" y="166" width="96" height="37" rx="4" fill="#e08a2c"/>
+        <rect x="1256" y="178" width="13" height="25" rx="2" fill="#0b3a66"/>
+        <text x="1290" y="238" font-family="JetBrains Mono,monospace" font-size="11" fill="#e7edf4" font-weight="600">PLV</text>
+      </g>
+      <!-- ship-to-ship gangway -->
+      <path d="M998 210 L1080 206" stroke="#c9d3de" stroke-width="4" stroke-linecap="round"/>
+      <path d="M998 198 L1080 194" stroke="#7fa8cc" stroke-width="1.5"/>
+      <g stroke="#7fa8cc" stroke-width="1"><line x1="1025" y1="197" x2="1025" y2="209"/><line x1="1053" y1="195" x2="1053" y2="207"/></g>
       <!-- walking crew -->
       <g class="walker w1" style="--suit:#ff7a1a;--hat:#ffffff"><use href="#chibi"/></g>
       <g class="walker w2" style="--suit:#1f6fb5;--hat:#ffd23f"><use href="#chibi"/></g>
@@ -495,7 +531,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
               <button class="btn btn-green btn-sm" onclick="openPersonnel()">+ Add Personnel</button>
             </div>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Name</th><th>Employee ID</th><th>Company</th><th>Position</th><th>Contact</th><th>Approval</th><th>Medical</th><th>Offshore Safety Training</th><th>Location</th><th></th></tr></thead><tbody id="pBody"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>Name</th><th>Company</th><th>Position</th><th>Contact</th><th>Approval</th><th>Medical</th><th>Offshore Safety Training</th><th>Location</th><th></th></tr></thead><tbody id="pBody"></tbody></table></div>
         </div>
       </div>
 
@@ -546,7 +582,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
               <div class="form-group"><label>Transfer type *</label><select id="tfType"><option value="">-- Select --</option><option value="Ship-to-Ship">Ship-to-Ship</option><option value="Walk-to-Work">Walk-to-Work</option><option value="Helicopter">Helicopter</option><option value="Port Transfer">Port Transfer</option><option value="Crew Change">Crew Change</option><option value="Emergency">Emergency</option></select></div>
               <div class="form-group"><label>Approved by *</label><input id="tfApproved"></div>
               <div class="form-group"><label>Reason</label><input id="tfReason"></div>
-              <div class="form-group full"><label>Remark</label><input id="tfRemark" placeholder="e.g. tower unmanned"></div>
+              <div class="form-group full"><label>Remark</label><input id="tfRemark" placeholder="e.g. platform unmanned"></div>
               <div class="form-actions"><button class="btn btn-green" onclick="executeTransfer(this)">🔄 Execute transfer (<span id="tfCount">0</span>)</button></div>
             </div>
             <div id="tfWarn" class="note bad hidden" style="margin-top:14px"></div>
@@ -595,7 +631,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
             <div class="toolbar"><select class="fi" id="pobSel" onchange="renderPOB()"></select><button class="btn btn-secondary btn-sm" onclick="exportPOBCSV()">⬇ CSV</button></div>
           </div>
           <div class="section-body" id="pobHead"></div>
-          <div class="table-wrap"><table><thead><tr><th>#</th><th>Name</th><th>Employee ID</th><th>Company</th><th>Position</th><th>Phone</th><th>Medical</th><th>Offshore Safety Training</th><th>Last transfer</th></tr></thead><tbody id="pobBody"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>#</th><th>Name</th><th>Company</th><th>Position</th><th>Phone</th><th>Blood type</th><th>Medical</th><th>Offshore Safety Training</th><th>Last transfer</th></tr></thead><tbody id="pobBody"></tbody></table></div>
         </div>
       </div>
 
@@ -1161,7 +1197,7 @@ function renderPersonnel() {
   sel.classList.toggle('hidden', !isStaff());
   const q = v('pSearch').toLowerCase(), cf = sel.value, qf = v('pQual');
   const list = S.personnel.filter(p => {
-    if (q && ![p.name, p.employee_id, p.company, p.email, p.phone, p.position].some(x => String(x || '').toLowerCase().indexOf(q) >= 0)) return false;
+    if (q && ![p.name, p.passport, p.company, p.email, p.phone, p.position].some(x => String(x || '').toLowerCase().indexOf(q) >= 0)) return false;
     if (cf && p.company !== cf) return false;
     if (qf === 'ok' && !isQualified(p)) return false;
     if (qf === 'no' && isQualified(p)) return false;
@@ -1170,10 +1206,9 @@ function renderPersonnel() {
     return true;
   }).sort((a, b) => a.name.localeCompare(b.name));
   const tb = document.getElementById('pBody');
-  if (!list.length) { tb.innerHTML = '<tr class="empty"><td colspan="10">No personnel found</td></tr>'; return; }
+  if (!list.length) { tb.innerHTML = '<tr class="empty"><td colspan="9">No personnel found</td></tr>'; return; }
   tb.innerHTML = list.map(p => `<tr>
     <td><div class="person-cell">${avatar(p)}<div><strong>${esc(p.name)}</strong><small>${esc(p.nationality || '')}</small></div></div></td>
-    <td class="mono">${esc(p.employee_id)}</td>
     <td>${esc(p.company)}</td>
     <td>${esc(p.position || '—')}</td>
     <td class="contact">${p.email ? `<div><a href="mailto:${esc(p.email)}">✉ ${esc(p.email)}</a></div>` : ''}${p.phone ? `<div><a href="tel:${esc(p.phone)}">☎ ${esc(p.phone)}</a></div>` : ''}${!p.email && !p.phone ? '<span class="muted">—</span>' : ''}</td>
@@ -1185,12 +1220,14 @@ function renderPersonnel() {
   </tr>`).join('');
 }
 function exportPersonnelCSV() {
-  const rows = [['Name','Employee ID','Company','Nationality','Position','Email','Phone','Passport','Emergency contact','Medical','Offshore Safety Training','Qualified','Location']];
-  S.personnel.forEach(p => rows.push([p.name, p.employee_id, p.company, p.nationality, p.position, p.email, p.phone, p.passport, p.emergency,
+  const rows = [['Name','Company','Nationality','Position','Email','Phone','Passport','Blood type','Emergency contact','Emergency contact phone','Medical','Offshore Safety Training','Qualified','Location']];
+  S.personnel.forEach(p => rows.push([p.name, p.company, p.nationality, p.position, p.email, p.phone, p.passport, p.blood_type, p.emergency, p.emergency_phone,
     catStatus(p, 'Medical').text, catStatus(p, CAT_SAFETY).text, isQualified(p) ? 'Yes' : 'No', locName(p.current_location)]));
   downloadCSV(rows, 'opts_personnel_' + todayStr() + '.csv');
 }
 
+const BLOOD_TYPES = ['A+','A-','B+','B-','AB+','AB-','O+','O-'];
+const PERSON_REQUIRED = ['name','company','nationality','position','email','phone','passport','blood_type','emergency','emergency_phone'];
 let pmPhoto = null;   // undefined = unchanged
 function openPersonnel(id) {
   const p = id ? S.personnel.find(x => x.id === id) : { company: isAdmin() ? '' : S.user.company };
@@ -1219,14 +1256,15 @@ function openPersonnel(id) {
         <div class="hint" style="margin-top:6px">Optional. The photo is resized automatically.</div></div></div>
     <div class="form-grid ${editable ? '' : 'ro-form'}">
       <div class="form-group"><label>Full name *</label><input id="pm_name" value="${esc(p.name || '')}"></div>
-      <div class="form-group"><label>Employee ID *</label><input id="pm_empid" value="${esc(p.employee_id || '')}"></div>
       <div class="form-group"><label>Company *</label>${companyField}</div>
-      <div class="form-group"><label>Position / Job title</label><input id="pm_position" value="${esc(p.position || '')}"></div>
-      <div class="form-group"><label>Email</label><input id="pm_email" type="email" value="${esc(p.email || '')}"></div>
-      <div class="form-group"><label>Mobile phone</label><input id="pm_phone" value="${esc(p.phone || '')}" placeholder="+971 …"></div>
-      <div class="form-group"><label>Nationality</label><input id="pm_nationality" value="${esc(p.nationality || '')}"></div>
-      <div class="form-group"><label>Passport No</label><input id="pm_passport" value="${esc(p.passport || '')}"></div>
-      <div class="form-group"><label>Emergency contact</label><input id="pm_emergency" value="${esc(p.emergency || '')}" placeholder="Name / relation / phone"></div>
+      <div class="form-group"><label>Position / Job title *</label><input id="pm_position" value="${esc(p.position || '')}"></div>
+      <div class="form-group"><label>Email *</label><input id="pm_email" type="email" value="${esc(p.email || '')}"></div>
+      <div class="form-group"><label>Mobile phone *</label><input id="pm_phone" value="${esc(p.phone || '')}" placeholder="+971 …"></div>
+      <div class="form-group"><label>Nationality *</label><input id="pm_nationality" value="${esc(p.nationality || '')}"></div>
+      <div class="form-group"><label>Passport No *</label><input id="pm_passport" value="${esc(p.passport || '')}"></div>
+      <div class="form-group"><label>Blood type *</label><select id="pm_blood"><option value="">-- Select --</option>${BLOOD_TYPES.map(b => `<option value="${b}" ${b === p.blood_type ? 'selected' : ''}>${b}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Emergency contact *</label><input id="pm_emergency" value="${esc(p.emergency || '')}" placeholder="Name / relation"></div>
+      <div class="form-group"><label>Emergency contact phone *</label><input id="pm_emergency_phone" value="${esc(p.emergency_phone || '')}" placeholder="+971 …"></div>
       <div class="form-group"><label>Current location</label>${locField}</div>
       <div class="form-group full"><label>Remark</label><textarea id="pm_remark">${esc(p.remark || '')}</textarea></div>
       ${editable ? `<div class="form-actions"><button class="btn btn-primary" onclick="savePersonnel(this,'${id || ''}')">💾 Save personnel</button></div>` : ''}
@@ -1262,11 +1300,12 @@ function pickPhoto(input) {
   img.src = URL.createObjectURL(file);
 }
 async function savePersonnel(btn, id) {
-  const d = { id: id || '', name: v('pm_name'), employee_id: v('pm_empid'), company: v('pm_company'), position: v('pm_position'), email: v('pm_email'),
-    phone: v('pm_phone'), nationality: v('pm_nationality'), passport: v('pm_passport'), emergency: v('pm_emergency'), remark: v('pm_remark'), photo: pmPhoto || '' };
+  const d = { id: id || '', name: v('pm_name'), company: v('pm_company'), position: v('pm_position'), email: v('pm_email'),
+    phone: v('pm_phone'), nationality: v('pm_nationality'), passport: v('pm_passport'), blood_type: v('pm_blood'),
+    emergency: v('pm_emergency'), emergency_phone: v('pm_emergency_phone'), remark: v('pm_remark'), photo: pmPhoto || '' };
   if (isStaff()) d.current_location = v('pm_location');
-  if (!d.name || !d.employee_id || !d.company) { toast('Name, Employee ID and Company are required', 'error'); return; }
-  if (d.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)) { toast('Email address looks invalid', 'error'); return; }
+  if (PERSON_REQUIRED.some(f => !d[f])) { toast('All personnel fields are required', 'error'); return; }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)) { toast('Email address looks invalid', 'error'); return; }
   await withBusy(btn, async () => {
     const rec = await api('personnel.save', d);
     upsert(S.personnel, rec);
@@ -1598,7 +1637,7 @@ function initTransfer() {
 function tfFiltered() {
   const q = v('tfSearch').toLowerCase(), lf = v('tfLocFilter');
   return S.personnel.filter(p => {
-    if (q && ![p.name, p.employee_id, p.company].some(x => String(x || '').toLowerCase().indexOf(q) >= 0)) return false;
+    if (q && ![p.name, p.passport, p.company].some(x => String(x || '').toLowerCase().indexOf(q) >= 0)) return false;
     if (lf === '__none__') return !p.current_location;
     if (lf) return p.current_location === lf;
     return true;
@@ -1609,7 +1648,7 @@ function renderTfList() {
   const el = document.getElementById('tfList');
   el.innerHTML = list.length ? list.map(p => isApproved(p) ? `<div class="tf-row ${tfSel.has(p.id) ? 'sel' : ''}" onclick="tfToggle('${p.id}')">
       <input type="checkbox" ${tfSel.has(p.id) ? 'checked' : ''} onclick="event.stopPropagation();tfToggle('${p.id}')">
-      ${avatar(p, 26)}<strong>${esc(p.name)}</strong><span class="mono muted">${esc(p.employee_id)}</span><span class="muted">${esc(p.company)}</span>
+      ${avatar(p, 26)}<strong>${esc(p.name)}</strong><span class="muted">${esc(p.company)}</span>
       ${isQualified(p) ? '' : `<span class="b b-bad" title="Missing: ${esc(missingCats(p).join(', '))}">Not qualified</span>`}
       <span class="loc">${esc(locName(p.current_location, true))}</span></div>` : `<div class="tf-row" style="opacity:.55;cursor:not-allowed">
       <input type="checkbox" disabled>${avatar(p, 26)}<strong>${esc(p.name)}</strong><span class="muted">${esc(p.company)}</span>${approvalBadge(p)}</div>`).join('') : '<div class="tf-row muted">No personnel found</div>';
@@ -1752,15 +1791,15 @@ function renderPOB() {
   head.innerHTML = `<b>${esc(locName(cid, true))}</b> — POB <span class="pob-num">${list.length}</span> ${unq ? `<span class="b b-bad">${unq} not qualified</span>` : ''}`;
   tb.innerHTML = list.length ? list.map((p, i) => {
     const lt = S.transfers.filter(t => t.personnel_id === p.id).sort((a, b) => String(b.time).localeCompare(String(a.time)))[0];
-    return `<tr><td>${i + 1}</td><td><div class="person-cell">${avatar(p, 28)}<strong>${esc(p.name)}</strong></div></td><td class="mono">${esc(p.employee_id)}</td><td>${esc(p.company)}</td><td>${esc(p.position || '')}</td>
-      <td class="nowrap">${esc(p.phone || '')}</td><td>${catBadge(p, 'Medical')}</td><td>${catBadge(p, CAT_SAFETY)}</td><td class="mono nowrap">${lt ? fmtDT(lt.time) : '—'}</td></tr>`;
+    return `<tr><td>${i + 1}</td><td><div class="person-cell">${avatar(p, 28)}<strong>${esc(p.name)}</strong></div></td><td>${esc(p.company)}</td><td>${esc(p.position || '')}</td>
+      <td class="nowrap">${esc(p.phone || '')}</td><td class="mono">${esc(p.blood_type || '—')}</td><td>${catBadge(p, 'Medical')}</td><td>${catBadge(p, CAT_SAFETY)}</td><td class="mono nowrap">${lt ? fmtDT(lt.time) : '—'}</td></tr>`;
   }).join('') : '<tr class="empty"><td colspan="9">Nobody at this location</td></tr>';
 }
 function exportPOBCSV() {
   const cid = v('pobSel');
   if (!cid) { toast('Select a location first', 'warning'); return; }
-  const rows = [['POB — ' + locName(cid)], ['Generated', new Date().toLocaleString('en-GB')], [], ['#','Name','Employee ID','Company','Position','Phone','Medical','Offshore Safety Training','Qualified']];
-  S.personnel.filter(p => p.current_location === cid).forEach((p, i) => rows.push([i + 1, p.name, p.employee_id, p.company, p.position, p.phone, catStatus(p, 'Medical').text, catStatus(p, CAT_SAFETY).text, isQualified(p) ? 'Yes' : 'No']));
+  const rows = [['POB — ' + locName(cid)], ['Generated', new Date().toLocaleString('en-GB')], [], ['#','Name','Company','Position','Phone','Blood type','Medical','Offshore Safety Training','Qualified']];
+  S.personnel.filter(p => p.current_location === cid).forEach((p, i) => rows.push([i + 1, p.name, p.company, p.position, p.phone, p.blood_type,catStatus(p, 'Medical').text, catStatus(p, CAT_SAFETY).text, isQualified(p) ? 'Yes' : 'No']));
   downloadCSV(rows, 'pob_' + locName(cid).replace(/[^a-zA-Z0-9]+/g, '_') + '.csv');
 }
 
@@ -2345,10 +2384,13 @@ const ZH = {
   'No vessels or locations yet.': '尚未建立船舶或位置。', 'No alerts 🎉': '沒有警示 🎉', 'No log entries yet.': '尚無日誌。',
   // Personnel
   'All status': '全部狀態', 'Qualified': '合格', 'Has pending cert': '有待核准證照', 'Add Personnel': '新增人員',
-  'Name': '姓名', 'Employee ID': '員工編號', 'Company': '公司', 'Position': '職稱', 'Contact': '聯絡方式', 'Medical': '體檢',
+  'Name': '姓名', 'Blood type': '血型', 'Company': '公司', 'Position': '職稱', 'Contact': '聯絡方式', 'Medical': '體檢',
   'Sea Survival': '海上求生', 'Training': '訓練', 'Other': '其他', 'Location': '位置', 'All companies': '所有公司', 'No personnel found': '查無人員',
   'Open': '開啟', 'Upload profile photo': '上傳大頭照', 'Remove': '移除', 'Optional. The photo is resized automatically.': '選填，照片會自動縮小。',
-  'Full name *': '姓名 *', 'Employee ID *': '員工編號 *', 'Company *': '公司 *', 'Position / Job title': '職稱', 'Mobile phone': '手機',
+  'Full name *': '姓名 *', 'Blood type *': '血型 *', 'Company *': '公司 *', 'Position / Job title': '職稱', 'Mobile phone': '手機',
+  'Position / Job title *': '職稱 *', 'Email *': 'Email *', 'Mobile phone *': '手機 *', 'Nationality *': '國籍 *', 'Passport No *': '護照號碼 *',
+  'Emergency contact *': '緊急聯絡人 *', 'Emergency contact phone *': '緊急聯絡人電話 *', 'Emergency contact phone': '緊急聯絡人電話',
+  'Name / relation': '姓名／關係', 'All personnel fields are required': '人員資料所有欄位皆為必填', 'Invalid blood type': '血型不正確',
   'Nationality': '國籍', 'Passport No': '護照號碼', 'Emergency contact': '緊急聯絡人', 'Current location': '目前位置', 'Remark': '備註',
   'Save personnel': '儲存人員', 'Add certificate': '新增證照', 'Certificates (medical, offshore safety training, training)': '證照（體檢、海上安全訓練、其他訓練）', 'Offshore Safety Training': '海上安全訓練證書', 'Other Offshore Safety Training': '其他海上安全訓練',
   'Save the personnel record first, then add certificates.': '請先儲存人員資料，再新增證照。',
@@ -2361,7 +2403,7 @@ const ZH = {
   'Edit certificate': '編輯證照', 'Certificate type *': '證照類型 *', 'Certificate name (for "Other")': '證照名稱（選「其他」時填寫）',
   'Certificate No': '證號', 'Issue date': '發證日期', 'Expiry date': '到期日期', 'Save certificate': '儲存證照', 'Current file': '目前檔案',
   'Personnel updated': '人員已更新', 'Personnel added — now add certificates': '人員已新增，請接著新增證照', 'Personnel deleted': '人員已刪除',
-  'Name, Employee ID and Company are required': '姓名、員工編號、公司為必填', 'Email address looks invalid': 'Email 格式不正確',
+'Email address looks invalid': 'Email 格式不正確',
   'Could not read the image': '無法讀取圖片', 'Select a certificate type': '請選擇證照類型', 'Expiry date is required': '到期日期為必填',
   'Please attach the certificate file': '請附上證照檔案', 'Certificate submitted for MC approval': '證照已送 MC 核准', 'Certificate saved': '證照已儲存',
   'Certificate deleted': '證照已刪除', 'Reject certificate': '退件', 'Reason (sent back to the contractor)': '退件原因（會回傳給承包商）',
@@ -2388,7 +2430,7 @@ const ZH = {
   'Create Personnel Transfer': '建立人員轉運', 'Each executed transfer is also written to the Site Log automatically.': '每次執行的轉運都會自動寫入現場日誌。',
   'Search by name, ID, company…': '依姓名、編號、公司搜尋…', 'Select visible': '全選目前清單', 'Clear': '清除', 'No personnel selected.': '尚未選擇人員。',
   'From': '出發地', 'To': '目的地', 'To *': '目的地 *', 'Transport (vessel)': '運輸船舶', 'Time *': '時間 *', 'Transfer type *': '轉運方式 *',
-  'Approved by *': '核准人 *', 'Reason': '原因', 'e.g. tower unmanned': '例：風機無人',
+  'Approved by *': '核准人 *', 'Reason': '原因', 'e.g. platform unmanned': '例：平台無人',
   'Ship-to-Ship': '船對船', 'Walk-to-Work': '舷梯步行（W2W）', 'Helicopter': '直升機', 'Port Transfer': '港口接駁', 'Crew Change': '人員換班', 'Emergency': '緊急',
   'Not assigned': '未派駐', 'All locations': '所有位置', "-- Each person's current location --": '-- 各人員目前位置 --', '-- Select destination --': '-- 選擇目的地 --',
   '-- Select --': '-- 請選擇 --', '-- None --': '-- 無 --', '-- Not assigned --': '-- 未派駐 --', '-- Select vessel / location --': '-- 選擇船舶／位置 --',
@@ -2477,7 +2519,7 @@ const RULES = [
   [/^Vessel — (.+)$/, (m, n) => '船舶 — ' + n],
   [/^Reset password — (.+)$/, (m, n) => '重設密碼 — ' + n],
   [/^Vessel certificate requirements \((\d+) mandatory\)$/, (m, n) => '船舶證書要求（' + n + ' 項強制）'],
-  [/^Employee ID (.+) already exists in (.+)$/, (m, a, b) => '員工編號 ' + a + ' 已存在於 ' + b],
+  [/^Passport No (.+) already exists \((.+)\)$/, (m, a, b) => '護照號碼 ' + a + ' 已存在（' + b + '）'],
   [/^Expiry date is required for (.+)$/, (m, a) => a + ' 必須填寫到期日'],
   [/^Server is not responding correctly \(HTTP (\d+)\)$/, (m, a) => '伺服器回應異常（HTTP ' + a + '）'],
   [/^Execute transfer \((\d+)\)$/, (m, a) => '執行轉運（' + a + '）'],

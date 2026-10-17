@@ -10,7 +10,7 @@
 // 通知信：Settings.notify_emails（共用收件者）＋ notify_events（啟用的事件）；每日到期提醒由 setup() 建立的觸發器執行。
 // ============================================================
 
-const VERSION = '2.2';
+const VERSION = '2.3';
 const CAT_SAFETY = 'Offshore Safety Training';   // 原 'Sea Survival'（2.1 改名，ensureSchema_ 會遷移舊資料）
 
 const SCHEMAS = {
@@ -18,7 +18,7 @@ const SCHEMAS = {
   Sessions: ['token','user_id','expires_at','created_at'],
   Companies: ['id','name','active','created_at'],
   Vessels: ['id','name','mmsi','imo','type','flag','operator','contact_person','phone','whatsapp','email','remark','approval','approval_note','approved_by','approved_at','created_by','created_at','updated_at'],
-  Personnel: ['id','name','employee_id','company','nationality','position','email','phone','passport','emergency','photo','remark','current_location','approval','approval_note','approved_by','approved_at','created_by','created_at','updated_at'],
+  Personnel: ['id','name','company','nationality','position','email','phone','passport','blood_type','emergency','emergency_phone','photo','remark','current_location','approval','approval_note','approved_by','approved_at','created_by','created_at','updated_at'],
   Meetings: ['id','title','time','location','items','attendees','externals','remark','created_by','created_at','updated_at'],
   AuditLog: ['id','time','username','name','role','company','action','target_id','target_name','detail','result','error'],
   Locations: ['id','name','type','linked_vessel','remark','created_at','updated_at'],
@@ -669,7 +669,10 @@ function deleteLocation_(id) {
 }
 
 // ============ Personnel ============
-const PERSON_FIELDS = ['name','employee_id','company','nationality','position','email','phone','passport','emergency','photo','remark','current_location'];
+const PERSON_FIELDS = ['name','company','nationality','position','email','phone','passport','blood_type','emergency','emergency_phone','photo','remark','current_location'];
+/** 人員必填欄位（照片、備註、位置除外） */
+const PERSON_REQUIRED = ['name','company','nationality','position','email','phone','passport','blood_type','emergency','emergency_phone'];
+const BLOOD_TYPES = ['A+','A-','B+','B-','AB+','AB-','O+','O-'];
 function savePersonnel_(u, p) {
   let event = '';
   const rec = withLock_(() => {
@@ -686,11 +689,12 @@ function savePersonnel_(u, p) {
       if (u.role !== 'admin' && !sameCompany_(existing.company, u.company)) fail_('Permission denied', 'FORBIDDEN');
     }
     const merged = Object.assign({}, existing || {}, d);
-    if (!merged.name || !merged.employee_id || !merged.company) fail_('Name, Employee ID and Company are required');
+    if (PERSON_REQUIRED.some(f => !str_(merged[f]))) fail_('All personnel fields are required');
+    if (BLOOD_TYPES.indexOf(merged.blood_type) < 0) fail_('Invalid blood type');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(merged.email)) fail_('Email address looks invalid');
     if (!Repo.all('Companies').some(c => sameCompany_(c.name, merged.company))) fail_('Company is not in the company list — add it under Companies first');
-    const dup = Repo.all('Personnel').find(x => x.id !== p.id && sameCompany_(x.company, merged.company) &&
-      str_(x.employee_id).toLowerCase() === merged.employee_id.toLowerCase());
-    if (dup) fail_('Employee ID ' + merged.employee_id + ' already exists in ' + merged.company);
+    const dup = Repo.all('Personnel').find(x => x.id !== p.id && str_(x.passport).toLowerCase() === merged.passport.toLowerCase());
+    if (dup) fail_('Passport No ' + merged.passport + ' already exists (' + dup.name + ', ' + dup.company + ')');
     if (existing) {
       d.updated_at = nowIso_();
       // 被退件後由送件方修改 → 重新送 Admin 核准
@@ -705,7 +709,7 @@ function savePersonnel_(u, p) {
     return Repo.insert('Personnel', d);
   });
   if (event) notify_('personnel_pending', 'Personnel pending approval｜人員待核准',
-    [['Name｜姓名', rec.name], ['Company｜公司', rec.company], ['Employee ID｜員工編號', rec.employee_id], ['Position｜職稱', rec.position],
+    [['Name｜姓名', rec.name], ['Company｜公司', rec.company], ['Nationality｜國籍', rec.nationality], ['Position｜職稱', rec.position],
      ['Submitted by｜送件人', u.name || u.username], ['Type｜類型', event === 'new' ? 'New personnel｜新增人員' : 'Resubmitted after rejection｜退件後重新送審']]);
   return rec;
 }
