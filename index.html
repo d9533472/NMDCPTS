@@ -220,16 +220,24 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
 .wxc-chip.ok{background:#0a8a43}.wxc-chip.warn{background:#d98a00}.wxc-chip.bad{background:#c62828}.wxc-chip.na{background:#78909c}
 .wx-pin.ok{background:#0a8a43}.wx-pin.warn{background:#d98a00}.wx-pin.bad{background:#c62828}
 .wx-pin{min-width:36px;padding:3px 6px;font-size:12px}
-.wx-modal{max-width:860px}
-.wxm-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:12px}
+.modal-overlay.wx-ov{background:rgba(0,20,40,.30);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);align-items:center}
+.wx-modal{max-width:640px}
+.wx-modal .modal-body{padding:14px 18px}
+.wxm-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:10px}
+@media(max-width:520px){.wxm-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .wxm-t{background:#f4f7fa;border:1px solid #e1e8ef;border-radius:8px;padding:8px 10px}
 .wxm-t.bad{background:var(--danger-bg);border-color:#f2b8b8}
-.wxm-t .k{font-size:12px;color:var(--muted)}.wxm-t .v{font:700 20px 'JetBrains Mono',monospace;color:var(--navy)}.wxm-t .s{font-size:11px;color:var(--muted)}
+.wxm-t .k{font-size:12px;color:var(--muted)}.wxm-t .v{font:700 18px 'JetBrains Mono',monospace;color:var(--navy)}.wxm-t .s{font-size:11px;color:var(--muted)}
 .wxm-work{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:10px 14px;border-radius:8px;margin-top:10px;font-size:14px}
 .wxm-work small{margin-left:auto;opacity:.8}
 .wxm-work.ok{background:#e6f4ec;color:#0a6b35}.wxm-work.warn{background:#fff4e0;color:#8a5200}.wxm-work.bad{background:#fdecec;color:#a11d1d}
 .wxm-chart{margin-top:12px}
-.wxm-chart .cap{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:6px}
+.wxm-chart .cap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 10px;font-size:12px;color:var(--muted);margin-bottom:2px}
+.wxm-chart .cap b{color:var(--navy);font-size:13px}
+.wxm-chart .cap span{display:inline-flex;align-items:center;gap:5px}
+.wxm-chart .cap i{display:inline-block;width:14px;height:3px;border-radius:2px}
+.wxm-chart .cap i.dash{height:0;border-top:2px dashed}.wxm-chart .cap i.dash.red{border-color:#c62828}
+.wxm-chart svg{width:100%;height:auto;display:block;font-family:'JetBrains Mono',monospace}
 .wxm-chart .plot{position:relative;display:flex;align-items:flex-end;gap:2px;border-bottom:1px solid var(--border-2)}
 .wxm-chart .lim{position:absolute;left:0;right:0;border-top:2px dashed #c62828}
 .wxm-chart .b{flex:1 1 0;border-radius:3px 3px 0 0;min-height:1px}
@@ -611,8 +619,8 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
     <div class="content">
       <!-- DASHBOARD -->
       <div class="page" id="page-dashboard">
-        <div id="dashWeather"></div>
         <div id="dashAnnounce"></div>
+        <div id="dashWeather"></div>
         <div class="kpi-grid" id="dashStats"></div>
         <div class="grid-2">
           <div class="section"><div class="section-header"><h3 id="dashPendTitle">⏳ Awaiting Approval</h3><span class="link" onclick="go('certificates')">View all →</span></div><div class="section-body" id="dashPending" style="max-height:330px;overflow-y:auto"></div></div>
@@ -1545,12 +1553,56 @@ function renderWeather() {
   $('wxCollapsed').innerHTML = `<span class="hint">${esc(win[2])}${L(' max Hs', '最大浪高')}</span>` +
     c.pts.map((p, i) => `<button type="button" class="wxc-chip ${wxTone(st[i].maxHs, c)} notr" onclick="wxOpen(${i})">${esc(p.name)} <b>${wxNum(st[i].maxHs, 1)}</b></button>`).join('');
 }
+// ---- 折線圖（SVG）：Y 軸刻度與單位、限制線、滑過顯示數值 ----
+function wxNice(max) {
+  const raw = max / 4, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p;
+  const step = (m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10) * p;
+  return { step, top: Math.ceil(max / step) * step };
+}
+function wxLineChart(s, key, o) {
+  const hrs = s.hours;
+  if (!hrs.length) return '';
+  const vals = hrs.map(h => h[key]), gv = o.gust ? hrs.map(h => h[o.gust]) : [];
+  const dataMax = Math.max(0, ...vals.filter(x => x !== null), ...gv.filter(x => x !== null));
+  const { step, top } = wxNice(Math.max(o.min, o.limit * 1.25, dataMax * 1.1));
+  const W = 600, H = 170, ml = 46, mr = 24, mt = 24, mb = 24, pw = W - ml - mr, ph = H - mt - mb;
+  const x = i => ml + (hrs.length === 1 ? pw / 2 : i * pw / (hrs.length - 1));
+  const y = v => mt + ph - v / top * ph;
+  let g = '';
+  for (let v = 0; v <= top + 1e-9; v += step) {
+    g += `<line x1="${ml}" x2="${W - mr}" y1="${y(v)}" y2="${y(v)}" stroke="#e3e9ef"/><text x="${ml - 6}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="#5b6b7d">${+v.toFixed(2)}</text>`;
+  }
+  const every = hrs.length > 12 ? 3 : 1;
+  hrs.forEach((h, i) => {
+    if (i % every === 0) g += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle" font-size="11" fill="#5b6b7d">${s.lab(h.t)}</text>`;
+  });
+  const path = arr => { let d = '', pen = false; arr.forEach((v, i) => { if (v === null) { pen = false; return; } d += (pen ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1); pen = true; }); return d; };
+  const line = path(vals);
+  const first = vals.findIndex(v => v !== null), last = vals.length - 1 - [...vals].reverse().findIndex(v => v !== null);
+  const area = first >= 0 ? line + `L${x(last).toFixed(1)} ${y(0)}L${x(first).toFixed(1)} ${y(0)}Z` : '';
+  const ly = y(o.limit);
+  const pts = vals.map((v, i) => v === null ? '' : `<circle cx="${x(i)}" cy="${y(v)}" r="3.5" fill="${v >= o.limit ? '#c62828' : o.color}" stroke="#fff" stroke-width="1.5"><title>${s.lab(hrs[i].t)}  ${wxNum(v, o.dec)} ${o.unit}${o.gust && gv[i] !== null ? '（' + L('gust ', '陣風 ') + wxNum(gv[i], 0) + ' ' + o.unit + '）' : ''}</title></circle>`).join('');
+  return `<div class="wxm-chart"><div class="cap"><b>${o.title}（${o.unit}）</b>
+      <span><i style="background:${o.color}"></i>${o.title.replace(/^逐時|^Hourly /, '')}${o.gust ? ` <i class="dash" style="border-color:${o.color}"></i>${L('Gust', '陣風')}` : ''} <i class="dash red"></i>${L('Limit ', '限制 ')}${o.limit} ${o.unit}</span></div>
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.title)}">
+      ${g}
+      <text x="${ml - 6}" y="12" text-anchor="end" font-size="12" font-weight="700" fill="#2c3e50">${o.unit}</text>
+      <path d="${area}" fill="${o.color}" opacity=".10"/>
+      ${o.gust ? `<path d="${path(gv)}" fill="none" stroke="${o.color}" stroke-width="1.5" stroke-dasharray="4 4" opacity=".7"/>` : ''}
+      <line x1="${ml}" x2="${W - mr}" y1="${ly}" y2="${ly}" stroke="#c62828" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <text x="${W - mr - 4}" y="${ly - 5}" text-anchor="end" font-size="11" font-weight="700" fill="#c62828">${L('Limit ', '限制 ')}${o.limit} ${o.unit}</text>
+      <path d="${line}" fill="none" stroke="${o.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+      ${pts}
+    </svg></div>`;
+}
 // ---- 點選後的詳細視窗 ----
 let wxSel = 0;
 function wxOpen(i) {
   wxSel = i;
-  const ov = openModal('<span id="wxModalTitle"></span>', '<div id="wxModal"></div>', true);
+  const ov = openModal('<span id="wxModalTitle"></span>', '<div id="wxModal"></div>');
+  ov.classList.add('wx-ov');
   ov.querySelector('.modal').classList.add('wx-modal');
+  ov.addEventListener('click', e => { if (e.target === ov) closeTop(); });   // 點旁邊模糊處關閉
   wxRenderModal();
 }
 function wxRenderModal() {
@@ -1570,19 +1622,11 @@ function wxRenderModal() {
     tile(L('Min visibility', '最低能見度'), s.minVis === null ? '—' : wxNum(s.minVis / 1000, s.minVis < 10000 ? 1 : 0) + ' km', '')
   ].join('');
   const work = !s.hours.length ? '—' : s.allOk ? L('Workable for the whole period', '全時段可作業') : s.noneOk ? L('No workable window in this period', '此時段無可作業窗口') : s.work.join(L(', ', '、'));
-  const scale = Math.max(c.wave * 2, Math.ceil((s.maxHs || 0) * 1.15 * 2) / 2), H = 140;
-  const bars = s.hours.map((h, i) => `<div class="b ${wxTone(h.hs, c)}" style="height:${Math.round((h.hs || 0) / scale * H)}px" title="${s.lab(h.t)} · Hs ${wxNum(h.hs, 1)} m · ${wxNum(h.wind, 0)} kn"></div>`).join('');
-  const every = s.hours.length > 12 ? 3 : 1;
-  const row = fn => s.hours.map((h, i) => `<div>${i % every === 0 ? fn(h) : ''}</div>`).join('');
   box.innerHTML = `${wxTabsHtml()}
     <div class="wxm-tiles">${tiles}</div>
     <div class="wxm-work ${s.allOk ? 'ok' : s.noneOk ? 'bad' : 'warn'}"><b>${L('Workable window', '可作業時段')}</b><span class="notr">${esc(work)}</span><small>${L('Hs < ', '浪高 < ')}${c.wave} m ${L('and wind < ', '且風速 < ')}${c.wind} kn</small></div>
-    <div class="wxm-chart"><div class="cap"><span>${L('Hourly wave height Hs (m)', '逐時浪高 Hs（m）')}</span><span>${L('Red line = limit ', '紅線＝限制 ')}${c.wave} m</span></div>
-      <div class="plot" style="height:${H}px"><div class="lim" style="bottom:${Math.round(c.wave / scale * H)}px"></div>${bars}</div>
-      <div class="row mono">${row(h => s.lab(h.t).slice(0, 2))}</div>
-      <div class="row mono">${row(h => wxNum(h.hs, 1))}</div>
-      <div class="row mono wind">${row(h => wxNum(h.wind, 0))}</div>
-      <div class="hint" style="margin-top:4px">${L('Rows: hour · Hs (m) · wind (kn)', '下方三排：時間 · 浪高（m）· 風速（kn）')}</div></div>
+    ${wxLineChart(s, 'hs', { title: L('Hourly wave height Hs', '逐時浪高 Hs'), unit: 'm', limit: c.wave, dec: 1, color: '#0b4f8a', min: 2 })}
+    ${wxLineChart(s, 'wind', { title: L('Hourly wind speed', '逐時風速'), unit: 'kn', limit: c.wind, dec: 0, color: '#00897b', min: 30, gust: 'gust' })}
     <div class="acts" style="margin-top:12px"><a class="btn btn-secondary" href="https://www.windy.com/?waves,${p.lat},${p.lon},10" target="_blank" rel="noopener">${L('Open in Windy', '在 Windy 開啟')} ↗</a>
       <span class="hint">${L('Forecast: Open-Meteo (ECMWF / Météo-France models) — for reference only; follow the Marine Coordinator’s decision.', '預報：Open-Meteo（ECMWF／Météo-France 模式）— 僅供參考，實際以 MC 判斷為準。')}</span></div>`;
 }
