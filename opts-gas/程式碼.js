@@ -229,14 +229,13 @@ function audit_(action, user, payload, data, ok, err) {
   } catch (e) { console.warn('audit failed: ' + e.message); }
 }
 function auditList_(u, p) {
-  requirePerm_(u, 'audit');
+  requireRole_(u, ['admin']);   // 操作紀錄只有 Admin 能看
   const from = str_(p.from), to = str_(p.to), who = str_(p.username).toLowerCase(), act = str_(p.action), q = str_(p.q).toLowerCase();
   const limit = Math.min(Number(p.limit) || 500, 3000);
   const rows = Repo.all('AuditLog').filter(r => {
     const d = r.time.slice(0, 10);
     if (from && d < from) return false;
     if (to && d > to) return false;
-    if (u.role !== 'admin' && r.role === 'admin') return false;   // 只有 Admin 看得到 Admin 的操作紀錄
     if (who && r.username !== who) return false;
     if (act && r.action.indexOf(act) !== 0) return false;
     if (p.failedOnly && r.result !== 'FAILED') return false;
@@ -536,7 +535,7 @@ function settings_() {
   return o;
 }
 // ---- MC 可用的系統管理項目（Admin 在系統設定勾選）----
-const MC_PERMS = ['users', 'companies', 'vct', 'pct', 'ann', 'basic', 'audit'];
+const MC_PERMS = ['users', 'companies', 'vct', 'pct', 'ann', 'basic'];   // 操作紀錄、登入紀錄不開放給 MC
 // 「基本設定」包含的設定欄位；其餘設定（PTW、通知信、清空資料、MC 權限）一律只有 Admin 能改
 const BASIC_SETTINGS = ['meeting_title', 'project_name', 'vessel_types', 'weather_name', 'weather_points', 'weather_lat', 'weather_lon', 'weather_wave_limit', 'weather_wind_limit'];
 function hasPerm_(u, perm) {

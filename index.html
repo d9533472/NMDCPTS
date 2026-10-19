@@ -247,6 +247,13 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
 .wxm-chart .row.wind div{color:var(--info)}
 /* 公告欄 */
 .ann-board{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:14px}
+/* 儀表板頂部：公告與海象各占一半；其中一個沒有內容時另一個占滿，窄螢幕上下排 */
+.dash-top{display:flex;gap:14px;align-items:stretch;margin-bottom:14px}
+.dash-top>div{flex:1 1 0;min-width:0;display:flex;flex-direction:column}
+.dash-top>div:empty{display:none}
+.dash-top .ann-board,.dash-top .wxc,.dash-top .wx-empty{margin-bottom:0;flex:1}
+.dash-top .ann-board{max-height:560px;overflow-y:auto}
+@media(max-width:1100px){.dash-top{flex-direction:column}.dash-top .ann-board{max-height:none}}
 .ann-board h3{font-size:14px;color:var(--navy);margin-bottom:8px}
 .ann-item{display:flex;gap:10px;align-items:flex-start;padding:8px 12px;border-radius:8px;margin-bottom:6px;border:1px solid}
 .ann-item:last-child{margin-bottom:0}
@@ -685,8 +692,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
     <div class="content">
       <!-- DASHBOARD -->
       <div class="page" id="page-dashboard">
-        <div id="dashAnnounce"></div>
-        <div id="dashWeather"></div>
+        <div class="dash-top"><div id="dashAnnounce"></div><div id="dashWeather"></div></div>
         <div class="kpi-grid" id="dashStats"></div>
         <div class="grid-2">
           <div class="section"><div class="section-header"><h3 id="dashPendTitle">⏳ Awaiting Approval</h3><span class="link" onclick="go('certificates')">View all →</span></div><div class="section-body" id="dashPending" style="max-height:330px;overflow-y:auto"></div></div>
@@ -1144,11 +1150,11 @@ const canEditVessel = x => isStaff() || !x || !x.id || (!!x.company && String(x.
 // MC 可用的系統管理項目（Admin 在 系統設定 → MC 權限 勾選）
 const MC_PERMS = [['users', 'User accounts (contractor / MC only)', '使用者帳號（僅限承包商／MC 帳號）'], ['companies', 'Companies', '公司'],
   ['vct', 'Vessel certificate requirements', '船舶證書要求'], ['pct', 'Personnel certificate types', '人員證照類型'], ['ann', 'Announcements', '公告'],
-  ['basic', 'Basic settings (meeting title, project name, vessel types, sea-state points)', '基本設定（會議名稱、專案名稱、船型、海象座標）'], ['audit', 'Activity log (view)', '操作紀錄（檢視）']];
+  ['basic', 'Basic settings (meeting title, project name, vessel types, sea-state points)', '基本設定（會議名稱、專案名稱、船型、海象座標）']];
 const can = perm => !!S && (S.user.role === 'admin' || (S.user.role === 'mc' && String(S.settings.mc_permissions || '').split(',').indexOf(perm) >= 0));
 const canAdminArea = () => MC_PERMS.some(p => can(p[0]));
-// logins（登入紀錄／IP）不在 MC 可開放項目內，所以只有 Admin 看得到
-const ADMIN_TAB_PERM = { users: 'users', companies: 'companies', vct: 'vct', pct: 'pct', ann: 'ann', sys: 'basic', audit: 'audit', logins: 'logins' };
+// audit（操作紀錄）、logins（登入紀錄／IP）不在 MC 可開放項目內，所以只有 Admin 看得到
+const ADMIN_TAB_PERM = { users: 'users', companies: 'companies', vct: 'vct', pct: 'pct', ann: 'ann', sys: 'basic', audit: 'admin', logins: 'admin' };
 // 人員編修權：Admin 全部；MC／承包商只限自家公司
 const canEditPerson = p => isAdmin() || (S && String(p.company || '').toLowerCase() === String(S.user.company || '').toLowerCase());
 const isApproved = r => r.approval === 'Approved';
@@ -3169,7 +3175,7 @@ function adminSys(el) {
       <p class="hint" style="margin-bottom:10px">${L('A 6-digit verification code will be emailed to', '系統會寄 6 位數驗證碼到')} <b class="notr">paul.tong@nmdc-group.com</b>${L('. The code is valid for 10 minutes.', '，驗證碼 10 分鐘內有效。')}</p>
       <button class="btn btn-danger" onclick="resetRequest(this)">🗑 ${L('Send verification code', '寄送驗證碼')}</button></div></div>
     <div class="section adm-only"><div class="section-header"><h3>🧑‍✈️ ${L('MC permissions', 'MC 權限')}</h3></div><div class="section-body">
-      <p class="hint" style="margin-bottom:10px">${L('Tick the Administration areas that MC users may use. PTW link, email settings, data reset and these permissions always stay Admin-only. MC can never create, edit or delete Admin accounts.', '勾選要開放給 MC 使用的系統管理項目。PTW 連結、通知信設定、清空資料與本權限設定一律只有 Admin 能改；MC 也不能新增、修改或刪除 Admin 帳號。')}</p>
+      <p class="hint" style="margin-bottom:10px">${L('Tick the Administration areas that MC users may use. PTW link, email settings, data reset, the activity log, sign-in records and these permissions always stay Admin-only. MC can never create, edit or delete Admin accounts.', '勾選要開放給 MC 使用的系統管理項目。PTW 連結、通知信設定、清空資料、操作紀錄、登入紀錄與本權限設定一律只有 Admin 能用；MC 也不能新增、修改或刪除 Admin 帳號。')}</p>
       <div class="toolbar" style="flex-direction:column;align-items:flex-start;gap:8px">${MC_PERMS.map(p => `<label class="chk"><input type="checkbox" class="st_mcp" value="${p[0]}" ${String(S.settings.mc_permissions || '').split(',').indexOf(p[0]) >= 0 ? 'checked' : ''}> ${L(p[1], p[2])}</label>`).join('')}</div>
       <div class="form-actions" style="margin-top:12px"><button class="btn btn-primary" onclick="saveMcPerms(this)">💾 ${L('Save MC permissions', '儲存 MC 權限')}</button></div></div></div>`;
   if (!isAdmin()) {
