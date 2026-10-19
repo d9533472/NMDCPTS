@@ -410,6 +410,72 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
 .scene .flame{transform-box:fill-box;transform-origin:50% 100%;animation:flame .45s ease-in-out infinite alternate}
 @keyframes flame{from{transform:scale(1,1)}to{transform:scale(.8,1.25)}}
 @media (prefers-reduced-motion:reduce){.scene *{animation:none!important}.scene .walker{opacity:1;transform:translate(300px,212px)}}
+/* ================= 左下角瀏覽人數 ================= */
+.sidebar-foot .visits{margin-top:4px;color:#7fd8e4;font-family:'JetBrains Mono',monospace;letter-spacing:.5px}
+.sidebar-foot .visits b{color:#fff;font-weight:600}
+.user-chip .uname{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side-backdrop{display:none}
+
+/* ================= 手機版 ================= */
+@media(max-width:900px){
+  .side-backdrop{position:fixed;inset:0;background:rgba(0,20,40,.45);z-index:99}
+  .sidebar.open + .side-backdrop{display:block}
+  .sidebar{width:min(280px,84vw)}
+  .nav-item{padding:11px 18px;font-size:14px}
+  .user-chip .uname{display:inline;max-width:110px}
+}
+@media(max-width:640px){
+  .header{padding:0 10px;gap:8px}
+  .header h2{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .header-left{min-width:0;flex:1}
+  .header-right{gap:6px;flex-shrink:0}
+  .header .live,.hide-sm{display:none}
+  .user-chip{padding:4px 8px;gap:5px}
+  .user-chip .role{display:none}
+  .user-chip .uname{max-width:90px}
+  .content{padding:10px}
+  .section{margin-bottom:12px}
+  .section-header{padding:11px 12px}
+  .section-body{padding:12px}
+  .section-header .toolbar{width:100%}
+  .toolbar>*{flex:1 1 auto}
+  .toolbar .search{flex:1 1 100%}
+  .search input{width:100%;min-width:0}
+  th,td{padding:8px 9px}
+  .table-wrap{-webkit-overflow-scrolling:touch}
+  .grid-2{gap:12px}
+  .stat-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .stat{padding:12px}.stat .v{font-size:22px}
+  .tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{white-space:nowrap;padding:9px 12px}
+  /* iOS：輸入框字小於 16px 會自動放大畫面 */
+  input,select,textarea,.form-group input,.form-group select,.form-group textarea,.fi{font-size:16px}
+  .btn{padding:9px 14px}
+  .btn-sm{padding:7px 10px}
+  .form-grid{grid-template-columns:1fr;gap:12px}
+  .form-actions{position:sticky;bottom:0;background:#fff;padding:10px 0 4px;margin-bottom:-4px;z-index:2}
+  .form-actions .btn{flex:1;justify-content:center}
+  /* 對話框改全螢幕 */
+  .modal-overlay{padding:0;align-items:stretch}
+  .modal,.modal.wide{max-width:none;min-height:100%;border-radius:0}
+  .modal-header{border-radius:0;position:sticky;top:0;z-index:3}
+  .modal-close{font-size:28px;padding:0 4px}
+  .modal-body{padding:14px 12px}
+  .toasts{left:10px;right:10px;top:10px}
+  .toast{max-width:none}
+  .auth-card{padding:22px 18px}
+  /* 儀表板數字卡：兩欄、縮小 */
+  .kpi-grid{gap:10px;margin-bottom:12px}
+  .kpi-group{padding:26px 8px 8px}
+  .kpi-row,.kpi-group.wide .kpi-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .kpi{padding:10px 10px 9px}
+  .kpi-label{font-size:10px;letter-spacing:.3px;padding-left:4px}
+  .kpi-ico{width:24px;height:24px;font-size:12px}
+  .kpi-val{font-size:24px;margin:4px 0 1px 4px}
+  .kpi-sub{margin-left:4px}
+  .kpi-bar{margin:6px 0 0 4px}
+}
 </style>
 </head>
 <body>
@@ -593,6 +659,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
       <div class="nav-item" data-page="admin" data-roles="admin,mc"><span class="ico">⚙️</span>Administration</div>    </nav>
     <div class="sidebar-foot" id="sideFoot">—</div>
   </aside>
+  <div class="side-backdrop" onclick="document.getElementById('sidebar').classList.remove('open')"></div>
 
   <div class="main">
     <header class="header">
@@ -603,7 +670,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
       <div class="header-right">
         <span class="live notr" id="liveTag" title="Last synced"><i></i><span id="liveTime">LIVE</span></span>
         <button class="btn btn-secondary btn-sm lang-btn notr" onclick="toggleLang()">中文</button>
-        <button class="btn btn-secondary btn-sm" onclick="reloadData(true)" title="Reload data from server">⟳ Refresh</button>
+        <button class="btn btn-secondary btn-sm" onclick="reloadData(true)" title="Reload data from server">⟳<span class="hide-sm"> Refresh</span></button>
         <div class="user-chip" id="userChip" onclick="toggleUserMenu(event)">
           <span>👤</span><span class="uname" id="ucName">—</span><span class="role" id="ucRole">—</span>
           <div class="user-menu hidden" id="userMenu">
@@ -834,6 +901,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
           <div class="tab" data-t="ann">📢 Announcements</div>
           <div class="tab" data-t="sys">System</div>
           <div class="tab" data-t="audit">🕵️ Activity Log</div>
+          <div class="tab" data-t="logins">🌐 Sign-in Records</div>
         </div>
         <div id="adminBody"></div>
       </div>
@@ -860,6 +928,22 @@ const SHORE_TYPES = ['Port', 'Base', 'Warehouse'];   // 不算「海上」的位
 let TOKEN = '';
 try { TOKEN = localStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
 let S = null;               // all server data for this user
+let VISITS = 0;             // 瀏覽人數（visit.hit／data.load 回傳）
+// 登入紀錄用的 IP：Apps Script 看不到連線 IP，改由瀏覽器向 ipify 查（查不到就留空，不影響登入）
+const IP_PROMISE = (async () => {
+  try {
+    const ctl = new AbortController(); setTimeout(() => ctl.abort(), 4000);
+    const r = await fetch('https://api.ipify.org?format=json', { signal: ctl.signal });
+    return (await r.json()).ip || '';
+  } catch (e) { return ''; }
+})();
+const clientIP = () => Promise.race([IP_PROMISE, new Promise(r => setTimeout(() => r(''), 1500))]);
+// 每個瀏覽器分頁工作階段算一次瀏覽
+function countVisit() {
+  let first = true;
+  try { first = !sessionStorage.getItem('opts_visit'); sessionStorage.setItem('opts_visit', '1'); } catch (e) {}
+  api('visit.hit', { count: first }).then(r => { VISITS = Math.max(VISITS, r.visits); renderSideFoot(); }).catch(() => {});
+}
 let currentPage = 'dashboard';
 const modalStack = [];
 
@@ -896,6 +980,7 @@ function showAuth(which) {
   ['authLogin','authSetup','authChange','authLoading'].forEach(id => document.getElementById(id).classList.toggle('hidden', id !== which));
 }
 async function boot() {
+  countVisit();
   showAuth('authLoading');
   if (TOKEN) {
     // 連線偶發失敗時重試，別因為一次網路問題就把登入狀態清掉（登入逾時會由 api() 的 AUTH 處理）
@@ -909,13 +994,10 @@ async function boot() {
       return;
     }
   }
-  try {
-    const st = await api('auth.status');
-    showAuth(st.needsSetup ? 'authSetup' : 'authLogin');
-  } catch (e) {
-    showAuth('authLogin');
-    document.getElementById('liErr').textContent = e.message;
-  }
+  // 先顯示登入畫面，不用等伺服器回應；只有全新系統（還沒有任何帳號）才切到首次設定
+  showAuth('authLogin');
+  api('auth.status').then(st => { if (st.needsSetup && !TOKEN) showAuth('authSetup'); })
+    .catch(e => { if (!TOKEN) document.getElementById('liErr').textContent = e.message; });
 }
 async function doLogin() {
   const btn = document.getElementById('liBtn');
@@ -926,10 +1008,11 @@ async function doLogin() {
   if (!username || !password) { err.textContent = 'Enter username and password'; return; }
   btn.disabled = true; btn.textContent = 'Signing in…';
   try {
-    const r = await api('auth.login', { username, password });
+    const r = await api('auth.login', { username, password, ip: await clientIP(), ua: navigator.userAgent });
     setToken(r.token);
     document.getElementById('liPass').value = '';
     if (r.user.must_change) { showAuth('authChange'); return; }
+    if (r.data) { applyData(r.data); return; }
     showAuth('authLoading');
     await reloadData();
   } catch (e) { err.textContent = e.message; }
@@ -942,7 +1025,7 @@ async function doSetup(btn) {
   const err = document.getElementById('suErr'); err.textContent = '';
   btn.disabled = true;
   try {
-    const r = await api('auth.setup', { username: v('suUser'), name: v('suName'), email: v('suEmail'), password: document.getElementById('suPass').value });
+    const r = await api('auth.setup', { username: v('suUser'), name: v('suName'), email: v('suEmail'), password: document.getElementById('suPass').value, ip: await clientIP(), ua: navigator.userAgent });
     setToken(r.token);
     showAuth('authLoading');
     await reloadData();
@@ -992,17 +1075,20 @@ document.addEventListener('click', () => document.getElementById('userMenu').cla
 async function reloadData(showSpinner) {
   if (showSpinner) showLoading('Loading data…');
   try {
-    const d = await api('data.load');
-    S = d;
-    liveAt = Date.now();
-    S.meetings = S.meetings || []; S.people = S.people || [];
-    document.getElementById('liveTime').textContent = 'LIVE · ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-    if (S.user.must_change) { showAuth('authChange'); return; }
-    enterApp();
+    applyData(await api('data.load'));
   } catch (e) {
     if (showSpinner) toast(e.message, 'error');
     throw e;
   } finally { if (showSpinner) hideLoading(); }
+}
+function applyData(d) {
+  S = d;
+  liveAt = Date.now();
+  S.meetings = S.meetings || []; S.people = S.people || [];
+  if (S.visits) VISITS = Math.max(VISITS, S.visits);
+  document.getElementById('liveTime').textContent = 'LIVE · ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  if (S.user.must_change) { showAuth('authChange'); return; }
+  enterApp();
 }
 // 背景自動同步：每 60 秒（分頁在前景時）或切回分頁時重新抓資料。
 // 只有純顯示的頁面會立即重畫；有表單的頁面只更新資料，避免打斷正在填寫的內容。
@@ -1018,6 +1104,7 @@ async function liveSync() {
     d.meetings = d.meetings || []; d.people = d.people || [];
     S = d;
     liveAt = Date.now();
+    if (d.visits) { VISITS = Math.max(VISITS, d.visits); renderSideFoot(); }
     document.getElementById('liveTime').textContent = 'LIVE · ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
     kpiQuiet = true;
     try { if (LIVE_PAGES.indexOf(currentPage) >= 0) refreshPage(); else updateBadges(); } finally { kpiQuiet = false; }
@@ -1033,14 +1120,22 @@ function enterApp() {
   const u = S.user;
   document.getElementById('ucName').textContent = u.name || u.username;
   document.getElementById('ucRole').textContent = ROLE_LABEL[u.role] || u.role;
-  document.getElementById('umInfo').innerHTML = `${esc(u.username)}<br>${esc(u.company || '')} · ${esc(ROLE_LABEL[u.role] || u.role)}`;
-  document.getElementById('sideFoot').textContent = 'Signed in as ' + (u.name || u.username) + (u.role === 'contractor' ? ' · ' + u.company : '');
+  document.getElementById('umInfo').innerHTML = `<b class="notr">${esc(u.name || u.username)}</b><br>${esc(u.company || '')} · ${esc(ROLE_LABEL[u.role] || u.role)}`;
+  document.getElementById('userChip').title = u.name || u.username;
+  renderSideFoot();
   document.querySelectorAll('[data-roles]').forEach(el => el.classList.toggle('hidden', el.dataset.roles.split(',').indexOf(u.role) < 0));
   document.querySelector('.nav-item[data-page="admin"]').classList.toggle('hidden', !canAdminArea());
   const pageEl = document.querySelector(`.nav-item[data-page="${currentPage}"]`);
   if (!pageEl || pageEl.classList.contains('hidden')) currentPage = 'dashboard';
   go(currentPage);
   refreshPTW(false).catch(() => {});
+}
+// 左下角：登入者＋瀏覽人數
+function renderSideFoot() {
+  if (!S) return;
+  const u = S.user;
+  document.getElementById('sideFoot').innerHTML = `<div>Signed in as ${esc(u.name || u.username)}${u.role === 'contractor' ? ' · ' + esc(u.company) : ''}</div>` +
+    (VISITS ? `<div class="visits">👁 Visitors: <b class="notr">${VISITS.toLocaleString('en-US')}</b></div>` : '');
 }
 const isStaff = () => S && (S.user.role === 'admin' || S.user.role === 'mc');
 const isAdmin = () => S && S.user.role === 'admin';
@@ -1052,7 +1147,8 @@ const MC_PERMS = [['users', 'User accounts (contractor / MC only)', '使用者�
   ['basic', 'Basic settings (meeting title, project name, vessel types, sea-state points)', '基本設定（會議名稱、專案名稱、船型、海象座標）'], ['audit', 'Activity log (view)', '操作紀錄（檢視）']];
 const can = perm => !!S && (S.user.role === 'admin' || (S.user.role === 'mc' && String(S.settings.mc_permissions || '').split(',').indexOf(perm) >= 0));
 const canAdminArea = () => MC_PERMS.some(p => can(p[0]));
-const ADMIN_TAB_PERM = { users: 'users', companies: 'companies', vct: 'vct', pct: 'pct', ann: 'ann', sys: 'basic', audit: 'audit' };
+// logins（登入紀錄／IP）不在 MC 可開放項目內，所以只有 Admin 看得到
+const ADMIN_TAB_PERM = { users: 'users', companies: 'companies', vct: 'vct', pct: 'pct', ann: 'ann', sys: 'basic', audit: 'audit', logins: 'logins' };
 // 人員編修權：Admin 全部；MC／承包商只限自家公司
 const canEditPerson = p => isAdmin() || (S && String(p.company || '').toLowerCase() === String(S.user.company || '').toLowerCase());
 const isApproved = r => r.approval === 'Approved';
@@ -2840,7 +2936,59 @@ function renderAdmin() {
   const auditSec = document.getElementById('auditSection');
   if (auditSec && auditSec.parentNode !== document.getElementById('page-audit')) document.getElementById('page-audit').appendChild(auditSec);
   if (adminTab === 'audit') { el.innerHTML = ''; el.appendChild(auditSec); initAudit(); return; }
-  ({ users: adminUsers, companies: adminCompanies, vct: adminVct, pct: adminPct, ann: adminAnn, sys: adminSys }[adminTab])(el);
+  ({ users: adminUsers, companies: adminCompanies, vct: adminVct, pct: adminPct, ann: adminAnn, sys: adminSys, logins: adminLogins }[adminTab])(el);
+}
+// 登入紀錄（含 IP）：只有 Admin
+let LOGINS = { rows: [], total: 0 };
+function adminLogins(el) {
+  el.innerHTML = `<div class="section"><div class="section-header"><h3>Sign-in Records</h3>
+      <div class="toolbar">
+        <input type="date" class="fi" id="lgFrom" title="From date" value="${addDays(todayStr(), -30)}">
+        <input type="date" class="fi" id="lgTo" title="To date">
+        <div class="search"><span>🔍</span><input id="lgQ" placeholder="Name, IP, device…" onkeydown="if(event.key==='Enter')loadLogins()"></div>
+        <label class="chk"><input type="checkbox" id="lgFailed"> Failed only</label>
+        <button class="btn btn-primary btn-sm" onclick="loadLogins(this)">⟳ Search</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportLoginsCSV()">⬇ CSV</button>
+      </div></div>
+    <div class="section-body note" style="margin:0;border-radius:0">${L('Every sign-in attempt with the IP address and device. The IP is looked up by the browser, so it may be blank (e.g. blocked by an ad blocker) and is for reference only.', '每次登入（含失敗）的 IP 與裝置。IP 由使用者瀏覽器查詢，可能空白（例如被廣告阻擋外掛擋掉），僅供參考。')}</div>
+    <div class="table-wrap"><table><thead><tr><th>Time</th><th>User</th><th>Company</th><th>IP</th><th>Device</th><th>Result</th></tr></thead><tbody id="lgBody"></tbody></table></div>
+    <div class="section-body hint" id="lgFoot"></div></div>`;
+  loadLogins();
+}
+async function loadLogins(btn) {
+  if (btn) btn.disabled = true;
+  document.getElementById('lgFoot').textContent = L('Loading…', '載入中…');
+  try {
+    LOGINS = await api('login.list', { from: v('lgFrom'), to: v('lgTo'), q: v('lgQ'), failedOnly: document.getElementById('lgFailed').checked, limit: 1000 });
+    renderLogins();
+  } catch (e) { document.getElementById('lgFoot').textContent = e.message; }
+  finally { if (btn) btn.disabled = false; }
+}
+// 從 user agent 抓出「瀏覽器 · 系統」的簡短描述
+function uaShort(ua) {
+  ua = String(ua || '');
+  if (!ua) return '';
+  const b = /Edg\//.test(ua) ? 'Edge' : /OPR\/|Opera/.test(ua) ? 'Opera' : /Line\//.test(ua) ? 'LINE' : /FBAN|FBAV/.test(ua) ? 'Facebook' : /CriOS|Chrome\//.test(ua) ? 'Chrome' : /FxiOS|Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'Browser';
+  const o = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : '';
+  return b + (o ? ' · ' + o : '');
+}
+function renderLogins() {
+  document.getElementById('lgBody').innerHTML = LOGINS.rows.length ? LOGINS.rows.map(r => `<tr>
+    <td class="mono nowrap">${fmtDT(r.time)}</td>
+    <td class="nowrap"><strong class="notr">${esc(r.name || r.username || '—')}</strong>${r.name ? `<div class="hint mono">${esc(r.username)}</div>` : ''}</td>
+    <td>${esc(r.company)}${r.role ? `<div class="hint">${esc(ROLE_LABEL[r.role] || r.role)}</div>` : ''}</td>
+    <td class="mono nowrap notr">${esc(r.ip || '—')}</td>
+    <td class="nowrap notr" title="${esc(r.user_agent)}">${esc(uaShort(r.user_agent) || '—')}</td>
+    <td>${r.result === 'OK' ? '<span class="b b-ok">OK</span>' : `<span class="b b-bad">Failed</span><div class="hint">${esc(r.error)}</div>`}</td></tr>`).join('')
+    : `<tr class="empty"><td colspan="6">${L('No sign-in records found', '沒有符合的登入紀錄')}</td></tr>`;
+  document.getElementById('lgFoot').textContent = LOGINS.total > LOGINS.rows.length
+    ? L(`Showing latest ${LOGINS.rows.length} of ${LOGINS.total} records — narrow the filters to see older ones.`, `顯示最新 ${LOGINS.rows.length} 筆（共 ${LOGINS.total} 筆），請縮小篩選範圍查看更早的紀錄。`)
+    : L(`${LOGINS.total} record(s)`, `共 ${LOGINS.total} 筆`);
+}
+function exportLoginsCSV() {
+  const rows = [['Time', 'Username', 'Name', 'Role', 'Company', 'IP', 'Device', 'User agent', 'Result', 'Error']];
+  LOGINS.rows.forEach(r => rows.push([fmtDT(r.time), r.username, r.name, r.role, r.company, r.ip, uaShort(r.user_agent), r.user_agent, r.result, r.error]));
+  downloadCSV(rows, 'opts_signin_records_' + todayStr() + '.csv');
 }
 function adminUsers(el) {
   const list = S.users.filter(u => isAdmin() || u.role !== 'admin').sort((a, b) => a.role.localeCompare(b.role) || a.username.localeCompare(b.username));
@@ -3248,7 +3396,7 @@ const ZH = {
   'This code was requested by another administrator': '此驗證碼是由其他管理員申請的', 'Verification code expired — send a new one': '驗證碼已過期，請重新寄送',
   'Too many wrong codes — send a new one': '驗證碼錯誤次數過多，請重新寄送', 'Role (non-Admin)': '角色（非 Admin）', 'Last synced': '最後同步時間',
   'Remove': '移除',
-  'Activity Log': '操作紀錄', 'User': '使用者', 'Action': '動作', 'Target': '對象', 'Details': '內容', 'Result': '結果', 'Failed only': '只看失敗',
+  'Activity Log': '操作紀錄', 'Sign-in Records': '登入紀錄', 'Visitors': '瀏覽人數', 'Device': '裝置', 'Name, IP, device…': '姓名、IP、裝置…', 'User': '使用者', 'Action': '動作', 'Target': '對象', 'Details': '內容', 'Result': '結果', 'Failed only': '只看失敗',
   'Search': '查詢', 'Failed': '失敗', 'Name, target, detail…': '姓名、對象、內容…', 'Awaiting Approval': '待核准',
   'This page is linked to the Offshore PTW System': '此頁面係連結至 Offshore PTW System',
   'Every action by every user is recorded automatically (sign in / out incl. failed attempts, adding users, approvals, transfers, uploads, deletions, setting changes…). Records are kept permanently and cannot be edited or deleted.':

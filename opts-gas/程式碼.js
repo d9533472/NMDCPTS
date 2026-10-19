@@ -10,7 +10,7 @@
 // 通知信：Settings.notify_emails（共用收件者）＋ notify_events（啟用的事件）；每日到期提醒由 setup() 建立的觸發器執行。
 // ============================================================
 
-const VERSION = '2.6';
+const VERSION = '2.7';
 const CAT_SAFETY = 'Offshore Safety Training';   // 原 'Sea Survival'（2.1 改名，ensureSchema_ 會遷移舊資料）
 
 const SCHEMAS = {
@@ -22,6 +22,7 @@ const SCHEMAS = {
   Meetings: ['id','title','time','location','items','attendees','externals','remark','attachments','created_by','created_at','updated_at'],
   Announcements: ['id','text_zh','text_en','level','link_url','link_text','attachments','active','created_by','created_at','updated_at'],
   AuditLog: ['id','time','username','name','role','company','action','target_id','target_name','detail','result','error'],
+  LoginLog: ['id','time','username','name','role','company','ip','user_agent','result','error'],
   Locations: ['id','name','type','linked_vessel','remark','created_at','updated_at'],
   Transfers: ['id','personnel_id','personnel_name','company','from_location','to_location','time','type','transport','approved_by','reason','remark','logged_by','created_at'],
   SiteLog: ['id','time','activity','source','detail','asset','transport','personnel','logged_by','created_at'],
@@ -161,10 +162,12 @@ function handle_(req) {
     const before = deletedName_(action, payload);
     const data = fn(user, payload);
     audit_(action, user, payload, before ? { name: before } : data, true, '');
+    if (LOGIN_ACTIONS[action]) loginLog_(payload, data, true, '');
     return { ok: true, data: data === undefined ? null : data };
   } catch (err) {
     // 登入逾時（AUTH）不記，其餘失敗的操作也記下來（含登入失敗、權限不足）
     if (!(err && err.code === 'AUTH')) audit_(action, user, payload, null, false, err && err.message);
+    if (LOGIN_ACTIONS[action]) loginLog_(payload, null, false, err && err.message);
     if (err && err.code) return { ok: false, error: err.message, code: err.code };
     console.error(action + ': ' + err.message + '\n' + err.stack);
     return { ok: false, error: 'Server error: ' + err.message };
@@ -172,13 +175,14 @@ function handle_(req) {
 }
 
 // ============ Audit log（操作紀錄：誰在何時做了什麼；只增不改，清空資料也保留） ============
-const AUDIT_SKIP = { 'ping': 1, 'auth.status': 1, 'data.load': 1, 'audit.list': 1, 'ext.vessels': 1 };
+const AUDIT_SKIP = { 'ping': 1, 'auth.status': 1, 'data.load': 1, 'audit.list': 1, 'login.list': 1, 'visit.hit': 1, 'ext.vessels': 1 };
 const AUDIT_SECRET = { password: 1, oldPassword: 1, newPassword: 1, code: 1, photo: 1, key: 1 };
 function auditDetail_(payload) {
   const o = {};
   Object.keys(payload || {}).forEach(k => {
     const v = payload[k];
     if (AUDIT_SECRET[k]) { if (v) o[k] = k === 'photo' ? '(photo)' : '***'; return; }
+    if (k === 'ua') return;   // 瀏覽器資訊記在登入紀錄，操作紀錄不重複存
     if (k === 'file') { if (v && v.name) o.file = v.name; return; }
     if (k === 'newFiles') { if (Array.isArray(v) && v.length) o.newFiles = v.map(x => x && x.name).join(', '); return; }
     if (v === '' || v === null || v === undefined) return;
@@ -242,9 +246,48 @@ function auditList_(u, p) {
   return { total: rows.length, rows: rows.slice(0, limit) };
 }
 
+// ============ 登入紀錄（含 IP；只有 Admin 可看） ============
+// Apps Script 拿不到連線端 IP，IP 由前端查詢後隨登入送上來（僅供參考，可被竄改）
+const LOGIN_ACTIONS = { 'auth.login': 1, 'auth.setup': 1 };
+function loginLog_(payload, data, ok, err) {
+  try {
+    const who = (data && data.user) || { username: str_(payload.username).toLowerCase() };
+    Repo.append('LoginLog', { id: genId_(), time: nowIso_(), username: who.username || '', name: who.name || '', role: who.role || '', company: who.company || '',
+      ip: str_(payload.ip).slice(0, 64), user_agent: str_(payload.ua).slice(0, 300), result: ok ? 'OK' : 'FAILED', error: ok ? '' : String(err || '').slice(0, 300) });
+  } catch (e) { console.warn('login log failed: ' + e.message); }
+}
+function loginList_(u, p) {
+  requireRole_(u, ['admin']);
+  const from = str_(p.from), to = str_(p.to), q = str_(p.q).toLowerCase();
+  const limit = Math.min(Number(p.limit) || 1000, 3000);
+  const rows = Repo.all('LoginLog').filter(r => {
+    const d = r.time.slice(0, 10);
+    if (from && d < from) return false;
+    if (to && d > to) return false;
+    if (p.failedOnly && r.result !== 'FAILED') return false;
+    if (q && [r.username, r.name, r.company, r.ip, r.user_agent].join(' ').toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  }).sort((a, b) => b.time.localeCompare(a.time));
+  return { total: rows.length, rows: rows.slice(0, limit) };
+}
+
+// ============ 瀏覽人數（每個瀏覽器分頁工作階段算一次；從 VISIT_BASE 起算） ============
+const VISIT_BASE = 87;
+function visitCount_() { return Number(PropertiesService.getScriptProperties().getProperty('visit_count')) || VISIT_BASE; }
+function visitHit_(p) {
+  if (!p.count) return { visits: visitCount_() };
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return { visits: visitCount_() };   // 忙碌時不卡住頁面，這次就不算
+  try {
+    const n = visitCount_() + 1;
+    PropertiesService.getScriptProperties().setProperty('visit_count', String(n));
+    return { visits: n };
+  } finally { lock.releaseLock(); }
+}
+
 function fail_(msg, code) { const e = new Error(msg); e.code = code || 'ERROR'; throw e; }
 
-const PUBLIC = { 'ping': true, 'auth.status': true, 'auth.setup': true, 'auth.login': true };
+const PUBLIC = { 'ping': true, 'auth.status': true, 'auth.setup': true, 'auth.login': true, 'visit.hit': true };
 
 const ROUTES = {
   'ping': () => ({ version: VERSION, time: new Date().toISOString() }),
@@ -264,6 +307,8 @@ const ROUTES = {
   'announce.delete': (u, p) => { requirePerm_(u, 'ann'); return deleteWithFiles_('Announcements', p.id); },
   'notify.test': (u, p) => { requireRole_(u, ['admin']); return notifyTest_(u); },
   'audit.list': (u, p) => auditList_(u, p),
+  'login.list': (u, p) => loginList_(u, p),
+  'visit.hit': (u, p) => visitHit_(p),
   'reset.request': (u, p) => { requireRole_(u, ['admin']); return resetRequest_(u, p); },
   'reset.confirm': (u, p) => { requireRole_(u, ['admin']); return resetConfirm_(u, p); },
   'vessel.delete': (u, p) => { vesselFor_(u, p.id, true); return deleteVessel_(p.id); },
@@ -346,7 +391,12 @@ const Repo = (function () {
     },
     /** appendRow 是原子操作，不需鎖（操作紀錄用，避免多人同時寫入互相覆蓋） */
     append: function (name, obj) {
-      const t = load_(name);
+      // 只讀表頭，不載入整張表（操作／登入紀錄只增不減，整張讀會越來越慢）
+      let t = cache[name];
+      if (!t) {
+        const sh = sheet_(name);
+        t = { sh: sh, headers: sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0].map(String) };
+      }
       t.sh.appendRow(rowOf_(t, obj).map(v => (v !== '' && /^[=+\-@]/.test(v)) ? "'" + v : v));
       delete cache[name];
     },
@@ -567,8 +617,9 @@ function authLogin_(p) {
   const u = Repo.all('Users').find(x => str_(x.username).toLowerCase() === username || (x.email && str_(x.email).toLowerCase() === username));
   if (!u || !bool_(u.active) || hash_(str_(p.password), u.password_salt) !== u.password_hash) fail_('Wrong username or password', 'LOGIN');
   Repo.update('Users', u.id, { last_login: nowIso_() });
-  try { Repo.removeWhere('Sessions', s => s.expires_at < nowIso_()); } catch (e) {}
-  return { token: newSession_(u), user: publicUser_(u) };
+  const token = newSession_(u);
+  // 登入同時回傳資料，前端不用再多打一次 data.load（過期 session 改由每日排程清理）
+  return { token: token, user: publicUser_(u), data: bool_(u.must_change) ? null : loadData_(u) };
 }
 function authLogout_(u) {
   CacheService.getScriptCache().remove('s_' + u.token);
@@ -750,7 +801,8 @@ function loadData_(u) {
     // 會議勾選參與者用：Admin／MC 拿全部人員的精簡清單
     people: isStaff_(u) ? personnelAll.map(p => ({ id: p.id, name: p.name, company: p.company, position: p.position })) : [],
     // 只有 Admin 看得到 Admin 帳號
-    users: hasPerm_(u, 'users') ? Repo.all('Users').filter(x => u.role === 'admin' || x.role !== 'admin').map(publicUser_) : []
+    users: hasPerm_(u, 'users') ? Repo.all('Users').filter(x => u.role === 'admin' || x.role !== 'admin').map(publicUser_) : [],
+    visits: visitCount_()
   };
 }
 function meetingVisible_(u, m, personnelAll) {
@@ -1393,6 +1445,7 @@ function resetConfirm_(u, p) {
 /** 每日觸發器（setup() 建立）：證照在 30／14／7／1 天前與到期當天提醒 */
 function dailyExpiryCheck() {
   ensureSchema_();
+  try { withLock_(() => Repo.removeWhere('Sessions', s => s.expires_at < nowIso_())); } catch (e) { console.warn('session cleanup failed: ' + e.message); }
   const tz = Session.getScriptTimeZone();
   const today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
   const days = d => Math.round((new Date(d + 'T00:00:00') - new Date(today + 'T00:00:00')) / 864e5);
