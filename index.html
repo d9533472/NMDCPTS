@@ -1994,6 +1994,10 @@ function openPersonnel(id) {
       <div class="form-group"><label>Mobile phone *</label><input id="pm_phone" value="${esc(p.phone || '')}" placeholder="+971 …"></div>
       <div class="form-group"><label>Nationality *</label><input id="pm_nationality" value="${esc(p.nationality || '')}"></div>
       <div class="form-group"><label>Passport No *</label><input id="pm_passport" value="${esc(p.passport || '')}"></div>
+      <div class="form-group full"><label>${L('Passport copy * — PDF / image, max 10 MB', '護照影本 * — PDF／圖片，上限 10 MB')} ${p.passport_file_id ? L('(leave empty to keep current)', '（留空則保留目前檔案）') : ''}</label>
+        ${editable ? '<input id="pm_passport_file" type="file" accept=".pdf,image/*">' : ''}
+        ${p.passport_file_id ? `<div class="hint">${L('Current file: ', '目前檔案：')}${fileLink(p.passport_file_id, p.passport_file_name)} ${esc(p.passport_file_name || '')}</div>`
+          : id ? `<div class="hint" style="color:var(--danger)">⚠ ${L('No passport copy on file — please upload one.', '尚未上傳護照影本，請補上。')}</div>` : ''}</div>
       <div class="form-group"><label>Blood type *</label><select id="pm_blood"><option value="">-- Select --</option>${BLOOD_TYPES.map(b => `<option value="${b}" ${b === p.blood_type ? 'selected' : ''}>${b}</option>`).join('')}</select></div>
       <div class="form-group"><label>Emergency contact *</label><input id="pm_emergency" value="${esc(p.emergency || '')}" placeholder="Name / relation"></div>
       <div class="form-group"><label>Emergency contact phone *</label><input id="pm_emergency_phone" value="${esc(p.emergency_phone || '')}" placeholder="+971 …"></div>
@@ -2038,7 +2042,11 @@ async function savePersonnel(btn, id) {
   if (isStaff() || !id) d.current_location = v('pm_location');
   if (PERSON_REQUIRED.some(f => !d[f])) { toast('All personnel fields are required', 'error'); return; }
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)) { toast('Email address looks invalid', 'error'); return; }
+  const ppFile = document.getElementById('pm_passport_file').files[0];
+  const old = id ? S.personnel.find(x => x.id === id) : null;
+  if (!ppFile && !(old && old.passport_file_id)) { toast(L('Please upload a copy of the passport', '請上傳護照影本'), 'error'); return; }
   await withBusy(btn, async () => {
+    if (ppFile) d.passport_file = await readFileB64(ppFile);
     const rec = await api('personnel.save', d);
     upsert(S.personnel, rec);
     toast(id ? 'Personnel updated' : (isApproved(rec) ? 'Personnel added — now add certificates' : L('Personnel submitted for MC approval — now add certificates', '人員已送 MC 核准，請接著新增證照')), 'success');
@@ -2054,7 +2062,7 @@ function personApproveBtn(p) {
   const rej = certs.filter(c => c.status === 'Rejected').length;
   const live = certs.filter(c => (c.status === 'Pending' || c.status === 'Approved') && !certExpired(c));
   const miss = requiredCats().filter(k => !live.some(c => pcType(c.type_id).category === k));
-  const why = rej ? L(rej + ' certificate(s) rejected — fix or delete first', rej + ' 張證照被退件，請先處理') : miss.length ? L('Missing: ', '缺少：') + miss.map(tz).join(L(', ', '、')) : '';
+  const why = !p.passport_file_id ? L('No passport copy uploaded', '尚未上傳護照影本') : rej ? L(rej + ' certificate(s) rejected — fix or delete first', rej + ' 張證照被退件，請先處理') : miss.length ? L('Missing: ', '缺少：') + miss.map(tz).join(L(', ', '、')) : '';
   return why ? `<button class="btn btn-green btn-sm" disabled title="${esc(why)}">✔ ${L('Approve personnel', '核准人員')}</button><span class="hint" style="align-self:center">⚠ ${esc(why)}</span>`
     : `<button class="btn btn-green btn-sm" onclick="reviewRecord('Personnel','${p.id}','Approved')">✔ ${L('Approve personnel', '核准人員')}${pend ? L(` + ${pend} certificate(s)`, `（含 ${pend} 張證照）`) : ''}</button>`;
 }

@@ -10,7 +10,7 @@
 // 通知信：Settings.notify_emails（共用收件者）＋ notify_events（啟用的事件）；每日到期提醒由 setup() 建立的觸發器執行。
 // ============================================================
 
-const VERSION = '2.7';
+const VERSION = '2.8';
 const CAT_SAFETY = 'Offshore Safety Training';   // 原 'Sea Survival'（2.1 改名，ensureSchema_ 會遷移舊資料）
 
 const SCHEMAS = {
@@ -18,7 +18,7 @@ const SCHEMAS = {
   Sessions: ['token','user_id','expires_at','created_at'],
   Companies: ['id','name','active','created_at'],
   Vessels: ['id','name','mmsi','imo','type','flag','gross_tonnage','max_persons','operator','company','contact_person','phone','whatsapp','email','remark','approval','approval_note','approved_by','approved_at','created_by','created_at','updated_at'],
-  Personnel: ['id','name','company','nationality','position','email','phone','passport','blood_type','emergency','emergency_phone','photo','remark','current_location','approval','approval_note','approved_by','approved_at','created_by','created_at','updated_at'],
+  Personnel: ['id','name','company','nationality','position','email','phone','passport','blood_type','emergency','emergency_phone','photo','passport_file_id','passport_file_name','remark','current_location','approval','approval_note','approved_by','approved_at','created_by','created_at','updated_at'],
   Meetings: ['id','title','time','location','items','attendees','externals','remark','attachments','created_by','created_at','updated_at'],
   Announcements: ['id','text_zh','text_en','level','link_url','link_text','attachments','active','created_by','created_at','updated_at'],
   AuditLog: ['id','time','username','name','role','company','action','target_id','target_name','detail','result','error'],
@@ -184,7 +184,7 @@ function auditDetail_(payload) {
     const v = payload[k];
     if (AUDIT_SECRET[k]) { if (v) o[k] = k === 'photo' ? '(photo)' : '***'; return; }
     if (k === 'ua') return;   // 瀏覽器資訊記在登入紀錄，操作紀錄不重複存
-    if (k === 'file') { if (v && v.name) o.file = v.name; return; }
+    if (k === 'file' || k === 'passport_file') { if (v && v.name) o[k] = v.name; return; }
     if (k === 'newFiles') { if (Array.isArray(v) && v.length) o.newFiles = v.map(x => x && x.name).join(', '); return; }
     if (v === '' || v === null || v === undefined) return;
     o[k] = (typeof v === 'object') ? v : String(v);
@@ -939,6 +939,14 @@ function savePersonnel_(u, p) {
     if (!Repo.all('Companies').some(c => sameCompany_(c.name, merged.company))) fail_('Company is not in the company list — add it under Companies first');
     const dup = Repo.all('Personnel').find(x => x.id !== p.id && str_(x.passport).toLowerCase() === merged.passport.toLowerCase());
     if (dup) fail_('Passport No ' + merged.passport + ' already exists (' + dup.name + ', ' + dup.company + ')');
+    // 護照影本必附：新增時一定要上傳；舊資料沒有護照檔的，下次儲存時也要補上
+    const hasFile = p.passport_file && p.passport_file.data;
+    if (!hasFile && !(existing && existing.passport_file_id)) fail_('Please upload a copy of the passport');
+    if (hasFile) {
+      const saved = saveFile_(p.passport_file, merged.name + ' - Passport');
+      if (existing) trashFile_(existing.passport_file_id);
+      d.passport_file_id = saved.id; d.passport_file_name = saved.name;
+    }
     if (existing) {
       d.updated_at = nowIso_();
       // 被退件後由送件方修改 → 重新送 Admin 核准
@@ -975,6 +983,7 @@ function deletePersonnel_(u, id) {
   return withLock_(() => {
     Repo.all('PersonCerts').filter(c => c.personnel_id === id).forEach(c => trashFile_(c.file_id));
     Repo.removeWhere('PersonCerts', c => c.personnel_id === id);
+    trashFile_(p.passport_file_id);
     Repo.remove('Personnel', id);
     return { id: id };
   });
@@ -1009,6 +1018,10 @@ function getFile_(u, id) {
   if (!allowed) {
     const pc = Repo.all('PersonCerts').find(c => c.file_id === id);
     if (pc) { personFor_(u, pc.personnel_id, false); allowed = true; }
+  }
+  if (!allowed) {
+    const pp = Repo.all('Personnel').find(x => x.passport_file_id === id);   // 護照影本：Admin／MC 或同公司才看得到
+    if (pp) { personFor_(u, pp.id, false); allowed = true; }
   }
   if (!allowed) allowed = Repo.all('Announcements').some(a => (hasPerm_(u, 'ann') || a.active !== 'FALSE') && parseList_(a.attachments).some(x => x.id === id));
   if (!allowed) {
@@ -1102,6 +1115,7 @@ function reviewRecord_(u, sheet, p) {
   if (sheet === 'Personnel') {
     certs = Repo.all('PersonCerts').filter(c => c.personnel_id === p.id);
     if (status === 'Approved') {
+      if (!target.passport_file_id) fail_('No passport copy uploaded — cannot approve yet');
       const rej = certs.filter(c => c.status === 'Rejected');
       if (rej.length) fail_('A certificate of this person was rejected — fix or delete it before approving the person');
       const types = Repo.all('PersonCertTypes');
