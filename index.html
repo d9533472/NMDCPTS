@@ -2874,9 +2874,9 @@ function openUser(id) {
     <div class="form-group"><label>${id ? 'Email' : L('Email * (sign-in details are sent here)', 'Email *（帳號與臨時密碼會寄到這裡）')}</label><input id="um_email" type="email" value="${esc(u.email || '')}"></div>
     <div class="form-group"><label>Company *</label><select id="um_company"><option value="">-- Select --</option>${activeCompanies().concat(u.company && activeCompanies().indexOf(u.company) < 0 ? [u.company] : []).map(c => `<option value="${esc(c)}" ${c === u.company ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>
       <span class="hint">${L('Not in the list? Add it under the Companies tab first.', '清單沒有？請先到「公司」分頁新增。')}</span></div>
-    <div class="form-group" ${isAdmin() ? '' : 'hidden'}><label>&nbsp;</label><label class="chk"><input type="checkbox" id="um_admin" ${u.role === 'admin' ? 'checked' : ''} onchange="document.getElementById('um_role').disabled=this.checked"> ${L('System administrator (Admin)', '系統管理員（Admin）')}</label>
-      <span class="hint">${L('Admin can do everything for all companies, approve personnel / vessels and manage accounts.', 'Admin 可操作所有公司的全部功能、核准人員與船舶、管理帳號。')}</span></div>
-    <div class="form-group"><label>Role (non-Admin)</label><select id="um_role" ${u.role === 'admin' ? 'disabled' : ''}>${['contractor','mc'].map(r => `<option value="${r}" ${r === u.role ? 'selected' : ''}>${ROLE_LABEL[r]}</option>`).join('')}</select>
+    ${isAdmin() ? `<div class="form-group"><label>&nbsp;</label><label class="chk"><input type="checkbox" id="um_admin" ${u.role === 'admin' ? 'checked' : ''} onchange="document.getElementById('um_role').disabled=this.checked"> ${L('System administrator (Admin)', '系統管理員（Admin）')}</label>
+      <span class="hint">${L('Admin can do everything for all companies, approve personnel / vessels and manage accounts.', 'Admin 可操作所有公司的全部功能、核准人員與船舶、管理帳號。')}</span></div>` : ''}
+    <div class="form-group"><label>${isAdmin() ? 'Role (non-Admin)' : 'Role'}</label><select id="um_role" ${u.role === 'admin' ? 'disabled' : ''}>${['contractor','mc'].map(r => `<option value="${r}" ${r === u.role ? 'selected' : ''}>${ROLE_LABEL[r]}</option>`).join('')}</select>
       <span class="hint">${L('MC: transfers, site log, meetings, certificate approval · Contractor: own company only. Both can only edit personnel of their own company.', 'MC：轉運、現場日誌、會議、證照核准 · 承包商：只限自家公司。兩者都只能編修自己公司的人員。')}</span></div>
     ${id ? '' : '<div class="form-group"><label>Temporary password * (min 6)</label><input id="um_pw" value="' + Math.random().toString(36).slice(2, 10) + '"></div>'}
     <div class="form-group"><label>&nbsp;</label><label class="chk"><input type="checkbox" id="um_active" ${u.active ? 'checked' : ''}> Account active</label></div>
@@ -2884,7 +2884,7 @@ function openUser(id) {
     <div class="form-actions"><button class="btn btn-primary" onclick="saveUser(this,'${id || ''}')">💾 Save</button></div></div>`);
 }
 async function saveUser(btn, id) {
-  const d = { id, username: v('um_user'), name: v('um_name'), email: v('um_email'), role: document.getElementById('um_admin').checked ? 'admin' : v('um_role'), company: v('um_company'), active: document.getElementById('um_active').checked };
+  const d = { id, username: v('um_user'), name: v('um_name'), email: v('um_email'), role: isAdmin() && document.getElementById('um_admin').checked ? 'admin' : v('um_role'), company: v('um_company'), active: document.getElementById('um_active').checked };
   if (!d.company) { toast(L('Please select a company', '請選擇公司'), 'error'); return; }
   if (!id) d.password = v('um_pw');
   if (!id && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)) { toast(L('Please enter a valid email — the sign-in details are emailed to the user', '請填寫正確的 Email，系統會把帳號與臨時密碼寄給對方'), 'error'); return; }
