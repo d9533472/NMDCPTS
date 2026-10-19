@@ -1950,7 +1950,8 @@ function openPersonnel(id) {
   const companyField = isAdmin()
     ? `<select id="pm_company"><option value="">-- Select --</option>${companies.concat(p.company && companies.indexOf(p.company) < 0 ? [p.company] : []).map(c => `<option value="${esc(c)}" ${c === p.company ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>`
     : `<input id="pm_company" value="${esc(id ? p.company : S.user.company)}" readonly>`;
-  const locField = staff && editable ? `<select id="pm_location">${locOptions(p.current_location || '', '-- Not assigned --')}</select>` : `<input value="${esc(locName(p.current_location))}" readonly>`;
+  // 承包商只能在新增人員時選初始位置，之後由 MC 轉運
+  const locField = (staff || !id) && editable ? `<select id="pm_location">${locOptions(p.current_location || '', '-- Not assigned --')}</select>` : `<input value="${esc(locName(p.current_location))}" readonly>`;
   let banner = '';
   if (id) {
     if (p.approval === 'Approved') banner = `<div class="note">✅ ${L('Approved', '已核准')}${p.approved_by && p.approved_by !== 'migration' ? ' · ' + esc(p.approved_by) + ' · ' + fmtDT(p.approved_at) : ''}</div>`;
@@ -1976,7 +1977,7 @@ function openPersonnel(id) {
       <div class="form-group"><label>Blood type *</label><select id="pm_blood"><option value="">-- Select --</option>${BLOOD_TYPES.map(b => `<option value="${b}" ${b === p.blood_type ? 'selected' : ''}>${b}</option>`).join('')}</select></div>
       <div class="form-group"><label>Emergency contact *</label><input id="pm_emergency" value="${esc(p.emergency || '')}" placeholder="Name / relation"></div>
       <div class="form-group"><label>Emergency contact phone *</label><input id="pm_emergency_phone" value="${esc(p.emergency_phone || '')}" placeholder="+971 …"></div>
-      <div class="form-group"><label>Current location</label>${locField}</div>
+      <div class="form-group"><label>Current location</label>${locField}${!staff && !id ? `<span class="hint">${L('Initial location only — later moves are done by MC (Transfer).', '只能設定初始位置，之後的移動由 MC 用「轉運」處理。')}</span>` : ''}</div>
       <div class="form-group full"><label>Remark</label><textarea id="pm_remark">${esc(p.remark || '')}</textarea></div>
       ${editable ? `<div class="form-actions"><button class="btn btn-primary" onclick="savePersonnel(this,'${id || ''}')">💾 Save personnel</button></div>` : ''}
     </div>
@@ -2014,7 +2015,7 @@ async function savePersonnel(btn, id) {
   const d = { id: id || '', name: v('pm_name'), company: v('pm_company'), position: v('pm_position'), email: v('pm_email'),
     phone: v('pm_phone'), nationality: v('pm_nationality'), passport: v('pm_passport'), blood_type: v('pm_blood'),
     emergency: v('pm_emergency'), emergency_phone: v('pm_emergency_phone'), remark: v('pm_remark'), photo: pmPhoto || '' };
-  if (isStaff()) d.current_location = v('pm_location');
+  if (isStaff() || !id) d.current_location = v('pm_location');
   if (PERSON_REQUIRED.some(f => !d[f])) { toast('All personnel fields are required', 'error'); return; }
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)) { toast('Email address looks invalid', 'error'); return; }
   await withBusy(btn, async () => {
@@ -3385,7 +3386,7 @@ const ZH = {
   // Dialogs
   'Please confirm': '請確認', 'Delete': '刪除', 'Cancel': '取消', 'OK': '確定', 'Close': '關閉',
   // Server / network messages
-  'Record not found': '找不到資料', 'Permission denied': '權限不足', 'Password must be at least 6 characters': '密碼至少需要 6 個字元', 'Please log in': '請先登入',
+  'Record not found': '找不到資料', 'Location not found': '找不到該位置', 'Permission denied': '權限不足', 'Password must be at least 6 characters': '密碼至少需要 6 個字元', 'Please log in': '請先登入',
   'Session expired, please log in again': '登入已逾時，請重新登入', 'Account disabled': '帳號已停用', 'System already set up': '系統已完成初始設定',
   'Username required': '請輸入帳號', 'Wrong username or password': '帳號或密碼錯誤', 'Current password is wrong': '目前密碼錯誤',
   'Contractor accounts need a company': '承包商帳號必須指定公司', 'Username already exists': '帳號已存在',

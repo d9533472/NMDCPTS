@@ -898,7 +898,9 @@ function savePersonnel_(u, p) {
     if (d.photo && d.photo.length > MAX_PHOTO_CHARS) fail_('Photo is too large');
     if (d.photo && d.photo.indexOf('data:image/') !== 0) d.photo = '';
     if (u.role !== 'admin') d.company = u.company;      // 非 Admin 只能建／編自家公司的人
-    if (!isStaff_(u)) delete d.current_location;         // 位置只由 Admin／MC（轉運）變更
+    // 承包商只能在新增人員時選初始位置；之後位置只由 Admin／MC（轉運）變更
+    if (!isStaff_(u) && p.id) delete d.current_location;
+    if (d.current_location && !locationExists_(d.current_location)) fail_('Location not found');
     let existing = null;
     if (p.id) {
       existing = Repo.get('Personnel', p.id);
@@ -929,6 +931,10 @@ function savePersonnel_(u, p) {
     [['Name｜姓名', rec.name], ['Company｜公司', rec.company], ['Nationality｜國籍', rec.nationality], ['Position｜職稱', rec.position],
      ['Submitted by｜送件人', u.name || u.username], ['Type｜類型', event === 'new' ? 'New personnel｜新增人員' : 'Resubmitted after rejection｜退件後重新送審']]);
   return rec;
+}
+function locationExists_(cid) {
+  const m = /^(vessel|loc)_(.+)$/.exec(str_(cid));
+  return !!m && !!Repo.get(m[1] === 'vessel' ? 'Vessels' : 'Locations', m[2]);
 }
 /** forEdit=true：Admin 可編全部；MC／承包商只能編自家公司。檢視：Admin／MC 全部，承包商自家公司 */
 function personFor_(u, personnelId, forEdit) {
