@@ -1216,28 +1216,65 @@ function downloadCSV(rows, filename) {
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   a.download = filename; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
-function readFileB64(file) {
+// 上傳前先把大張照片縮小（手機照片常 4–8 MB，縮成長邊 2000px 的 JPEG 通常 < 1 MB，檢視時才不會等很久）；PDF 等其他檔案原樣上傳
+const SHRINK_TYPES = /^image\/(jpeg|png|webp|bmp)$/i, SHRINK_MIN = 700 * 1024, SHRINK_EDGE = 2000;
+async function shrinkImage(file) {
+  if (!SHRINK_TYPES.test(file.type) || file.size < SHRINK_MIN) return file;
+  try {
+    const url = URL.createObjectURL(file);
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    URL.revokeObjectURL(url);
+    const k = Math.min(1, SHRINK_EDGE / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);   // PNG 透明底轉 JPEG 時變白底
+    g.drawImage(img, 0, 0, c.width, c.height);
+    const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.85));
+    if (!blob || blob.size >= file.size) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+  } catch (e) { return file; }
+}
+async function readFileB64(file) {
+  if (!file) return null;
+  file = await shrinkImage(file);
+  if (file.size > MAX_UPLOAD) throw new Error('File is larger than 10 MB');
   return new Promise((resolve, reject) => {
-    if (!file) return resolve(null);
-    if (file.size > MAX_UPLOAD) return reject(new Error('File is larger than 10 MB'));
     const r = new FileReader();
     r.onload = () => resolve({ name: file.name, mime: file.type || 'application/octet-stream', data: String(r.result).split(',')[1] });
     r.onerror = () => reject(new Error('Could not read file'));
     r.readAsDataURL(file);
   });
 }
+// 開啟附件：檔案經由後端轉送，大檔需要幾秒；看過的檔案留在記憶體，再開就是瞬間
+const FILE_CACHE = new Map(), FILE_CACHE_MAX = 12;
+const INLINE_MIME = /^(application\/pdf|image\/(jpeg|png|gif|webp|bmp|svg\+xml)|text\/|video\/(mp4|webm)|audio\/)/i;
 async function openFile(id) {
   const w = window.open('', '_blank');
-  if (w) w.document.write('<p style="font-family:sans-serif;padding:20px">Loading file…</p>');
+  let tick = null;
+  if (w) {
+    w.document.write(`<title>${L('Loading…', '載入中…')}</title><p style="font-family:sans-serif;padding:20px">${L('Loading file…', '檔案載入中…')} <span id="t"></span></p>`);
+    const t0 = Date.now();
+    tick = setInterval(() => { try { w.document.getElementById('t').textContent = Math.round((Date.now() - t0) / 1000) + ' s'; } catch (e) { clearInterval(tick); } }, 1000);
+  }
   try {
-    const f = await api('file.get', { id });
-    const bin = atob(f.data);
-    const arr = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-    const url = URL.createObjectURL(new Blob([arr], { type: f.mime }));
-    if (w) { w.location.href = url; }
-    else { const a = document.createElement('a'); a.href = url; a.download = f.name; a.click(); }
-  } catch (e) { if (w) w.close(); toast(e.message, 'error'); }
+    let f = FILE_CACHE.get(id);
+    if (!f) {
+      const r = await api('file.get', { id });
+      const bin = atob(r.data);
+      const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      f = { name: r.name, mime: r.mime, url: URL.createObjectURL(new Blob([arr], { type: r.mime })) };
+      FILE_CACHE.set(id, f);
+      if (FILE_CACHE.size > FILE_CACHE_MAX) { const [k, old] = FILE_CACHE.entries().next().value; URL.revokeObjectURL(old.url); FILE_CACHE.delete(k); }
+    }
+    clearInterval(tick);
+    // 瀏覽器能直接顯示的（PDF／圖片…）開在新分頁；其他類型（Word、HEIC…）改成下載，避免新分頁一直停在「載入中」
+    if (w && !w.closed && INLINE_MIME.test(f.mime)) { w.location.href = f.url; return; }
+    if (w && !w.closed) w.close();
+    const a = document.createElement('a'); a.href = f.url; a.download = f.name; document.body.appendChild(a); a.click(); a.remove();
+    toast(L('File downloaded: ', '已下載：') + f.name, 'success');
+  } catch (e) { clearInterval(tick); if (w) w.close(); toast(e.message, 'error'); }
 }
 function fileLink(id, name) { return id ? `<a href="javascript:void(0)" onclick="openFile('${esc(id)}')" title="${esc(name || '')}">📎 View</a>` : '<span class="muted">—</span>'; }
 
