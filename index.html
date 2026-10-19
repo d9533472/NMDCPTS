@@ -247,12 +247,17 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
 .wxm-chart .row.wind div{color:var(--info)}
 /* 公告欄 */
 .ann-board{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:14px}
-/* 儀表板頂部：公告與海象各占一半；其中一個沒有內容時另一個占滿，窄螢幕上下排 */
-.dash-top{display:flex;gap:14px;align-items:stretch;margin-bottom:14px}
+/* 儀表板頂部：左欄（公告＋登錄核准＋海上作業）、右欄（海象），各占一半；海象沒內容時左欄占滿，窄螢幕上下排 */
+.dash-top{display:flex;gap:14px;align-items:stretch;margin-bottom:18px}
 .dash-top>div{flex:1 1 0;min-width:0;display:flex;flex-direction:column}
 .dash-top>div:empty{display:none}
-.dash-top .ann-board,.dash-top .wxc,.dash-top .wx-empty{margin-bottom:0;flex:1}
-.dash-top .ann-board{max-height:560px;overflow-y:auto}
+.dash-left{gap:14px}
+.dash-left>#dashAnnounce:empty{display:none}
+.dash-left .kpi-grid{grid-template-columns:1fr;margin-bottom:0;gap:14px;flex:1}
+.dash-top:has(#dashWeather:empty) .dash-left .kpi-grid{grid-template-columns:1fr 1fr}
+.dash-top .ann-board,.dash-top .wxc,.dash-top .wx-empty{margin-bottom:0}
+.dash-top .wxc,.dash-top .wx-empty{flex:1}
+.dash-top .ann-board{max-height:320px;overflow-y:auto}
 @media(max-width:1100px){.dash-top{flex-direction:column}.dash-top .ann-board{max-height:none}}
 .ann-board h3{font-size:14px;color:var(--navy);margin-bottom:8px}
 .ann-item{display:flex;gap:10px;align-items:flex-start;padding:8px 12px;border-radius:8px;margin-bottom:6px;border:1px solid}
@@ -692,8 +697,10 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
     <div class="content">
       <!-- DASHBOARD -->
       <div class="page" id="page-dashboard">
-        <div class="dash-top"><div id="dashAnnounce"></div><div id="dashWeather"></div></div>
-        <div class="kpi-grid" id="dashStats"></div>
+        <div class="dash-top">
+          <div class="dash-left"><div id="dashAnnounce"></div><div class="kpi-grid" id="dashStats"></div></div>
+          <div id="dashWeather"></div>
+        </div>
         <div class="grid-2">
           <div class="section"><div class="section-header"><h3 id="dashPendTitle">⏳ Awaiting Approval</h3><span class="link" onclick="go('certificates')">View all →</span></div><div class="section-body" id="dashPending" style="max-height:330px;overflow-y:auto"></div></div>
           <div class="section"><div class="section-header"><h3 id="dashPtwTitle">📝 Active PTW</h3><span class="link" onclick="go('ptw')">View all →</span></div><div class="section-body" id="dashPTW" style="max-height:330px;overflow-y:auto"></div></div>
