@@ -824,7 +824,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
       <div class="page" id="page-pob">
         <div class="section pob-pick"><div class="section-body">
           <label class="pob-lbl notr" for="pobSel" id="pobLbl"></label>
-          <div class="pob-row"><select class="fi pob-sel" id="pobSel" onchange="renderPOB()"></select><button class="btn btn-secondary" onclick="exportPOBCSV()">⬇ CSV</button></div>
+          <div class="pob-row"><select class="fi pob-sel" id="pobSel" onchange="renderPOB()"></select><button class="btn btn-secondary" onclick="exportPOBCSV(this)">⬇ Excel</button></div>
           <div class="pob-chips" id="pobChips"></div>
         </div></div>
         <div class="section">
@@ -2649,12 +2649,99 @@ function renderPOB() {
       <td class="nowrap">${esc(p.phone || '')}</td><td class="mono">${esc(p.blood_type || '—')}</td><td>${catBadge(p, 'Medical')}</td><td>${catBadge(p, CAT_SAFETY)}</td><td class="mono nowrap">${lt ? fmtDT(lt.time) : '—'}</td></tr>`;
   }).join('') : '<tr class="empty"><td colspan="9">Nobody at this location</td></tr>';
 }
-function exportPOBCSV() {
+// POB 匯出成有格式的 Excel（ExcelJS 只在按下時才載入）；載入失敗就退回 CSV
+let excelJsLoading = null;
+function loadExcelJS() {
+  if (window.ExcelJS) return Promise.resolve(window.ExcelJS);
+  if (!excelJsLoading) excelJsLoading = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+    s.onload = () => res(window.ExcelJS);
+    s.onerror = () => { excelJsLoading = null; rej(new Error('Could not load Excel library')); };
+    document.head.appendChild(s);
+  });
+  return excelJsLoading;
+}
+function pobRows(cid) {
+  return S.personnel.filter(p => p.current_location === cid).sort((a, b) => a.name.localeCompare(b.name)).map((p, i) => {
+    const lt = S.transfers.filter(t => t.personnel_id === p.id).sort((a, b) => String(b.time).localeCompare(String(a.time)))[0];
+    return { n: i + 1, p, med: catStatus(p, 'Medical'), saf: catStatus(p, CAT_SAFETY), ok: isQualified(p), since: lt ? fmtDT(lt.time) : '' };
+  });
+}
+async function exportPOBCSV(btn) {
   const cid = v('pobSel');
   if (!cid) { toast('Select a location first', 'warning'); return; }
-  const rows = [['POB — ' + locName(cid)], ['Generated', new Date().toLocaleString('en-GB')], [], ['#','Name','Company','Position','Phone','Blood type','Medical','Offshore Safety Training','Qualified']];
-  S.personnel.filter(p => p.current_location === cid).forEach((p, i) => rows.push([i + 1, p.name, p.company, p.position, p.phone, p.blood_type,catStatus(p, 'Medical').text, catStatus(p, CAT_SAFETY).text, isQualified(p) ? 'Yes' : 'No']));
-  downloadCSV(rows, 'pob_' + locName(cid).replace(/[^a-zA-Z0-9]+/g, '_') + '.csv');
+  const list = pobRows(cid), loc = locName(cid), fname = 'POB_' + loc.replace(/[^a-zA-Z0-9]+/g, '_') + '_' + todayStr();
+  const cols = [
+    ['#', 5], ['Name', 24], ['Company', 22], ['Position', 20], ['Nationality', 14], ['Phone', 17], ['Blood', 7],
+    ['Emergency contact', 22], ['Emergency phone', 17], ['Medical', 24], ['Offshore Safety Training', 26], ['Qualified', 10], ['On board since', 17]];
+  const vals = r => [r.n, r.p.name, r.p.company, r.p.position, r.p.nationality, r.p.phone, r.p.blood_type,
+    r.p.emergency, r.p.emergency_phone, r.med.text, r.saf.text, r.ok ? 'Yes' : 'No', r.since];
+  let XL;
+  try { if (btn) btn.disabled = true; XL = await loadExcelJS(); }
+  catch (e) {
+    const rows = [['POB — ' + loc], ['Generated', new Date().toLocaleString('en-GB')], [], cols.map(c => c[0])].concat(list.map(vals));
+    downloadCSV(rows, fname + '.csv');
+    toast(L('Excel export unavailable — downloaded CSV instead', 'Excel 無法載入，已改下載 CSV'), 'warning');
+    return;
+  } finally { if (btn) btn.disabled = false; }
+
+  const NAVY = 'FF002038', ZEBRA = 'FFF4F7FA', LINE = 'FFD5DEE7';
+  const TONE = { 'b-ok': ['FFE6F4EC', 'FF0A6B35'], 'b-warn': ['FFFFF4E0', 'FF8A5200'], 'b-bad': ['FFFDECEC', 'FFA11D1D'], 'b-info': ['FFE8F1FB', 'FF0B4F8A'] };
+  const fill = argb => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
+  const thin = { style: 'thin', color: { argb: LINE } };
+  const wb = new XL.Workbook();
+  wb.creator = 'OPTS'; wb.created = new Date();
+  const ws = wb.addWorksheet('POB', {
+    views: [{ state: 'frozen', ySplit: 4, showGridLines: false }],
+    pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: '4:4',
+      margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 } },
+    headerFooter: { oddFooter: '&L' + loc + '&RPage &P / &N' }
+  });
+  ws.columns = cols.map(c => ({ width: c[1] }));
+  const last = cols.length;
+  // 標題列
+  ws.mergeCells(1, 1, 1, last);
+  const t = ws.getCell(1, 1);
+  t.value = 'POB — ' + loc;
+  t.font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' } }; t.fill = fill(NAVY); t.alignment = { vertical: 'middle', indent: 1 };
+  ws.getRow(1).height = 30;
+  // 摘要列
+  const unq = list.filter(r => !r.ok).length;
+  ws.mergeCells(2, 1, 2, last);
+  const sum = ws.getCell(2, 1);
+  sum.value = `Persons on board: ${list.length}    Not qualified: ${unq}    Generated: ${new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })} by ${S.user.name || S.user.username}`;
+  sum.font = { size: 11, color: { argb: unq ? 'FFA11D1D' : 'FF2C3E50' } }; sum.alignment = { vertical: 'middle', indent: 1 };
+  ws.getRow(2).height = 20;
+  // 表頭
+  const hr = ws.getRow(4);
+  hr.values = cols.map(c => c[0]);
+  hr.height = 22;
+  hr.eachCell(c => { c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = fill(NAVY); c.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }; c.border = { top: thin, bottom: thin, left: thin, right: thin }; });
+  // 資料列
+  list.forEach((r, i) => {
+    const row = ws.getRow(5 + i);
+    row.values = vals(r);
+    row.height = 18;
+    row.eachCell({ includeEmpty: true }, (c, col) => {
+      if (col > last) return;
+      c.border = { top: thin, bottom: thin, left: thin, right: thin };
+      c.alignment = { vertical: 'middle', horizontal: [1, 7, 12].indexOf(col) >= 0 ? 'center' : 'left' };
+      if (i % 2) c.fill = fill(ZEBRA);
+    });
+    row.getCell(2).font = { bold: true };
+    [[10, r.med.cls], [11, r.saf.cls], [12, r.ok ? 'b-ok' : 'b-bad']].forEach(([col, cls]) => {
+      const tone = TONE[cls]; if (!tone) return;
+      const c = row.getCell(col); c.fill = fill(tone[0]); c.font = { bold: col === 12, color: { argb: tone[1] } };
+    });
+  });
+  if (!list.length) { ws.mergeCells(5, 1, 5, last); const c = ws.getCell(5, 1); c.value = 'Nobody at this location'; c.font = { italic: true, color: { argb: 'FF5B6B7D' } }; c.alignment = { horizontal: 'center' }; }
+  else ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4 + list.length, column: last } };
+
+  const buf = await wb.xlsx.writeBuffer();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  a.download = fname + '.xlsx'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
 // ==================== CERTIFICATES PAGE ====================
