@@ -2079,6 +2079,11 @@ async function deletePersonnel(id) {
     refreshPage();
   }, 'Deleting…');
 }
+// 承包商看到被退件的證照：按鈕改「重新上傳」，必須附新檔
+function redoCert(c) { return !!c && c.status === 'Rejected' && !isStaff(); }
+function rejectNote(reason, by, at, tail) {
+  return `<div class="note bad">✖ <b>${L('Rejected', '已被退件')}</b>${by ? ' — ' + esc(by) : ''}${at ? ' · ' + fmtDT(at) : ''}<br><b>${L('Reason: ', '退件原因：')}</b>${esc(reason || L('(none given)', '（未填寫）'))}${tail ? '<br>' + tail : ''}</div>`;
+}
 function certStatusBadge(c) {
   if (c.status === 'Pending') return '<span class="b b-info">Pending approval</span>';
   if (c.status === 'Rejected') return `<span class="b b-bad" title="${esc(c.review_note)}">Rejected</span>`;
@@ -2097,11 +2102,11 @@ function renderPmCerts(pid) {
   const canEdit = canEditPerson(p);
   if (!list.length) { el.innerHTML = h + '<p class="muted">No certificates uploaded yet.</p>'; return; }
   h += `<div class="table-wrap"><table><thead><tr><th>Category</th><th>Certificate</th><th>Cert No</th><th>Issued</th><th>Expiry</th><th>Status</th><th>File</th><th></th></tr></thead><tbody>${list.map(c => `<tr>
-    <td>${esc(pcType(c.type_id).category)}</td><td><strong>${esc(pcName(c))}</strong>${c.status === 'Rejected' && c.review_note ? `<div class="hint">Reason: ${esc(c.review_note)}</div>` : ''}</td>
+    <td>${esc(pcType(c.type_id).category)}</td><td><strong>${esc(pcName(c))}</strong>${c.status === 'Rejected' ? `<div class="hint" style="color:var(--danger)">✖ ${L('Rejection reason: ', '退件原因：')}${esc(c.review_note || L('(none given)', '（未填寫）'))}</div>` : ''}</td>
     <td class="mono">${esc(c.cert_no || '—')}</td><td class="nowrap">${fmtDate(c.issue_date)}</td><td class="nowrap">${fmtDate(c.expiry_date)}</td>
     <td>${certStatusBadge(c)}</td><td>${fileLink(c.file_id, c.file_name)}</td>
     <td><div class="acts">${isStaff() && c.status === 'Pending' ? `${certApproveBtn(c)}<button class="btn btn-danger btn-sm" onclick="reviewCert('${c.id}','Rejected')">Reject</button>` : ''}
-      ${canEdit ? `<button class="btn btn-secondary btn-sm" onclick="openPersonCert('${pid}','${c.id}')">Edit</button><button class="btn btn-danger btn-sm" onclick="deletePersonCert('${c.id}')">🗑</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
+      ${canEdit ? `<button class="btn ${redoCert(c) ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="openPersonCert('${pid}','${c.id}')">${redoCert(c) ? '↻ ' + L('Re-upload', '重新上傳') : 'Edit'}</button><button class="btn btn-danger btn-sm" onclick="deletePersonCert('${c.id}')">🗑</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
   el.innerHTML = h;
 }
 function openPersonCert(pid, cid) {
@@ -2110,17 +2115,19 @@ function openPersonCert(pid, cid) {
   const types = S.personCertTypes.filter(t => t.active !== 'FALSE' || t.id === c.type_id).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0));
   const cats = [...new Set(types.map(t => t.category))];
   const opts = '<option value="">-- Select --</option>' + cats.map(cat => `<optgroup label="${esc(cat)}">${types.filter(t => t.category === cat).map(t => `<option value="${t.id}" ${t.id === c.type_id ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</optgroup>`).join('');
-  openModal(cid ? 'Edit certificate' : 'Add certificate', `
+  const redo = redoCert(c);
+  openModal(redo ? L('Re-upload certificate', '重新上傳證照') : cid ? 'Edit certificate' : 'Add certificate', `
+    ${c.status === 'Rejected' ? rejectNote(c.review_note, c.reviewed_by, c.reviewed_at, redo ? L('Fix the details and upload a corrected file, then save to resubmit to MC.', '請修正資料並上傳正確的檔案，儲存後即重新送 MC 審核。') : '') : ''}
     <div class="form-grid">
       <div class="form-group full"><label>Certificate type *</label><select id="pc_type" onchange="pcTypeChanged()">${opts}</select></div>
       <div class="form-group full" id="pc_otherWrap"><label>Certificate name (for "Other")</label><input id="pc_other" value="${esc(c.other_name || '')}" placeholder="e.g. Offshore Medical (Norway)"></div>
       <div class="form-group"><label>Certificate No</label><input id="pc_no" value="${esc(c.cert_no || '')}"></div>
       <div class="form-group"><label>Issue date</label><input id="pc_issue" type="date" value="${esc(c.issue_date || '')}"></div>
       <div class="form-group"><label>Expiry date <span id="pc_expReq">*</span></label><input id="pc_expiry" type="date" value="${esc(c.expiry_date || '')}"></div>
-      <div class="form-group full"><label>${cid ? L('Certificate file (leave empty to keep current file)', '證照檔案（留空則保留目前檔案）') : L('Certificate file *', '證照檔案 *')} — ${L('PDF / image, max 10 MB', 'PDF／圖片，上限 10 MB')}</label><input id="pc_file" type="file" accept=".pdf,image/*">
+      <div class="form-group full"><label>${redo ? L('New certificate file *', '新的證照檔案 *') : cid ? L('Certificate file (leave empty to keep current file)', '證照檔案（留空則保留目前檔案）') : L('Certificate file *', '證照檔案 *')} — ${L('PDF / image, max 10 MB', 'PDF／圖片，上限 10 MB')}</label><input id="pc_file" type="file" accept=".pdf,image/*">
         ${c.file_id ? `<div class="hint">Current file: ${fileLink(c.file_id, c.file_name)} ${esc(c.file_name || '')}</div>` : ''}</div>
       ${!isStaff() ? L('<div class="note warn full">After saving, this certificate will be <b>Pending</b> until MC approves it.</div>', '<div class="note warn full">儲存後此證照會是<b>待核准</b>狀態，MC 核准後才生效。</div>') : ''}
-      <div class="form-actions"><button class="btn btn-primary" onclick="savePersonCert(this,'${pid}','${cid || ''}')">💾 Save certificate</button></div>
+      <div class="form-actions"><button class="btn btn-primary" onclick="savePersonCert(this,'${pid}','${cid || ''}')">${redo ? '↻ ' + L('Resubmit', '重新送審') : '💾 Save certificate'}</button></div>
     </div>`);
   pcTypeChanged();
 }
@@ -2136,7 +2143,7 @@ async function savePersonCert(btn, pid, cid) {
   if (!t) { toast('Select a certificate type', 'error'); return; }
   if (!/^other/i.test(t.name)) d.other_name = '';
   if (t.has_expiry === 'TRUE' && !d.expiry_date) { toast('Expiry date is required', 'error'); return; }
-  if (!cid && !fileEl.files[0]) { toast('Please attach the certificate file', 'error'); return; }
+  if ((!cid || redoCert(S.personCerts.find(x => x.id === cid))) && !fileEl.files[0]) { toast('Please attach the certificate file', 'error'); return; }
   await withBusy(btn, async () => {
     d.file = await readFileB64(fileEl.files[0]);
     const rec = await api('pcert.save', d);
@@ -2214,7 +2221,7 @@ function openVessel(id, tab) {
   let banner = '';
   if (id) {
     if (x.approval === 'Approved') banner = '';
-    else if (x.approval === 'Rejected') banner = `<div class="note bad">✖ ${L('Rejected', '已被退件')} — ${esc(x.approval_note)}</div>`;
+    else if (x.approval === 'Rejected') banner = rejectNote(x.approval_note, x.approved_by, x.approved_at, isStaff() ? '' : L('Fix the details or re-upload the certificates concerned, then save to resubmit.', '請修改資料或重新上傳有問題的證書，儲存後即重新送審。'));
     else banner = `<div class="note warn">⏳ ${L('This vessel is awaiting MC approval.', '此船舶等待 MC 核准。')}</div>`;
     if (isStaff() && !isApproved(x)) banner += `<div class="acts" style="margin:-4px 0 14px">${vesselApproveBtn(x)}<button class="btn btn-danger btn-sm" onclick="reviewRecord('Vessels','${x.id}','Rejected')">✖ ${L('Reject', '退件')}</button></div>`;
   } else if (!isStaff()) banner = `<div class="note warn">${L('New vessels must be approved by MC.', '新增的船舶須經 MC 核准。')}</div>`;
@@ -2261,7 +2268,8 @@ function renderVmCerts(id) {
   const all = vcTypesActive(), need = all.filter(t => vcRequired(t, vx));
   const types = WX_SHOW_NA ? all : all.filter(t => vcRequired(t, vx) || vcOf(id, t.id));
   const edit = canEditVessel(vx);
-  el.innerHTML = (comp.issues.length ? `<div class="note bad">⛔ ${L(comp.issues.length + ' mandatory certificate issue(s): missing, expired or without an uploaded file.', comp.issues.length + ' 項強制證書有缺失：缺少、已過期或未上傳檔案。')}</div>` : '<div class="note">✅ All mandatory certificates are valid and uploaded.</div>') +
+  const redo = vx.approval === 'Rejected' && !isStaff();
+  el.innerHTML = (redo ? rejectNote(vx.approval_note, vx.approved_by, vx.approved_at, L('Re-upload the certificates concerned — saving any certificate resubmits the vessel to MC.', '請重新上傳有問題的證書，儲存任一證書即會重新送 MC 審核。')) : '') + (comp.issues.length ? `<div class="note bad">⛔ ${L(comp.issues.length + ' mandatory certificate issue(s): missing, expired or without an uploaded file.', comp.issues.length + ' 項強制證書有缺失：缺少、已過期或未上傳檔案。')}</div>` : '<div class="note">✅ All mandatory certificates are valid and uploaded.</div>') +
     (sp ? `<div class="note info" style="margin-bottom:10px">🧭 ${L('Based on', '依')} <b>GT ${sp.gt}</b>${L(', ', '、')}<b>${L('max ', '限制員額 ')}${sp.pob}${L(' persons', ' 人')}</b>${L(', ', '、')}<b>${sp.tw ? L('Taiwan-flagged', '本國籍') : L('foreign-flagged', '外國籍')}</b>${L(': this vessel needs ', '判斷：本船需要 ')}<b>${need.length}</b>${L(' certificate(s); ', ' 項證書；')}${all.length - need.length}${L(' others are not required.', ' 項不需要。')}
       <label class="chk" style="margin-left:8px"><input type="checkbox" ${WX_SHOW_NA ? 'checked' : ''} onchange="WX_SHOW_NA=this.checked;renderVmCerts('${id}')"> ${L('Show not-required items', '顯示不需要的項目')}</label>
       <div class="hint" style="margin-top:4px">${L('Reference only — rules are set under Administration → Vessel Certificate Requirements; confirm with the flag state / class society.', '僅供參考：判斷條件在 系統管理 → 船舶證書要求 設定，實際請以船旗國與驗船機構為準。')}</div></div>` : '') +
@@ -2271,7 +2279,7 @@ function renderVmCerts(id) {
       return `<tr><td class="muted">${i + 1}</td><td>${esc(t.name)}</td><td>${vcRequired(t, vx) ? '<span class="b b-navy">' + L('Required', '需要') + '</span>' : '<span class="b b-na">' + (t.mandatory === 'TRUE' ? L('Not required', '不需要') : L('Optional', '選填')) + '</span>'}</td>
         <td class="nowrap">${fmtDate(c.issue_date)}</td><td class="nowrap">${fmtDate(c.expiry_date)}</td><td><span class="b ${s.cls}">${s.text}</span></td>
         <td>${fileLink(c.file_id, c.file_name)}</td><td class="hint">${esc(c.description || '')}</td>
-        ${edit ? `<td><button class="btn btn-secondary btn-sm" onclick="openVesselCert('${id}','${t.id}')">${s.c ? 'Edit' : 'Add'}</button></td>` : ''}</tr>`;
+        ${edit ? `<td><button class="btn btn-secondary btn-sm" onclick="openVesselCert('${id}','${t.id}')">${s.c ? (redo ? '↻ ' + L('Re-upload', '重新上傳') : 'Edit') : 'Add'}</button></td>` : ''}</tr>`;
     }).join('')}</tbody></table></div>`;
 }
 function renderVmPTW(id) {
@@ -2284,7 +2292,9 @@ function renderVmPTW(id) {
 function openVesselCert(vid, tid) {
   const t = S.vesselCertTypes.find(x => x.id === tid);
   const c = vcOf(vid, tid) || {};
-  openModal('Vessel certificate', `
+  const vx = vesselById(vid), redo = vx.approval === 'Rejected' && !isStaff();
+  openModal(redo && c.id ? L('Re-upload vessel certificate', '重新上傳船舶證書') : 'Vessel certificate', `
+    ${redo ? rejectNote(vx.approval_note, vx.approved_by, vx.approved_at, L('Saving resubmits the vessel to MC.', '儲存後船舶即重新送 MC 審核。')) : ''}
     <div class="form-grid">
       <div class="form-group full"><label>Certificate</label><input value="${esc(t.name)}" readonly></div>
       <div class="form-group"><label>Issue date</label><input id="vc_issue" type="date" value="${esc(c.issue_date || '')}"></div>
@@ -2302,9 +2312,12 @@ async function saveVesselCert(btn, vid, tid) {
     const d = { vessel_id: vid, type_id: tid, issue_date: v('vc_issue'), expiry_date: v('vc_expiry'), description: v('vc_desc'), removeFile: !!(rm && rm.checked) };
     d.file = await readFileB64(fileEl.files[0]);
     const rec = await api('vcert.save', d);
+    const vsl = rec.vessel; delete rec.vessel;
     upsert(S.vesselCerts, rec);
+    if (vsl) upsert(S.vessels, vsl);
     closeTop(); renderVmCerts(vid); refreshPage();
-    toast('Certificate saved', 'success');
+    if (vsl) { closeTop(); openVessel(vid, 'certs'); }
+    toast(vsl ? L('Certificate saved — vessel resubmitted for MC approval', '證書已儲存，船舶已重新送 MC 審核') : 'Certificate saved', 'success');
   }, 'Uploading…');
 }
 async function deleteVesselCert(cid, vid) {

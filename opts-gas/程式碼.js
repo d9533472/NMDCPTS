@@ -1013,6 +1013,7 @@ function savePersonCert_(u, p) {
     if (!(p.file && p.file.data)) fail_('Please attach the new certificate file');
     existing = null;   // 換證：保留已核准的舊證照，新的另外送審
   }
+  if (existing && existing.status === 'Rejected' && !isStaff_(u) && !(p.file && p.file.data)) fail_('Please attach the new certificate file');
   if (!existing && !(p.file && p.file.data)) fail_('Please attach the certificate file');
   const saved = saveFile_(p.file, person.name + ' - ' + type.name);
   const rec = withLock_(() => {
@@ -1481,7 +1482,9 @@ function saveVesselCert_(u, p) {
   const type = Repo.get('VesselCertTypes', p.type_id);
   if (!type) fail_('Certificate type not found');
   const saved = saveFile_(p.file, vessel.name + ' - ' + type.name);
-  return withLock_(() => {
+  // 船舶被退件後承包商重傳證書 → 船舶自動改回待核准（重新送審）
+  const resubmit = vessel.approval === 'Rejected' && !isStaff_(u);
+  const rec = withLock_(() => {
     const existing = Repo.all('VesselCerts').find(c => c.vessel_id === vessel.id && c.type_id === type.id);
     const d = { vessel_id: vessel.id, type_id: type.id, issue_date: str_(p.issue_date), expiry_date: str_(p.expiry_date),
       description: str_(p.description), updated_by: u.username, updated_at: nowIso_() };
@@ -1496,6 +1499,12 @@ function saveVesselCert_(u, p) {
     d.id = genId_();
     return Repo.insert('VesselCerts', d);
   });
+  if (!resubmit) return rec;
+  const v = withLock_(() => Repo.update('Vessels', vessel.id, { approval: 'Pending', approval_note: '', updated_at: nowIso_() }));
+  notify_('vessel_pending', 'Vessel pending approval｜船舶待核准',
+    [['Vessel｜船舶', v.name], ['Type｜船型', v.type], ['MMSI / IMO', [v.mmsi, v.imo].filter(Boolean).join(' / ')], ['Operator｜營運公司', v.operator],
+     ['Certificate｜證書', type.name], ['Submitted by｜送件人', u.name || u.username]]);
+  return Object.assign({}, rec, { vessel: v });
 }
 function deleteVesselCert_(id) {
   const c = Repo.get('VesselCerts', id);
