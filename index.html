@@ -1103,9 +1103,10 @@ function applyData(d) {
   if (S.user.must_change) { showAuth('authChange'); return; }
   enterApp();
 }
-// 背景自動同步：每 60 秒（分頁在前景時）或切回分頁時重新抓資料。
-// 只有純顯示的頁面會立即重畫；有表單的頁面只更新資料，避免打斷正在填寫的內容。
-const LIVE_EVERY = 60000, LIVE_PAGES = ['dashboard', 'pob', 'sitelog', 'ptw'];
+// 背景自動同步：每 3 秒問後端資料版本號，有人改過資料就重新抓；另外每 60 秒（分頁在前景時）或切回分頁時保底重抓一次。
+// 列表類頁面會立即重畫（搜尋／篩選條件保留）；有表單的頁面只更新資料，避免打斷正在填寫的內容。
+const LIVE_EVERY = 60000, REV_EVERY = 3000,
+  LIVE_PAGES = ['dashboard', 'pob', 'sitelog', 'ptw', 'personnel', 'vessels', 'locations', 'meetings', 'certificates'];
 let liveAt = Date.now(), liveBusy = false, kpiQuiet = false;
 async function liveSync() {
   if (!S || !TOKEN || liveBusy || document.hidden || modalStack.length) return;
@@ -1126,6 +1127,16 @@ async function liveSync() {
   finally { liveBusy = false; }
 }
 setInterval(() => { if (Date.now() - liveAt >= LIVE_EVERY) liveSync(); }, 10000);
+async function revCheck() {
+  try {
+    if (S && TOKEN && !document.hidden && !liveBusy && !modalStack.length) {
+      const r = await api('data.rev');
+      if (S && r && r.rev && r.rev !== S.rev) await liveSync();
+    }
+  } catch (e) { /* 等下一輪 */ }
+  setTimeout(revCheck, REV_EVERY);
+}
+setTimeout(revCheck, REV_EVERY);
 document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - liveAt > 15000) liveSync(); });
 function enterApp() {
   document.getElementById('auth').classList.add('hidden');

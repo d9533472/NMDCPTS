@@ -161,6 +161,7 @@ function handle_(req) {
     else if (!PUBLIC[action]) user = verifySession_(req.token);
     const before = deletedName_(action, payload);
     const data = fn(user, payload);
+    if (!NO_REV[action]) bumpRev_();
     audit_(action, user, payload, before ? { name: before } : data, true, '');
     if (LOGIN_ACTIONS[action]) loginLog_(payload, data, true, '');
     return { ok: true, data: data === undefined ? null : data };
@@ -175,7 +176,7 @@ function handle_(req) {
 }
 
 // ============ Audit log（操作紀錄：誰在何時做了什麼；只增不改，清空資料也保留） ============
-const AUDIT_SKIP = { 'ping': 1, 'auth.status': 1, 'data.load': 1, 'audit.list': 1, 'login.list': 1, 'visit.hit': 1, 'ext.vessels': 1 };
+const AUDIT_SKIP = { 'data.rev': 1, 'ping': 1, 'auth.status': 1, 'data.load': 1, 'audit.list': 1, 'login.list': 1, 'visit.hit': 1, 'ext.vessels': 1 };
 const AUDIT_SECRET = { password: 1, oldPassword: 1, newPassword: 1, code: 1, photo: 1, key: 1 };
 function auditDetail_(payload) {
   const o = {};
@@ -284,9 +285,30 @@ function visitHit_(p) {
   } finally { lock.releaseLock(); }
 }
 
+// ============ 資料版本號（前端每 3 秒問一次，有變才重新抓整包資料） ============
+// 任何成功的寫入動作都會換一個新版本號；放在 Cache（快）並備份在 Script Properties（Cache 過期時用）
+const NO_REV = { 'ping': 1, 'auth.status': 1, 'auth.login': 1, 'auth.logout': 1, 'auth.changePassword': 1, 'data.load': 1, 'data.rev': 1,
+  'audit.list': 1, 'login.list': 1, 'visit.hit': 1, 'file.get': 1, 'ext.vessels': 1 };
+function dataRev_() {
+  const cache = CacheService.getScriptCache();
+  let r = cache.get('data_rev');
+  if (!r) {
+    r = PropertiesService.getScriptProperties().getProperty('data_rev') || '0';
+    cache.put('data_rev', r, 21600);
+  }
+  return r;
+}
+function bumpRev_() {
+  try {
+    const r = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    CacheService.getScriptCache().put('data_rev', r, 21600);
+    PropertiesService.getScriptProperties().setProperty('data_rev', r);
+  } catch (e) { console.warn('rev bump failed: ' + e.message); }
+}
+
 function fail_(msg, code) { const e = new Error(msg); e.code = code || 'ERROR'; throw e; }
 
-const PUBLIC = { 'ping': true, 'auth.status': true, 'auth.setup': true, 'auth.login': true, 'visit.hit': true };
+const PUBLIC = { 'data.rev': true, 'ping': true, 'auth.status': true, 'auth.setup': true, 'auth.login': true, 'visit.hit': true };
 
 const ROUTES = {
   'ping': () => ({ version: VERSION, time: new Date().toISOString() }),
@@ -296,6 +318,7 @@ const ROUTES = {
   'auth.logout': (u, p) => authLogout_(u),
   'auth.changePassword': (u, p) => changePassword_(u, p),
   'data.load': (u) => loadData_(u),
+  'data.rev': () => ({ rev: dataRev_() }),
 
   'vessel.save': (u, p) => saveVessel_(u, p),
   'vessel.review': (u, p) => reviewRecord_(u, 'Vessels', p),
@@ -774,6 +797,7 @@ function saveSettings_(u, p) {
 
 // ============ Load ============
 function loadData_(u) {
+  const rev = dataRev_();   // 先取版本號再讀資料：讀取中若有人寫入，前端下一輪會再抓一次
   const personnelAll = Repo.all('Personnel');
   const personnel = isStaff_(u) ? personnelAll : personnelAll.filter(p => sameCompany_(p.company, u.company));
   const ids = {};
@@ -801,7 +825,8 @@ function loadData_(u) {
     people: isStaff_(u) ? personnelAll.map(p => ({ id: p.id, name: p.name, company: p.company, position: p.position })) : [],
     // 只有 Admin 看得到 Admin 帳號
     users: hasPerm_(u, 'users') ? Repo.all('Users').filter(x => u.role === 'admin' || x.role !== 'admin').map(publicUser_) : [],
-    visits: visitCount_()
+    visits: visitCount_(),
+    rev: rev
   };
 }
 function meetingVisible_(u, m, personnelAll) {
