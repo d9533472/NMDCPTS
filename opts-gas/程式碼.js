@@ -232,6 +232,7 @@ function auditList_(u, p) {
     const d = r.time.slice(0, 10);
     if (from && d < from) return false;
     if (to && d > to) return false;
+    if (u.role !== 'admin' && r.role === 'admin') return false;   // 只有 Admin 看得到 Admin 的操作紀錄
     if (who && r.username !== who) return false;
     if (act && r.action.indexOf(act) !== 0) return false;
     if (p.failedOnly && r.result !== 'FAILED') return false;
@@ -748,7 +749,8 @@ function loadData_(u) {
     }),
     // 會議勾選參與者用：Admin／MC 拿全部人員的精簡清單
     people: isStaff_(u) ? personnelAll.map(p => ({ id: p.id, name: p.name, company: p.company, position: p.position })) : [],
-    users: hasPerm_(u, 'users') ? Repo.all('Users').map(publicUser_) : []
+    // 只有 Admin 看得到 Admin 帳號
+    users: hasPerm_(u, 'users') ? Repo.all('Users').filter(x => u.role === 'admin' || x.role !== 'admin').map(publicUser_) : []
   };
 }
 function meetingVisible_(u, m, personnelAll) {

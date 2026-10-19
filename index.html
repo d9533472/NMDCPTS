@@ -2843,14 +2843,14 @@ function renderAdmin() {
   ({ users: adminUsers, companies: adminCompanies, vct: adminVct, pct: adminPct, ann: adminAnn, sys: adminSys }[adminTab])(el);
 }
 function adminUsers(el) {
-  const list = [...S.users].sort((a, b) => a.role.localeCompare(b.role) || a.username.localeCompare(b.username));
+  const list = S.users.filter(u => isAdmin() || u.role !== 'admin').sort((a, b) => a.role.localeCompare(b.role) || a.username.localeCompare(b.username));
   el.innerHTML = `<div class="section"><div class="section-header"><h3>User accounts</h3><button class="btn btn-green btn-sm" onclick="openUser()">+ Add user</button></div>
-    <div class="section-body note" style="margin:0;border-radius:0">${L('<b>Admin</b> = MC administrator (everything incl. accounts & settings) · <b>MC</b> = marine coordination operations (transfers, site log, approvals, vessels) · <b>Contractor</b> = can only add / edit personnel and certificates of their own company; everything else is read-only.',
-      '<b>管理員</b> = MC 管理者（全部功能，含帳號與系統設定）· <b>MC</b> = 海事協調作業（轉運、現場日誌、證照核准、船舶）· <b>承包商</b> = 只能新增／編輯自家公司的人員與證照，其餘皆唯讀。')}</div>
+    <div class="section-body note" style="margin:0;border-radius:0">${isAdmin() ? L('<b>Admin</b> = MC administrator (everything incl. accounts & settings) · ', '<b>管理員</b> = MC 管理者（全部功能，含帳號與系統設定）· ') : ''}${L('<b>MC</b> = marine coordination operations (transfers, site log, approvals, vessels) · <b>Contractor</b> = can only add / edit personnel and certificates of their own company; everything else is read-only.',
+      '<b>MC</b> = 海事協調作業（轉運、現場日誌、證照核准、船舶）· <b>承包商</b> = 只能新增／編輯自家公司的人員與證照，其餘皆唯讀。')}</div>
     <div class="table-wrap"><table><thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Company</th><th>Email</th><th>Status</th><th>Last login</th><th></th></tr></thead><tbody>${list.map(u => `<tr>
       <td class="mono">${esc(u.username)}</td><td>${esc(u.name)}</td><td><span class="b ${u.role === 'contractor' ? 'b-info' : 'b-navy'}">${ROLE_LABEL[u.role] || u.role}</span></td><td>${esc(u.company)}</td><td>${esc(u.email)}</td>
       <td>${u.active ? '<span class="b b-ok">Active</span>' : '<span class="b b-na">Disabled</span>'}${u.must_change ? ' <span class="b b-warn">Temp password</span>' : ''}</td><td class="hint">${fmtDT(u.last_login)}</td>
-      <td>${!isAdmin() && u.role === 'admin' ? '<span class="hint">' + L('Admin only', '僅 Admin 可修改') + '</span>' : `<div class="acts"><button class="btn btn-secondary btn-sm" onclick="openUser('${u.id}')">Edit</button><button class="btn btn-secondary btn-sm" onclick="resetUserPw('${u.id}')">Reset password</button>${u.id !== S.user.id ? `<button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">🗑</button>` : ''}</div>`}</td></tr>`).join('')}</tbody></table></div></div>`;
+      <td><div class="acts"><button class="btn btn-secondary btn-sm" onclick="openUser('${u.id}')">Edit</button><button class="btn btn-secondary btn-sm" onclick="resetUserPw('${u.id}')">Reset password</button>${u.id !== S.user.id ? `<button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">🗑</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div></div>`;
 }
 async function deleteUser(id) {
   const u = S.users.find(x => x.id === id);
