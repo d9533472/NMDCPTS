@@ -3292,13 +3292,14 @@ function adminPct(el) {
     <div class="section-body note" style="margin:0;border-radius:0">${L(`A person is <b>qualified</b> for transfer when they have at least one <b>approved, unexpired</b> certificate in each required category (set in the System tab: currently <b>${esc(requiredCats().join(', ') || 'none')}</b>). Types whose name starts with “Other” let the user type the certificate name.`,
       `人員在每個必備類別都至少有一張<b>已核准且未過期</b>的證照，才算<b>合格</b>可轉運（必備類別在「系統」分頁設定，目前為：<b>${esc(requiredCats().map(tz).join('、') || '無')}</b>）。名稱以「Other」開頭的類型，使用者可自行輸入證照名稱。`)}</div>
     <div class="table-wrap"><table><thead><tr><th>Certificate type</th><th>Category</th><th>Expiry required</th><th>Shown</th></tr></thead><tbody>${list.map(t => `<tr>
-      <td>${esc(t.name)}</td><td><select class="fi" onchange="setPct('${t.id}','category',this)">${cats.map(c => `<option value="${esc(c)}" ${c === t.category ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></td>
+      <td><input class="fi" value="${esc(t.name)}" title="${L('Edit the name, then press Enter or click elsewhere to save', '修改名稱後按 Enter 或點其他地方即儲存')}" style="width:100%;min-width:200px" onkeydown="if(event.key==='Enter')this.blur()" onchange="setPct('${t.id}','name',this)"></td><td><select class="fi" onchange="setPct('${t.id}','category',this)">${cats.map(c => `<option value="${esc(c)}" ${c === t.category ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></td>
       <td><label class="chk"><input type="checkbox" ${t.has_expiry === 'TRUE' ? 'checked' : ''} onchange="setPct('${t.id}','has_expiry',this)"></label></td>
       <td><label class="chk"><input type="checkbox" ${t.active !== 'FALSE' ? 'checked' : ''} onchange="setPct('${t.id}','active',this)"></label></td></tr>`).join('')}</tbody></table></div></div>`;
 }
 async function setPct(id, field, el) {
   el.disabled = true;
-  const val = el.type === 'checkbox' ? el.checked : el.value;
+  const val = el.type === 'checkbox' ? el.checked : el.value.trim();
+  if (field === 'name' && !val) { toast(L('Name cannot be empty', '名稱不可空白'), 'error'); el.disabled = false; renderAdmin(); return; }
   try { upsert(S.personCertTypes, await api('pcerttype.save', { id, [field]: val })); toast('Saved', 'success'); }
   catch (e) { toast(e.message, 'error'); renderAdmin(); }
   finally { el.disabled = false; }

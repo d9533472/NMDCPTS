@@ -864,6 +864,7 @@ function saveCertType_(sheet, p, fields) {
     d[f] = (f === 'mandatory' || f === 'active' || f === 'has_expiry') ? (bool_(p[f]) ? 'TRUE' : 'FALSE') : str_(p[f]);
   });
   return withLock_(() => {
+    if (p.id && d.name === '') fail_('Name is required');
     if (p.id) return Repo.update(sheet, p.id, d);
     if (!d.name) fail_('Name is required');
     d.id = genId_();
