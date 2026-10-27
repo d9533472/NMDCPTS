@@ -865,7 +865,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
             </div>
           </div>
           <div class="section-body note" style="margin:0;border-radius:0">Every action by every user is recorded automatically (sign in / out incl. failed attempts, adding users, approvals, transfers, uploads, deletions, setting changes…). Records are kept permanently and cannot be edited or deleted.</div>
-          <div class="table-wrap"><table><thead><tr><th>Time</th><th>User</th><th>Company</th><th>Action</th><th>Target</th><th>Details</th><th>Result</th></tr></thead><tbody id="auBody"></tbody></table></div>
+          <div class="table-wrap scroll-box"><table><thead><tr><th>Time</th><th>User</th><th>Company</th><th>Action</th><th>Target</th><th>Details</th><th>Result</th></tr></thead><tbody id="auBody"></tbody></table></div>
           <div class="section-body hint" id="auFoot"></div>
         </div>
       </div>
@@ -2865,11 +2865,11 @@ function renderAudit() {
   tb.innerHTML = AUDIT.rows.length ? AUDIT.rows.map(r => `<tr>
     <td class="mono nowrap">${fmtDT(r.time)}</td>
     <td class="nowrap"><strong>${esc(r.username || '—')}</strong>${r.name ? `<div class="hint">${esc(r.name)}</div>` : ''}</td>
-    <td>${esc(r.company)}${r.role ? `<div class="hint">${esc(ROLE_LABEL[r.role] || r.role)}</div>` : ''}</td>
-    <td><span class="b ${r.action.indexOf('delete') >= 0 || r.action === 'reset.confirm' ? 'b-bad' : r.action.indexOf('review') >= 0 ? 'b-warn' : r.action.indexOf('auth.') === 0 ? 'b-na' : 'b-info'}">${esc(auditLabel(r.action))}</span></td>
-    <td>${esc(r.target_name || '')}</td>
-    <td class="hint notr" style="max-width:380px;white-space:normal;word-break:break-word">${esc(auditDetailText(r.detail))}</td>
-    <td>${r.result === 'OK' ? '<span class="b b-ok">OK</span>' : `<span class="b b-bad" title="${esc(r.error)}">Failed</span><div class="hint">${esc(r.error)}</div>`}</td></tr>`).join('')
+    <td class="nowrap">${esc(r.company)}${r.role ? `<div class="hint">${esc(ROLE_LABEL[r.role] || r.role)}</div>` : ''}</td>
+    <td class="nowrap"><span class="b ${r.action.indexOf('delete') >= 0 || r.action === 'reset.confirm' ? 'b-bad' : r.action.indexOf('review') >= 0 ? 'b-warn' : r.action.indexOf('auth.') === 0 ? 'b-na' : 'b-info'}">${esc(auditLabel(r.action))}</span></td>
+    <td style="min-width:140px">${esc(r.target_name || '')}</td>
+    <td class="hint notr" style="min-width:420px;white-space:normal;overflow-wrap:anywhere">${esc(auditDetailText(r.detail))}</td>
+    <td style="min-width:90px">${r.result === 'OK' ? '<span class="b b-ok">OK</span>' : `<span class="b b-bad" title="${esc(r.error)}">Failed</span><div class="hint">${esc(r.error)}</div>`}</td></tr>`).join('')
     : `<tr class="empty"><td colspan="7">${L('No activity found', '沒有符合的紀錄')}</td></tr>`;
   document.getElementById('auFoot').textContent = AUDIT.total > AUDIT.rows.length
     ? L(`Showing latest ${AUDIT.rows.length} of ${AUDIT.total} records — narrow the filters to see older ones.`, `顯示最新 ${AUDIT.rows.length} 筆（共 ${AUDIT.total} 筆），請縮小篩選範圍查看更早的紀錄。`)
@@ -3136,7 +3136,7 @@ function adminLogins(el) {
         <button class="btn btn-secondary btn-sm" onclick="exportLoginsCSV()">⬇ CSV</button>
       </div></div>
     <div class="section-body note" style="margin:0;border-radius:0">${L('Every sign-in attempt with the IP address and device. The IP is looked up by the browser, so it may be blank (e.g. blocked by an ad blocker) and is for reference only.', '每次登入（含失敗）的 IP 與裝置。IP 由使用者瀏覽器查詢，可能空白（例如被廣告阻擋外掛擋掉），僅供參考。')}</div>
-    <div class="table-wrap"><table><thead><tr><th>Time</th><th>User</th><th>Company</th><th>IP</th><th>Device</th><th>Result</th></tr></thead><tbody id="lgBody"></tbody></table></div>
+    <div class="table-wrap scroll-box"><table><thead><tr><th>Time</th><th>User</th><th>Company</th><th>IP</th><th>Device</th><th>Result</th></tr></thead><tbody id="lgBody"></tbody></table></div>
     <div class="section-body hint" id="lgFoot"></div></div>`;
   loadLogins();
 }
