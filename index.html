@@ -1174,7 +1174,9 @@ const canAdminArea = () => MC_PERMS.some(p => can(p[0]));
 // audit（操作紀錄）、logins（登入紀錄／IP）不在 MC 可開放項目內，所以只有 Admin 看得到
 const ADMIN_TAB_PERM = { users: 'users', companies: 'companies', vct: 'vct', pct: 'pct', ann: 'ann', sys: 'basic', audit: 'admin', logins: 'admin' };
 // 人員編修權：Admin 全部；MC／承包商只限自家公司
-const canEditPerson = p => isAdmin() || (S && String(p.company || '').toLowerCase() === String(S.user.company || '').toLowerCase());
+const ownCompany = p => !!S && String(p.company || '').toLowerCase() === String(S.user.company || '').toLowerCase();
+const canEditPerson = p => isStaff() || ownCompany(p);      // Admin／MC 可編全部人員（含改公司）
+const canDeletePerson = p => isAdmin() || ownCompany(p);
 const isApproved = r => r.approval === 'Approved';
 function approvalBadge(r) {
   if (r.approval === 'Approved') return '<span class="b b-ok">Approved</span>';
@@ -1984,7 +1986,7 @@ function renderPersonnel() {
     <td>${catBadge(p, 'Medical')}</td>
     <td>${catBadge(p, CAT_SAFETY)}</td>
     <td class="nowrap">${esc(locName(p.current_location, true))}</td>
-    <td><div class="acts"><button class="btn btn-secondary btn-sm" onclick="openPersonnel('${p.id}')">Open</button>${canEditPerson(p) ? `<button class="btn btn-danger btn-sm" onclick="deletePersonnel('${p.id}')">🗑</button>` : ''}</div></td>
+    <td><div class="acts"><button class="btn btn-secondary btn-sm" onclick="openPersonnel('${p.id}')">Open</button>${canDeletePerson(p) ? `<button class="btn btn-danger btn-sm" onclick="deletePersonnel('${p.id}')">🗑</button>` : ''}</div></td>
   </tr>`).join('');
 }
 function exportPersonnelCSV() {
@@ -2004,7 +2006,7 @@ function openPersonnel(id) {
   const staff = isStaff();
   const editable = !id || canEditPerson(p);
   const companies = activeCompanies();
-  const companyField = isAdmin()
+  const companyField = staff
     ? `<select id="pm_company"><option value="">-- Select --</option>${companies.concat(p.company && companies.indexOf(p.company) < 0 ? [p.company] : []).map(c => `<option value="${esc(c)}" ${c === p.company ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>`
     : `<input id="pm_company" value="${esc(id ? p.company : S.user.company)}" readonly>`;
   // 承包商只能在新增人員時選初始位置，之後由 MC 轉運

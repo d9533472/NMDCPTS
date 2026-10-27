@@ -923,7 +923,7 @@ function savePersonnel_(u, p) {
     PERSON_FIELDS.forEach(f => { if (p[f] !== undefined) d[f] = str_(p[f]); });
     if (d.photo && d.photo.length > MAX_PHOTO_CHARS) fail_('Photo is too large');
     if (d.photo && d.photo.indexOf('data:image/') !== 0) d.photo = '';
-    if (u.role !== 'admin') d.company = u.company;      // 非 Admin 只能建／編自家公司的人
+    if (!isStaff_(u)) d.company = u.company;      // 承包商只能建／編自家公司的人；Admin／MC 可改人員所屬公司
     // 承包商只能在新增人員時選初始位置；之後位置只由 Admin／MC（轉運）變更
     if (!isStaff_(u) && p.id) delete d.current_location;
     if (d.current_location && !locationExists_(d.current_location)) fail_('Location not found');
@@ -931,7 +931,7 @@ function savePersonnel_(u, p) {
     if (p.id) {
       existing = Repo.get('Personnel', p.id);
       if (!existing) fail_('Record not found', 'NOT_FOUND');
-      if (u.role !== 'admin' && !sameCompany_(existing.company, u.company)) fail_('Permission denied', 'FORBIDDEN');
+      if (!isStaff_(u) && !sameCompany_(existing.company, u.company)) fail_('Permission denied', 'FORBIDDEN');
     }
     const merged = Object.assign({}, existing || {}, d);
     if (PERSON_REQUIRED.some(f => !str_(merged[f]))) fail_('All personnel fields are required');
@@ -970,16 +970,18 @@ function locationExists_(cid) {
   const m = /^(vessel|loc)_(.+)$/.exec(str_(cid));
   return !!m && !!Repo.get(m[1] === 'vessel' ? 'Vessels' : 'Locations', m[2]);
 }
-/** forEdit=true：Admin 可編全部；MC／承包商只能編自家公司。檢視：Admin／MC 全部，承包商自家公司 */
+/** 檢視與編輯同一規則：Admin／MC 全部，承包商只能自家公司（forEdit 參數保留給呼叫端標示用途） */
 function personFor_(u, personnelId, forEdit) {
   const p = Repo.get('Personnel', personnelId);
   if (!p) fail_('Personnel not found', 'NOT_FOUND');
-  const ok = forEdit ? (u.role === 'admin' || sameCompany_(p.company, u.company)) : (isStaff_(u) || sameCompany_(p.company, u.company));
+  const ok = isStaff_(u) || sameCompany_(p.company, u.company);
   if (!ok) fail_('Permission denied', 'FORBIDDEN');
   return p;
 }
 function deletePersonnel_(u, id) {
   const p = personFor_(u, id, true);
+  // 刪除人員維持原規則：Admin 全部，MC／承包商只能刪自家公司
+  if (u.role !== 'admin' && !sameCompany_(p.company, u.company)) fail_('Permission denied', 'FORBIDDEN');
   if (!isStaff_(u) && p.current_location) fail_('This person is currently assigned to a location — ask MC to transfer them out first');
   return withLock_(() => {
     Repo.all('PersonCerts').filter(c => c.personnel_id === id).forEach(c => trashFile_(c.file_id));
