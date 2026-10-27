@@ -80,6 +80,10 @@ a{color:var(--info)}
 
 /* ---------- Table ---------- */
 .table-wrap{overflow-x:auto}
+/* 大清單（人員／船舶）：容器自帶上下左右卷軸，表頭固定，不用捲到最底才能左右拉 */
+.table-wrap.scroll-box{overflow:auto;max-height:calc(100vh - var(--header-h) - 130px);min-height:260px}
+.table-wrap.scroll-box thead th{position:sticky;top:0;z-index:2}
+@media (max-width:768px){.table-wrap.scroll-box{max-height:none;min-height:0}}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{text-align:left;padding:9px 12px;background:#f7f9fb;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;border-bottom:1px solid var(--border)}
 td{padding:9px 12px;border-bottom:1px solid #edf1f5;vertical-align:middle}
@@ -727,7 +731,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
               <button class="btn btn-green btn-sm" onclick="openPersonnel()">+ Add Personnel</button>
             </div>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Name</th><th>Company</th><th>Position</th><th>Contact</th><th>Approval</th><th>Medical</th><th>Offshore Safety Training</th><th>Location</th><th></th></tr></thead><tbody id="pBody"></tbody></table></div>
+          <div class="table-wrap scroll-box"><table><thead><tr><th>Name</th><th>Company</th><th>Position</th><th>Contact</th><th>Approval</th><th>Medical</th><th>Offshore Safety Training</th><th>Location</th><th></th></tr></thead><tbody id="pBody"></tbody></table></div>
         </div>
       </div>
 
@@ -740,7 +744,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
               <button class="btn btn-green btn-sm" onclick="openVessel()">+ Add Vessel</button>
             </div>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Vessel</th><th>MMSI / IMO</th><th>Operator</th><th>Contact</th><th>Approval</th><th>Certificates</th><th>POB</th><th>PTW</th><th></th></tr></thead><tbody id="vBody"></tbody></table></div>
+          <div class="table-wrap scroll-box"><table><thead><tr><th>Vessel</th><th>MMSI / IMO</th><th>Operator</th><th>Contact</th><th>Approval</th><th>Certificates</th><th>POB</th><th>PTW</th><th></th></tr></thead><tbody id="vBody"></tbody></table></div>
         </div>
       </div>
 
