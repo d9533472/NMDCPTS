@@ -22,6 +22,10 @@ a{color:var(--info)}
 .mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px}
 .muted{color:var(--muted)}
 .hidden{display:none!important}
+/* 訪客（viewer）唯讀：隱藏新增／核准／刪除／儲存按鈕，表單欄位不能改（後端也會擋寫入） */
+body.viewer .btn-green,body.viewer .btn-danger,body.viewer .modal .btn-primary,body.viewer .modal .form-actions{display:none!important}
+body.viewer .modal-body :is(input,select,textarea){pointer-events:none;background:#f4f6f8}
+.ro-tag{display:inline-block;margin-left:6px;font-size:11px;font-weight:600;color:#8a5a00;background:#fff3d6;border:1px solid #f0d48a;padding:2px 8px;border-radius:10px;white-space:nowrap}
 
 /* ---------- Auth ---------- */
 .auth{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,var(--navy) 0 38%,var(--bg) 38%);z-index:500;padding:16px}
@@ -662,11 +666,11 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
       <div class="nav-title">Management</div>
       <div class="nav-item" data-page="personnel"><span class="ico">👷</span>Personnel</div>
       <div class="nav-item" data-page="vessels"><span class="ico">🚢</span>Vessels</div>
-      <div class="nav-item" data-page="locations" data-roles="admin,mc"><span class="ico">📍</span>Locations</div>
+      <div class="nav-item" data-page="locations" data-roles="admin,mc,viewer"><span class="ico">📍</span>Locations</div>
       <div class="nav-title">Operations</div>
       <div class="nav-item" data-page="transfer" data-roles="admin,mc"><span class="ico">🔄</span>Transfer</div>
       <div class="nav-item" data-page="sitelog"><span class="ico">📒</span>Site Log</div>
-      <div class="nav-item" data-page="pob" data-roles="admin,mc"><span class="ico">🧑‍🤝‍🧑</span>POB Viewer</div>
+      <div class="nav-item" data-page="pob" data-roles="admin,mc,viewer"><span class="ico">🧑‍🤝‍🧑</span>POB Viewer</div>
       <div class="nav-item" data-page="meetings"><span class="ico">🗂️</span>Meeting Minutes</div>
       <div class="nav-title">Safety</div>
       <div class="nav-item" data-page="certificates"><span class="ico">🪪</span>Certificates<span class="badge hidden" id="certBadge">0</span></div>
@@ -681,7 +685,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
     <header class="header">
       <div class="header-left">
         <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
-        <h2 id="pageTitle">Dashboard</h2>
+        <h2 id="pageTitle">Dashboard</h2><span class="ro-tag hidden" data-roles="viewer">👁 Read-only</span>
       </div>
       <div class="header-right">
         <span class="live notr" id="liveTag" title="Last synced"><i></i><span id="liveTime">LIVE</span></span>
@@ -691,7 +695,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
           <span>👤</span><span class="uname" id="ucName">—</span><span class="role" id="ucRole">—</span>
           <div class="user-menu hidden" id="userMenu">
             <div class="um-info" id="umInfo">—</div>
-            <div onclick="openChangePassword()">🔑 Change password</div>
+            <div onclick="openChangePassword()" data-roles="admin,mc,contractor">🔑 Change password</div>
             <div onclick="doLogout()">🚪 Sign out</div>
           </div>
         </div>
@@ -938,7 +942,9 @@ const ACTIVITIES = ['TRANSFER','INFO','ARRIVAL','DEPARTURE','STANDBY','WEATHER',
 const LOCATION_TYPES = ['WTG','Substation','Platform','Vessel','Port','Base','Warehouse','Other'];
 // 船型清單：系統設定可改（每行一個）；舊資料若是清單外的船型，編輯時仍會保留顯示
 function vesselTypes() { return String((S && S.settings && S.settings.vessel_types) || '').split('\n').map(x => x.trim()).filter(Boolean); }
-const ROLE_LABEL = { admin:'Admin', mc:'MC', contractor:'Contractor' };
+const ROLE_LABEL = { admin:'Admin', mc:'MC', contractor:'Contractor', viewer:'Guest' };
+// 訪客（唯讀）帳號只能打這些 action；其餘在前端就先擋（後端同樣會擋）
+const VIEWER_OK = { 'data.load': 1, 'data.rev': 1, 'file.get': 1, 'auth.logout': 1, 'visit.hit': 1, 'auth.login': 1, 'auth.status': 1 };
 const CAT_SAFETY = 'Offshore Safety Training';
 const SHORE_TYPES = ['Port', 'Base', 'Warehouse'];   // 不算「海上」的位置類型
 
@@ -966,6 +972,7 @@ const modalStack = [];
 
 // ==================== API ====================
 async function api(action, payload, retried) {
+  if (isViewer() && !VIEWER_OK[action]) throw new Error(L('Guest account is read-only', '訪客帳號僅供檢視，無法進行任何操作'));
   let res;
   try {
     res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -1152,6 +1159,7 @@ function enterApp() {
   document.getElementById('userChip').title = u.name || u.username;
   renderSideFoot();
   document.querySelectorAll('[data-roles]').forEach(el => el.classList.toggle('hidden', el.dataset.roles.split(',').indexOf(u.role) < 0));
+  document.body.classList.toggle('viewer', u.role === 'viewer');
   document.querySelector('.nav-item[data-page="admin"]').classList.toggle('hidden', !canAdminArea());
   const pageEl = document.querySelector(`.nav-item[data-page="${currentPage}"]`);
   if (!pageEl || pageEl.classList.contains('hidden')) currentPage = 'dashboard';
@@ -1167,8 +1175,9 @@ function renderSideFoot() {
 }
 const isStaff = () => S && (S.user.role === 'admin' || S.user.role === 'mc');
 const isAdmin = () => S && S.user.role === 'admin';
-// 承包商可新增／修改自家公司登錄的船舶；Admin／MC 可改全部
-const canEditVessel = x => isStaff() || !x || !x.id || (!!x.company && String(x.company).toLowerCase() === String(S.user.company || '').toLowerCase());
+const isViewer = () => !!S && S.user.role === 'viewer';
+// 承包商可新增／修改自家公司登錄的船舶；Admin／MC 可改全部；訪客一律不行
+const canEditVessel = x => !isViewer() && (isStaff() || !x || !x.id || (!!x.company && String(x.company).toLowerCase() === String(S.user.company || '').toLowerCase()));
 // MC 可用的系統管理項目（Admin 在 系統設定 → MC 權限 勾選）
 const MC_PERMS = [['users', 'User accounts (contractor / MC only)', '使用者帳號（僅限承包商／MC 帳號）'], ['companies', 'Companies', '公司'],
   ['vct', 'Vessel certificate requirements', '船舶證書要求'], ['pct', 'Personnel certificate types', '人員證照類型'], ['ann', 'Announcements', '公告'],
@@ -1179,8 +1188,8 @@ const canAdminArea = () => MC_PERMS.some(p => can(p[0]));
 const ADMIN_TAB_PERM = { users: 'users', companies: 'companies', vct: 'vct', pct: 'pct', ann: 'ann', sys: 'basic', audit: 'admin', logins: 'admin' };
 // 人員編修權：Admin 全部；MC／承包商只限自家公司
 const ownCompany = p => !!S && String(p.company || '').toLowerCase() === String(S.user.company || '').toLowerCase();
-const canEditPerson = p => isStaff() || ownCompany(p);      // Admin／MC 可編全部人員（含改公司）
-const canDeletePerson = p => isAdmin() || ownCompany(p);
+const canEditPerson = p => !isViewer() && (isStaff() || ownCompany(p));      // Admin／MC 可編全部人員（含改公司）
+const canDeletePerson = p => !isViewer() && (isAdmin() || ownCompany(p));
 const isApproved = r => r.approval === 'Approved';
 function approvalBadge(r) {
   if (r.approval === 'Approved') return '<span class="b b-ok">Approved</span>';
@@ -3209,8 +3218,8 @@ function openUser(id) {
       <span class="hint">${L('Not in the list? Add it under the Companies tab first.', '清單沒有？請先到「公司」分頁新增。')}</span></div>
     ${isAdmin() ? `<div class="form-group"><label>&nbsp;</label><label class="chk"><input type="checkbox" id="um_admin" ${u.role === 'admin' ? 'checked' : ''} onchange="document.getElementById('um_role').disabled=this.checked"> ${L('System administrator (Admin)', '系統管理員（Admin）')}</label>
       <span class="hint">${L('Admin can do everything for all companies, approve personnel / vessels and manage accounts.', 'Admin 可操作所有公司的全部功能、核准人員與船舶、管理帳號。')}</span></div>` : ''}
-    <div class="form-group"><label>${isAdmin() ? 'Role (non-Admin)' : 'Role'}</label><select id="um_role" ${u.role === 'admin' ? 'disabled' : ''}>${['contractor','mc'].map(r => `<option value="${r}" ${r === u.role ? 'selected' : ''}>${ROLE_LABEL[r]}</option>`).join('')}</select>
-      <span class="hint">${L('MC: transfers, site log, meetings, certificate approval · Contractor: own company only. Both can only edit personnel of their own company.', 'MC：轉運、現場日誌、會議、證照核准 · 承包商：只限自家公司。兩者都只能編修自己公司的人員。')}</span></div>
+    <div class="form-group"><label>${isAdmin() ? 'Role (non-Admin)' : 'Role'}</label><select id="um_role" ${u.role === 'admin' ? 'disabled' : ''}>${['contractor','mc','viewer'].map(r => `<option value="${r}" ${r === u.role ? 'selected' : ''}>${ROLE_LABEL[r]}</option>`).join('')}</select>
+      <span class="hint">${L('MC: transfers, site log, meetings, certificate approval · Contractor: own company only. Both can only edit personnel of their own company. · Guest: view everything (all companies), cannot change anything or its own password.', 'MC：轉運、現場日誌、會議、證照核准 · 承包商：只限自家公司。兩者都只能編修自己公司的人員。 · 訪客：可檢視全部（所有公司），不能做任何修改，也不能改自己的密碼。')}</span></div>
     ${id ? '' : '<div class="form-group"><label>Temporary password * (min 6)</label><input id="um_pw" value="' + Math.random().toString(36).slice(2, 10) + '"></div>'}
     <div class="form-group"><label>&nbsp;</label><label class="chk"><input type="checkbox" id="um_active" ${u.active ? 'checked' : ''}> Account active</label></div>
     ${id ? '' : '<div class="note full">Give the username and temporary password to the user. They must set a new password on first sign-in.</div>'}
@@ -3541,7 +3550,7 @@ const ZH = {
   'Overdue (not closed)': '逾期（未關閉）', 'Overdue — not closed': '逾期 — 未關閉', 'Expires today': '今日到期', 'Active': '啟用',
   // Admin
   'Users': '使用者', 'Companies': '公司', 'Vessel Certificate Requirements': '船舶證書要求', 'Personnel Certificate Types': '人員證照類型',
-  'User accounts': '使用者帳號', 'Add user': '新增使用者', 'Admin': '管理員', 'Contractor': '承包商', 'Role': '角色', 'Role *': '角色 *',
+  'User accounts': '使用者帳號', 'Add user': '新增使用者', 'Admin': '管理員', 'Contractor': '承包商', 'Guest': '訪客', '👁 Read-only': '👁 唯讀', 'Role': '角色', 'Role *': '角色 *',
   'Last login': '最後登入', 'Disabled': '已停用', 'Temp password': '臨時密碼', 'Reset password': '重設密碼', 'Edit user': '編輯使用者',
   'Username *': '帳號 *', 'Company * (contractors)': '公司 *（承包商必填）', 'Temporary password * (min 6)': '臨時密碼 *（至少 6 碼）', 'Account active': '帳號啟用',
   'Give the username and temporary password to the user. They must set a new password on first sign-in.': '請將帳號與臨時密碼交給使用者，對方首次登入時須設定新密碼。',

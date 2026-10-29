@@ -10,7 +10,7 @@
 // 通知信：Settings.notify_emails（共用收件者）＋ notify_events（啟用的事件）；每日到期提醒由 setup() 建立的觸發器執行。
 // ============================================================
 
-const VERSION = '2.8';
+const VERSION = '2.9';
 const CAT_SAFETY = 'Offshore Safety Training';   // 原 'Sea Survival'（2.1 改名，ensureSchema_ 會遷移舊資料）
 
 const SCHEMAS = {
@@ -125,7 +125,9 @@ const PERSON_CERT_SEED = [
   ['HUET / CA-EBS','Training'],['GWO Working at Heights','Training'],['H2S Awareness','Training'],['Other Certificate','Other']
 ];
 
-const ROLES = ['admin','mc','contractor'];
+const ROLES = ['admin','mc','contractor','viewer'];
+// viewer（訪客／唯讀）：看得到 Admin／MC 看得到的作業資料（不含帳號與系統管理），任何寫入一律擋掉；也不能改密碼（共用帳號）
+const VIEWER_OK = { 'data.load': 1, 'data.rev': 1, 'file.get': 1, 'auth.logout': 1 };
 const SESSION_DAYS = 7;
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_PHOTO_CHARS = 45000;
@@ -159,6 +161,7 @@ function handle_(req) {
     ensureSchema_();
     if (EXT_ACTIONS[action]) user = verifyLinkKey_(payload.key);
     else if (!PUBLIC[action]) user = verifySession_(req.token);
+    if (user && user.role === 'viewer' && !VIEWER_OK[action]) fail_('Guest account is read-only', 'FORBIDDEN');
     const before = deletedName_(action, payload);
     const data = fn(user, payload);
     if (!NO_REV[action]) bumpRev_();
@@ -572,6 +575,7 @@ function requireRole_(u, roles) {
   if (!u || roles.indexOf(u.role) < 0) fail_('Permission denied', 'FORBIDDEN');
 }
 function isStaff_(u) { return u && (u.role === 'admin' || u.role === 'mc'); }
+function seesAll_(u) { return isStaff_(u) || (u && u.role === 'viewer'); }   // 只用在「看」：viewer 的寫入在 handle_ 就擋掉了
 function sameCompany_(a, b) { return str_(a).toLowerCase() === str_(b).toLowerCase(); }
 
 // ============ Auth ============
@@ -584,7 +588,7 @@ function hash_(password, salt) {
 }
 function publicUser_(u) {
   return { id: u.id, username: u.username, name: u.name, email: u.email, role: u.role, company: u.company,
-    active: bool_(u.active), must_change: bool_(u.must_change), last_login: u.last_login };
+    active: bool_(u.active), must_change: u.role !== 'viewer' && bool_(u.must_change), last_login: u.last_login };
 }
 function checkPassword_(pw) {
   if (str_(pw).length < 6) fail_('Password must be at least 6 characters', 'WEAK_PASSWORD');
@@ -641,7 +645,8 @@ function authLogin_(p) {
   Repo.update('Users', u.id, { last_login: nowIso_() });
   const token = newSession_(u);
   // 登入同時回傳資料，前端不用再多打一次 data.load（過期 session 改由每日排程清理）
-  return { token: token, user: publicUser_(u), data: bool_(u.must_change) ? null : loadData_(u) };
+  const pu = publicUser_(u);
+  return { token: token, user: pu, data: pu.must_change ? null : loadData_(u) };
 }
 function authLogout_(u) {
   CacheService.getScriptCache().remove('s_' + u.token);
@@ -695,7 +700,7 @@ function saveUser_(u, p) {
   return Object.assign(publicUser_(saved), { mail: sendWelcome_(saved, p.password) });
 }
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-const ROLE_NAME_ = { admin: ['Administrator', '系統管理員'], mc: ['Marine Coordinator (MC)', '海事協調員（MC）'], contractor: ['Contractor', '承包商'] };
+const ROLE_NAME_ = { admin: ['Administrator', '系統管理員'], mc: ['Marine Coordinator (MC)', '海事協調員（MC）'], contractor: ['Contractor', '承包商'], viewer: ['Guest (read-only)', '訪客（唯讀）'] };
 function sendWelcome_(user, password) {
   try {
     const st = settings_();
@@ -799,7 +804,7 @@ function saveSettings_(u, p) {
 function loadData_(u) {
   const rev = dataRev_();   // 先取版本號再讀資料：讀取中若有人寫入，前端下一輪會再抓一次
   const personnelAll = Repo.all('Personnel');
-  const personnel = isStaff_(u) ? personnelAll : personnelAll.filter(p => sameCompany_(p.company, u.company));
+  const personnel = seesAll_(u) ? personnelAll : personnelAll.filter(p => sameCompany_(p.company, u.company));
   const ids = {};
   personnel.forEach(p => { ids[p.id] = true; });
   return {
@@ -809,7 +814,7 @@ function loadData_(u) {
     vessels: Repo.all('Vessels'),
     locations: Repo.all('Locations'),
     personnel: personnel,
-    transfers: Repo.all('Transfers').filter(t => isStaff_(u) || ids[t.personnel_id]),
+    transfers: Repo.all('Transfers').filter(t => seesAll_(u) || ids[t.personnel_id]),
     siteLog: Repo.all('SiteLog'),
     announcements: Repo.all('Announcements').filter(a => hasPerm_(u, 'ann') || a.active !== 'FALSE'),
     vesselCertTypes: Repo.all('VesselCertTypes'),
@@ -822,7 +827,7 @@ function loadData_(u) {
       return m;
     }),
     // 會議勾選參與者用：Admin／MC 拿全部人員的精簡清單
-    people: isStaff_(u) ? personnelAll.map(p => ({ id: p.id, name: p.name, company: p.company, position: p.position })) : [],
+    people: seesAll_(u) ? personnelAll.map(p => ({ id: p.id, name: p.name, company: p.company, position: p.position })) : [],
     // 只有 Admin 看得到 Admin 帳號
     users: hasPerm_(u, 'users') ? Repo.all('Users').filter(x => u.role === 'admin' || x.role !== 'admin').map(publicUser_) : [],
     visits: visitCount_(),
@@ -830,7 +835,7 @@ function loadData_(u) {
   };
 }
 function meetingVisible_(u, m, personnelAll) {
-  if (isStaff_(u)) return true;
+  if (seesAll_(u)) return true;
   let att = [], ext = [];
   try { att = JSON.parse(m.attendees || '[]'); } catch (e) {}
   try { ext = JSON.parse(m.externals || '[]'); } catch (e) {}
@@ -974,7 +979,7 @@ function locationExists_(cid) {
 function personFor_(u, personnelId, forEdit) {
   const p = Repo.get('Personnel', personnelId);
   if (!p) fail_('Personnel not found', 'NOT_FOUND');
-  const ok = isStaff_(u) || sameCompany_(p.company, u.company);
+  const ok = seesAll_(u) || sameCompany_(p.company, u.company);
   if (!ok) fail_('Permission denied', 'FORBIDDEN');
   return p;
 }
