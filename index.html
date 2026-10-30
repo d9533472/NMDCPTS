@@ -2276,7 +2276,7 @@ function renderVessels() {
     const od = ptws.filter(p => PTW.data.overdue.indexOf(p) >= 0).length;
     return `<tr>
     <td><strong>${esc(x.name)}</strong><div class="hint">${esc(x.type || '')}${x.flag ? ' · ' + esc(x.flag) : ''}</div></td>
-    <td class="mono">${esc(x.mmsi || '—')}<br>${esc(x.imo || '')}${mtVesselUrl(x.mmsi) ? `<div><a class="notr" href="${mtVesselUrl(x.mmsi)}" target="_blank" rel="noopener" title="${L('Live position on MarineTraffic', '在 MarineTraffic 看即時船位')}">🌐 MarineTraffic ↗</a></div>` : ''}</td>
+    <td class="mono">${esc(x.mmsi || '—')}<br>${esc(x.imo || '')}${mtVesselUrl(x.mmsi) ? `<div><a class="notr" href="${mtVesselUrl(x.mmsi)}" target="_blank" rel="noopener" title="${L('Live position on VesselFinder', '在 VesselFinder 看即時船位')}">🌐 VesselFinder ↗</a></div>` : ''}</td>
     <td>${esc(x.operator || '—')}${x.contact_person ? `<div class="hint">${esc(x.contact_person)}</div>` : ''}</td>
     <td class="contact">${contactHtml(x)}</td>
     <td>${approvalBadge(x)}</td>
@@ -2286,10 +2286,11 @@ function renderVessels() {
     <td><div class="acts"><button class="btn btn-secondary btn-sm" onclick="openVessel('${x.id}')">Open</button>${isStaff() ? `<button class="btn btn-danger btn-sm" onclick="deleteVessel('${x.id}')">🗑</button>` : ''}</div></td></tr>`;
   }).join('');
 }
-/** MarineTraffic 連結：單船依 MMSI（9 碼）開船位頁；工區附近船舶以天氣座標點中心開地圖（未設定時預設台灣海峽中部） */
+/** 單船依 MMSI（9 碼）開 VesselFinder 船位頁（MarineTraffic 已不支援只帶 MMSI 的連結）；
+ *  工區附近船舶以天氣座標點中心開 MarineTraffic 地圖（未設定時預設台灣海峽中部） */
 function mtVesselUrl(mmsi) {
   const m = String(mmsi || '').replace(/\D/g, '');
-  return m.length === 9 ? 'https://www.marinetraffic.com/en/ais/details/ships/mmsi:' + m : '';
+  return m.length === 9 ? 'https://www.vesselfinder.com/vessels/details/' + m : '';
 }
 function mtSiteUrl() {
   const pts = wxPoints();
