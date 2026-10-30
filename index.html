@@ -259,6 +259,15 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
 .dash-top{display:flex;gap:14px;align-items:stretch;margin-bottom:18px}
 .dash-top>div{flex:1 1 0;min-width:0;display:flex;flex-direction:column}
 .dash-top>div:empty{display:none}
+/* 儀表板最上方：已核准船舶 + VesselFinder 船位連結 */
+.vpos{margin-bottom:14px}
+.vpos-title{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#5b6b7a);margin:0 0 8px 2px}
+.vpos-row{display:flex;flex-wrap:wrap;gap:10px}
+.vpos-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:9px 14px;min-width:170px;box-shadow:0 1px 2px rgba(0,32,56,.04)}
+.vpos-name{font-weight:700;color:#002038;margin-bottom:3px}
+.vpos-card a{font-size:13px;font-weight:600;text-decoration:none}
+.vpos-card a:hover{text-decoration:underline}
+.vpos-none{font-size:12px;color:#b26a00}
 .dash-left{gap:14px}
 .dash-left>#dashAnnounce:empty{display:none}
 .dash-left .kpi-grid{grid-template-columns:1fr;margin-bottom:0;gap:14px;flex:1}
@@ -705,6 +714,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
     <div class="content">
       <!-- DASHBOARD -->
       <div class="page" id="page-dashboard">
+        <div id="dashVesselPos"></div>
         <div class="dash-top">
           <div class="dash-left"><div id="dashAnnounce"></div><div class="kpi-grid" id="dashStats"></div></div>
           <div id="dashWeather"></div>
@@ -1588,6 +1598,16 @@ function renderDashboard() {
   ];
   document.getElementById('dashStats').innerHTML = groups.map(g => `<div class="kpi-group ${g.cls}"><div class="kpi-group-title">${esc(g.title)}</div>
     <div class="kpi-row" style="--n:${g.cards.length}">${g.cards.map(kpiCard).join('')}</div></div>`).join('');
+  // 最上方：已核准船舶船位（VesselFinder）；未填或非 9 碼 MMSI 照列但標示
+  const vApproved = S.vessels.filter(isApproved).sort((a, b) => a.name.localeCompare(b.name));
+  document.getElementById('dashVesselPos').innerHTML = vApproved.length ? `<div class="vpos">
+    <div class="vpos-title">🚢 ${L('Vessel Positions', '船舶位置')}</div>
+    <div class="vpos-row">${vApproved.map(x => {
+      const url = mtVesselUrl(x.mmsi);
+      return `<div class="vpos-card"><div class="vpos-name notr">${esc(x.name)}</div>${url
+        ? `<a href="${url}" target="_blank" rel="noopener" title="VesselFinder · MMSI ${esc(x.mmsi)}">🌍 Where am I ↗</a>`
+        : `<span class="vpos-none">⚠ ${L('No MMSI', '未填 MMSI')}</span>`}</div>`;
+    }).join('')}</div></div>` : '';
   renderWeather();
   renderAnnouncements();
   renderDashPending();
