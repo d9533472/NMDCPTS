@@ -745,6 +745,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
           <div class="section-header"><h3>Vessels</h3>
             <div class="toolbar">
               <div class="search"><span>🔍</span><input id="vSearch" placeholder="Name, MMSI, IMO…" oninput="renderVessels()"></div>
+              <a class="btn btn-secondary btn-sm" id="vSiteShips" href="#" target="_blank" rel="noopener" onclick="this.href=mtSiteUrl()"><span>🗺</span> Ships near site</a>
               <button class="btn btn-green btn-sm" onclick="openVessel()">+ Add Vessel</button>
             </div>
           </div>
@@ -2275,7 +2276,7 @@ function renderVessels() {
     const od = ptws.filter(p => PTW.data.overdue.indexOf(p) >= 0).length;
     return `<tr>
     <td><strong>${esc(x.name)}</strong><div class="hint">${esc(x.type || '')}${x.flag ? ' · ' + esc(x.flag) : ''}</div></td>
-    <td class="mono">${esc(x.mmsi || '—')}<br>${esc(x.imo || '')}</td>
+    <td class="mono">${esc(x.mmsi || '—')}<br>${esc(x.imo || '')}${mtVesselUrl(x.mmsi) ? `<div><a class="notr" href="${mtVesselUrl(x.mmsi)}" target="_blank" rel="noopener" title="${L('Live position on MarineTraffic', '在 MarineTraffic 看即時船位')}">🌐 MarineTraffic ↗</a></div>` : ''}</td>
     <td>${esc(x.operator || '—')}${x.contact_person ? `<div class="hint">${esc(x.contact_person)}</div>` : ''}</td>
     <td class="contact">${contactHtml(x)}</td>
     <td>${approvalBadge(x)}</td>
@@ -2284,6 +2285,17 @@ function renderVessels() {
     <td>${PTW.data ? (ptws.length ? `<span class="b ${od ? 'b-bad' : 'b-ok'}">${ptws.length} open${od ? ' · ' + od + ' overdue' : ''}</span>` : '<span class="muted">—</span>') : '<span class="muted">…</span>'}</td>
     <td><div class="acts"><button class="btn btn-secondary btn-sm" onclick="openVessel('${x.id}')">Open</button>${isStaff() ? `<button class="btn btn-danger btn-sm" onclick="deleteVessel('${x.id}')">🗑</button>` : ''}</div></td></tr>`;
   }).join('');
+}
+/** MarineTraffic 連結：單船依 MMSI（9 碼）開船位頁；工區附近船舶以天氣座標點中心開地圖（未設定時預設台灣海峽中部） */
+function mtVesselUrl(mmsi) {
+  const m = String(mmsi || '').replace(/\D/g, '');
+  return m.length === 9 ? 'https://www.marinetraffic.com/en/ais/details/ships/mmsi:' + m : '';
+}
+function mtSiteUrl() {
+  const pts = wxPoints();
+  const lat = pts.length ? pts.reduce((a, p) => a + p.lat, 0) / pts.length : 24.4;
+  const lon = pts.length ? pts.reduce((a, p) => a + p.lon, 0) / pts.length : 120.4;
+  return 'https://www.marinetraffic.com/en/ais/home/centerx:' + lon.toFixed(3) + '/centery:' + lat.toFixed(3) + '/zoom:' + (pts.length ? 11 : 9);
 }
 function waLink(num) { return 'https://wa.me/' + String(num).replace(/[^0-9]/g, ''); }
 function contactHtml(x) {
@@ -3499,7 +3511,7 @@ const ZH = {
   'Certificate deleted': '證照已刪除', 'Reject certificate': '退件', 'Reason (sent back to the contractor)': '退件原因（會回傳給承包商）',
   'A reason is required to reject': '退件必須填寫原因',
   // Vessels
-  'Add Vessel': '新增船舶', 'Vessel': '船舶', 'Operator': '營運公司',
+  'Add Vessel': '新增船舶', 'Ships near site': '工區附近船舶', 'Vessel': '船舶', 'Operator': '營運公司',
   'Name, MMSI, IMO…': '船名、MMSI、IMO…', 'No vessels found': '查無船舶', 'Compliant': '符合', 'Details & Contact': '基本資料與聯絡',
   'Vessel name *': '船名 *', 'Vessel type': '船型', 'IMO No': 'IMO 編號', 'Flag': '船籍', 'Operator / Owner': '營運公司／船東',
   'Master / contact person': '船長／聯絡人', 'Contact phone': '聯絡電話', 'Save vessel': '儲存船舶',
