@@ -218,6 +218,16 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
 .wxc-legend span{display:inline-flex;align-items:center;gap:4px}.wxc-legend i{width:10px;height:10px;border-radius:50%}
 .wxc-legend i.ok{background:#0a8a43}.wxc-legend i.warn{background:#d98a00}.wxc-legend i.bad{background:#c62828}
 .wxc-foot{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;padding:10px 14px}
+.wxs{display:flex;align-items:center;gap:10px;padding:10px 14px 0}
+.wxs-play{flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:0;background:var(--navy);color:#fff;font-size:14px;cursor:pointer}
+.wxs-body{flex:1;min-width:0;position:relative}
+.wxs-now{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:2px;display:flex;gap:8px;align-items:baseline}
+.wxs-now small{font-weight:400;color:var(--text-2,#5b6b7d)}
+.wxs-strip{display:flex;height:6px;border-radius:3px;overflow:hidden;margin:0 7px}
+.wxs-strip i{flex:1}.wxs-strip i.ok{background:#0a8a43}.wxs-strip i.warn{background:#d98a00}.wxs-strip i.bad{background:#c62828}.wxs-strip i.na{background:#cfd8e0}
+.wxs input[type=range]{width:100%;margin:4px 0 0;accent-color:var(--navy);cursor:pointer;height:22px}
+.wxs-days{position:relative;height:16px;font-size:11px;color:#5b6b7d;margin:0 7px}
+.wxs-days span{position:absolute;top:0;white-space:nowrap;border-left:1px solid #b9c6d2;padding-left:3px}
 .wxc-hint{font-size:12px;color:var(--muted)}
 .wx-tabs{display:inline-flex;flex-wrap:wrap;background:var(--bg);border-radius:10px;padding:3px;gap:3px}
 .wx-tabs button{border:0;border-radius:8px;padding:8px 14px;font:inherit;font-size:13px;background:transparent;color:var(--text);cursor:pointer;min-height:36px}
@@ -1734,8 +1744,89 @@ let L_ = window.LEAFLET || null;   // Leaflet（window.L 會跟翻譯函式 L() 
 function wxPin(hs, c) {
   return L_.divIcon({ className: '', iconSize: null, html: `<div class="wx-pin ${wxTone(hs, c)}">${wxNum(hs, 1)}</div>` });
 }
+// ---- 時間軸（像 Windy 一樣逐小時拖曳）：WX.hour 有值時，地圖數字＝該小時浪高；按上方時段按鈕回到「時段最大值」 ----
+/** 共用時間軸：從現在這一小時到預報結束 */
+function wxTimeline() {
+  const d = WX.data && WX.data[0];
+  if (!d) return [];
+  const mt = d.m.time.length ? d.m.time : d.f.time, now = Date.now() / 1000;
+  let i0 = 0; for (let k = 0; k < mt.length; k++) if (mt[k] <= now) i0 = k;
+  return mt.slice(i0);
+}
+/** 某點在某時刻的浪高／風速 */
+function wxAt(d, t) {
+  const mk = d.m.time.indexOf(t), fk = d.f.time.indexOf(t);
+  const g = (arr, k) => (k < 0 || arr[k] === undefined) ? null : arr[k];
+  return { hs: g(d.m.wave_height, mk), wind: g(d.f.wind_speed_10m, fk) };
+}
+function wxHourLab(t) {
+  const s = wxLocal(t), wd = new Date(s.slice(0, 10) + 'T00:00:00Z').getUTCDay();
+  return (LANG === 'zh' ? '週' + '日一二三四五六'[wd] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][wd]) + ' ' + s.slice(5, 10).replace('-', '/') + ' ' + s.slice(11, 16);
+}
+function wxSetHour(k) {
+  const tl = wxTimeline();
+  if (!tl.length) return;
+  WX.hour = tl[Math.max(0, Math.min(tl.length - 1, k))];
+  renderWeather();
+}
+function wxPlay() {
+  if (WX.timer) { clearInterval(WX.timer); WX.timer = null; renderWeather(); return; }
+  const tl = wxTimeline();
+  if (!tl.length) return;
+  let k = WX.hour ? tl.indexOf(WX.hour) : -1;
+  if (k < 0 || k >= tl.length - 1) k = -1;
+  const step = () => {
+    k++;
+    if (k >= tl.length || !document.getElementById('wxSlider')) { clearInterval(WX.timer); WX.timer = null; renderWeather(); return; }
+    WX.hour = tl[k]; renderWeather();
+  };
+  WX.timer = setInterval(step, 700);
+  step();
+}
+function wxRenderSlider(c) {
+  const box = document.getElementById('wxSlider');
+  if (!box) return;
+  const tl = wxTimeline();
+  if (!tl.length) { box.innerHTML = ''; return; }
+  const key = tl[0] + '|' + tl.length + '|' + c.key + '|' + LANG;
+  if (box.dataset.key !== key) {
+    // 色帶：每小時全線最差的狀況（浪高或風速任一超標即紅）
+    const strip = tl.map(t => {
+      let tone = 'na';
+      WX.data.forEach(d => {
+        const a = wxAt(d, t);
+        const r = (a.hs !== null && a.hs >= c.wave) || (a.wind !== null && a.wind >= c.wind) ? 'bad'
+          : (a.hs !== null && a.hs >= c.wave * 0.8) ? 'warn' : (a.hs !== null || a.wind !== null) ? 'ok' : 'na';
+        const rank = { na: 0, ok: 1, warn: 2, bad: 3 };
+        if (rank[r] > rank[tone]) tone = r;
+      });
+      return `<i class="${tone}" title="${esc(wxHourLab(t))}"></i>`;
+    }).join('');
+    const days = tl.map((t, k) => (k && wxLocal(t).slice(11, 13) === '00') || !k
+      ? `<span style="left:${(k / Math.max(1, tl.length - 1) * 100).toFixed(2)}%">${esc(wxHourLab(t).replace(/ \d\d:\d\d$/, ''))}</span>` : '').join('');
+    box.innerHTML = `<button type="button" class="wxs-play" id="wxPlayBtn" onclick="wxPlay()"></button>
+      <div class="wxs-body"><div class="wxs-now"><span id="wxHourLab"></span><small id="wxHourSub"></small></div>
+        <div class="wxs-strip">${strip}</div>
+        <input type="range" id="wxRange" min="0" max="${tl.length - 1}" step="1" aria-label="${L('Forecast hour', '預報時間')}">
+        <div class="wxs-days">${days}</div></div>`;
+    box.dataset.key = key;
+    const r = document.getElementById('wxRange');
+    r.oninput = () => { if (WX.timer) { clearInterval(WX.timer); WX.timer = null; } wxSetHour(+r.value); };
+  }
+  const k = WX.hour ? tl.indexOf(WX.hour) : -1;
+  if (WX.hour && k < 0) WX.hour = null;   // 時間已過（資料更新後）就回到時段模式
+  const r = document.getElementById('wxRange');
+  if (document.activeElement !== r || WX.timer) r.value = Math.max(0, k);
+  r.classList.toggle('idle', k < 0);
+  document.getElementById('wxPlayBtn').textContent = WX.timer ? '❚❚' : '▶';
+  document.getElementById('wxPlayBtn').title = WX.timer ? L('Pause', '暫停') : L('Play hour by hour', '逐時播放');
+  document.getElementById('wxHourLab').textContent = k < 0 ? L('Drag to see each hour', '拖曳時間軸看逐時浪高') : wxHourLab(WX.hour);
+  document.getElementById('wxHourSub').textContent = k < 0 ? '' : L('· tap a period button to go back to max values', '· 按下方時段按鈕可回到最大值');
+}
 function wxSetWin(w) {
   WX.win = w;
+  WX.hour = null;
+  if (WX.timer) { clearInterval(WX.timer); WX.timer = null; }
   renderWeather();
   if (document.getElementById('wxModal')) wxRenderModal();
 }
@@ -1763,8 +1854,8 @@ async function wxSaveTitle(btn) {
     toast(L('Title saved', '標題已儲存'), 'success');
   });
 }
-function wxTabsHtml() {
-  return `<div class="wx-tabs" role="group" aria-label="${L('Time window', '時段')}">${wxWins().map(w => `<button type="button" class="${WX.win === w[0] ? 'on' : ''}" onclick="wxSetWin('${w[0]}')">${esc(w[1])}</button>`).join('')}</div>`;
+function wxTabsHtml(onMap) {
+  return `<div class="wx-tabs" role="group" aria-label="${L('Time window', '時段')}">${wxWins().map(w => `<button type="button" class="${WX.win === w[0] && !(onMap && WX.hour) ? 'on' : ''}" onclick="wxSetWin('${w[0]}')">${esc(w[1])}</button>`).join('')}</div>`;
 }
 function renderWeather() {
   const el = document.getElementById('dashWeather');
@@ -1782,6 +1873,7 @@ function renderWeather() {
         <button type="button" class="wxc-fold" id="wxFold" onclick="wxToggle()"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 11 L9 6 L14 11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button></div>
       <div id="wxCollapsed" class="wxc-chips"></div>
       <div id="wxExpanded"><div class="wxc-map"><div id="wxMap"></div><div class="wxc-legend" id="wxLegend"></div></div>
+        <div class="wxs" id="wxSlider"></div>
         <div class="wxc-foot"><span id="wxTabs"></span><span class="wxc-hint" id="wxHint"></span></div></div></div>`;
     WX.built = buildKey;
     WX.editing = false;
@@ -1811,7 +1903,7 @@ function renderWeather() {
   $('wxExpanded').hidden = WX.collapsed;
   $('wxCollapsed').hidden = !WX.collapsed;
   if (!WX.collapsed && WX.map) setTimeout(() => { if (WX.map) { const z = WX.map.getZoom(); WX.map.invalidateSize(); if (!z) WX.map.fitBounds(WX.bounds, { maxZoom: 11 }); } }, 0);
-  $('wxTabs').innerHTML = wxTabsHtml();
+  $('wxTabs').innerHTML = wxTabsHtml(true);
   if (!WX.data || WX.key !== c.key) {
     $('wxStatus').innerHTML = ''; $('wxUpd').textContent = '';
     $('wxHint').textContent = WX.err ? '⚠ ' + L('Could not load weather: ', '無法取得天氣資料：') + WX.err : L('Loading weather…', '天氣資料載入中…');
@@ -1821,13 +1913,22 @@ function renderWeather() {
     return;
   }
   if (Date.now() - WX.tried > (WX.part ? 5 : 30) * 60000) loadWeather(true).catch(() => {});   // 每 30 分鐘背景更新（缺資料時 5 分鐘重試）
-  const st = c.pts.map((p, i) => wxStats(WX.data[i], c, win[0]));
+  wxRenderSlider(c);
+  const hourMode = !!WX.hour;
+  const st = c.pts.map((p, i) => {
+    if (!hourMode) return wxStats(WX.data[i], c, win[0]);
+    const a = wxAt(WX.data[i], WX.hour);
+    return { maxHs: a.hs, over: (a.hs !== null && a.hs >= c.wave) || (a.wind !== null && a.wind >= c.wind) };
+  });
+  const when = hourMode ? wxHourLab(WX.hour) : win[2];
   const over = c.pts.filter((p, i) => st[i].over).map(p => p.name);
   $('wxStatus').innerHTML = over.length
-    ? `<span class="wxc-pill bad"><i></i>${esc(over.length > 2 ? over[0] + ' – ' + over[over.length - 1] : over.join(L(', ', '、')))} ${L('over limit', '超過作業限制')}（${esc(win[2])}）</span>`
-    : `<span class="wxc-pill ok"><i></i>${L('All points within limits', '全線在作業限制內')}（${esc(win[2])}）</span>`;
+    ? `<span class="wxc-pill bad"><i></i>${esc(over.length > 2 ? over[0] + ' – ' + over[over.length - 1] : over.join(L(', ', '、')))} ${L('over limit', '超過作業限制')}（${esc(when)}）</span>`
+    : `<span class="wxc-pill ok"><i></i>${L('All points within limits', '全線在作業限制內')}（${esc(when)}）</span>`;
   $('wxUpd').textContent = L('Updated ', '更新 ') + new Date(WX.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' · Open-Meteo' + (WX.part ? ' · ⚠ ' + L('partial data', '部分資料暫缺') : '');
-  $('wxLegend').innerHTML = `<b>${L('Numbers = max Hs (m), ', '數字＝')}${esc(win[2])}${L('', '最大浪高 Hs（m）')}</b>
+  $('wxLegend').innerHTML = (hourMode
+    ? `<b>${L('Numbers = Hs (m) at ', '數字＝')}${esc(when)}${L('', ' 浪高 Hs（m）')}</b>`
+    : `<b>${L('Numbers = max Hs (m), ', '數字＝')}${esc(win[2])}${L('', '最大浪高 Hs（m）')}</b>`) + `
     <span><i class="ok"></i>&lt; ${(c.wave * 0.8).toFixed(1)}</span><span><i class="warn"></i>${(c.wave * 0.8).toFixed(1)} – ${c.wave}</span><span><i class="bad"></i>≥ ${c.wave} ${L('over limit', '超過限制')}</span>`;
   $('wxHint').textContent = L('Tap a number on the map for details · zoom with + / − (top right)', '點地圖上的數字看該點詳細資料 · 用右上 + / − 縮放地圖');
   if (WX.layer) {
@@ -1837,7 +1938,7 @@ function renderWeather() {
         .on('click', () => wxOpen(i)).bindTooltip(esc(p.name), { direction: 'top', offset: [0, -14] }).addTo(WX.layer);
     });
   }
-  $('wxCollapsed').innerHTML = `<span class="hint">${esc(win[2])}${L(' max Hs', '最大浪高')}</span>` +
+  $('wxCollapsed').innerHTML = `<span class="hint">${esc(when)}${hourMode ? L(' Hs', ' 浪高') : L(' max Hs', '最大浪高')}</span>` +
     c.pts.map((p, i) => `<button type="button" class="wxc-chip ${wxTone(st[i].maxHs, c)} notr" onclick="wxOpen(${i})">${esc(p.name)} <b>${wxNum(st[i].maxHs, 1)}</b></button>`).join('');
 }
 // ---- 折線圖（SVG）：Y 軸刻度與單位、限制線、滑過顯示數值 ----
