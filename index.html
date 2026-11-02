@@ -2306,11 +2306,11 @@ function renderVessels() {
     <td><div class="acts"><button class="btn btn-secondary btn-sm" onclick="openVessel('${x.id}')">Open</button>${isStaff() ? `<button class="btn btn-danger btn-sm" onclick="deleteVessel('${x.id}')">🗑</button>` : ''}</div></td></tr>`;
   }).join('');
 }
-/** 單船依 MMSI（9 碼）開 VesselFinder 船位頁（MarineTraffic 已不支援只帶 MMSI 的連結）；
+/** 單船依 MMSI（9 碼）開 VesselFinder 地圖並定位該船（左側船舶資訊面板）（MarineTraffic 已不支援只帶 MMSI 的連結）；
  *  工區附近船舶以天氣座標點中心開 MarineTraffic 地圖（未設定時預設台灣海峽中部） */
 function mtVesselUrl(mmsi) {
   const m = String(mmsi || '').replace(/\D/g, '');
-  return m.length === 9 ? 'https://www.vesselfinder.com/vessels/details/' + m : '';
+  return m.length === 9 ? 'https://www.vesselfinder.com/?mmsi=' + m + '&zoom=10' : '';
 }
 function mtSiteUrl() {
   const pts = wxPoints();
