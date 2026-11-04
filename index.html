@@ -87,7 +87,7 @@ body.viewer .modal-body :is(input,select,textarea){pointer-events:none;backgroun
 /* 大清單（人員／船舶）：容器自帶上下左右卷軸，表頭固定，不用捲到最底才能左右拉 */
 .table-wrap.scroll-box{overflow:auto;max-height:calc(100vh - var(--header-h) - 130px);min-height:260px}
 .table-wrap.scroll-box thead th{position:sticky;top:0;z-index:2}
-@media (max-width:768px){.table-wrap.scroll-box{max-height:none;min-height:0}}
+@media (max-width:768px){.table-wrap.scroll-box{max-height:none;min-height:0}.table-wrap.scroll-box.sb-mobile{max-height:75vh}}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{text-align:left;padding:9px 12px;background:#f7f9fb;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;border-bottom:1px solid var(--border)}
 td{padding:9px 12px;border-bottom:1px solid #edf1f5;vertical-align:middle}
@@ -405,6 +405,10 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
 .mt-meta{font-size:12px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{display:inline-flex;align-items:center;gap:6px;background:var(--na-bg);border-radius:14px;padding:3px 10px;font-size:12px}
+/* 人名清單：超過幾位先收合，按「更多」展開（nameList） */
+.nl,.nl-rest:not([hidden]){display:contents}
+.nl-more{border:0;background:none;padding:0 2px;color:var(--green-dark,#008a3e);font:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.nl-more:hover{text-decoration:underline}
 .chip small{color:var(--muted)}
 .att-list{max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius)}
 .att-row{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid #edf1f5;font-size:13px;cursor:pointer}
@@ -836,7 +840,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
               <button class="btn btn-green btn-sm" onclick="openSiteLog()" data-roles="admin,mc">+ Log entry</button>
             </div>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Date / Time</th><th>Activity</th><th>Source</th><th>Detail</th><th>Asset</th><th>Transport</th><th>Personnel</th><th>Logged by</th><th data-roles="admin,mc"></th></tr></thead><tbody id="slBody"></tbody></table></div>
+          <div class="table-wrap scroll-box sb-mobile"><table><thead><tr><th>Date / Time</th><th>Activity</th><th>Source</th><th>Detail</th><th>Asset</th><th>Transport</th><th>Personnel</th><th>Logged by</th><th data-roles="admin,mc"></th></tr></thead><tbody id="slBody"></tbody></table></div>
           <div class="section-body hint" id="slFoot"></div>
         </div>
         <div class="section" id="slTabTransfers" hidden>
@@ -847,7 +851,7 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
               <button class="btn btn-secondary btn-sm" onclick="exportHistoryCSV()">⬇ CSV</button>
             </div>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Time</th><th>Personnel</th><th>Company</th><th>From</th><th>To</th><th>Transport</th><th>Type</th><th>Approved by</th><th>Remark</th><th data-roles="admin"></th></tr></thead><tbody id="hBody"></tbody></table></div>
+          <div class="table-wrap scroll-box sb-mobile"><table><thead><tr><th>Time</th><th>Personnel</th><th>Company</th><th>From</th><th>To</th><th>Transport</th><th>Type</th><th>Approved by</th><th>Remark</th><th data-roles="admin"></th></tr></thead><tbody id="hBody"></tbody></table></div>
         </div>
       </div>
 
@@ -1231,6 +1235,17 @@ function dropId(arr, id) { const i = arr.findIndex(x => x.id === id); if (i >= 0
 // ==================== UTIL ====================
 function v(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
 function esc(s) { if (s === undefined || s === null) return ''; return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+/** 人名清單：超過 max 位只先顯示前 max 位，其餘收在「+N more」按鈕後面（點了才展開）。names 可為陣列或逗號字串；fmt 回傳已跳脫的 HTML */
+function nameList(names, opt) {
+  opt = opt || {};
+  const max = opt.max || 5, sep = opt.sep === undefined ? ', ' : opt.sep, fmt = opt.fmt || esc;
+  if (!Array.isArray(names)) names = String(names || '').split(/\s*[,，、]\s*/);
+  names = names.filter(x => x !== '' && x !== null && x !== undefined);
+  if (names.length <= max + 1) return names.map(fmt).join(sep);
+  const more = L(`+${names.length - max} more`, `+${names.length - max} 人…`);
+  return `<span class="nl">${names.slice(0, max).map(fmt).join(sep)}<span class="nl-rest" hidden>${sep}${names.slice(max).map(fmt).join(sep)}</span>${sep ? ' ' : ''}<button type="button" class="nl-more" data-more="${esc(more)}" onclick="nlToggle(event,this)">${more}</button></span>`;
+}
+function nlToggle(e, b) { e.stopPropagation(); const r = b.previousElementSibling; r.hidden = !r.hidden; b.textContent = r.hidden ? b.dataset.more : L('Show less', '收合'); }
 function toast(msg, type) {
   const t = document.createElement('div');
   t.className = 'toast ' + (type || 'info');
@@ -2645,7 +2660,7 @@ function tfAutoFrom() {
 function tfSummary() {
   const sel = S.personnel.filter(p => tfSel.has(p.id));
   document.getElementById('tfCount').textContent = sel.length;
-  document.getElementById('tfSummary').innerHTML = sel.length ? `<b>${sel.length}</b> ${L('selected:', '人已選：')} ${sel.map(p => esc(p.name)).join(', ')}` : 'No personnel selected.';
+  document.getElementById('tfSummary').innerHTML = sel.length ? `<b>${sel.length}</b> ${L('selected:', '人已選：')} ${nameList(sel.map(p => p.name), { max: 8 })}` : 'No personnel selected.';
   const unq = sel.filter(p => !isQualified(p));
   const w = document.getElementById('tfWarn');
   w.classList.toggle('hidden', !unq.length);
@@ -2658,8 +2673,8 @@ async function executeTransfer(btn) {
   if (!d.to_location || !d.time || !d.type || !d.approved_by) { toast('Fill in To, Time, Transfer type and Approved by', 'error'); return; }
   if (d.from_location && d.from_location === d.to_location) { toast('From and To cannot be the same', 'error'); return; }
   const unq = S.personnel.filter(p => tfSel.has(p.id) && !isQualified(p));
-  if (unq.length && !await confirmBox(L(`<b>${unq.length}</b> selected person(s) are <b>not qualified</b> (missing valid approved certificates):<br>${unq.map(p => esc(p.name)).join(', ')}<br><br>Transfer anyway?`,
-    `已選人員中有 <b>${unq.length}</b> 人<b>不合格</b>（缺少有效且已核准的證照）：<br>${unq.map(p => esc(p.name)).join('、')}<br><br>仍要執行轉運嗎？`), 'Transfer anyway')) return;
+  if (unq.length && !await confirmBox(L(`<b>${unq.length}</b> selected person(s) are <b>not qualified</b> (missing valid approved certificates):<br>${nameList(unq.map(p => p.name), { max: 8 })}<br><br>Transfer anyway?`,
+    `已選人員中有 <b>${unq.length}</b> 人<b>不合格</b>（缺少有效且已核准的證照）：<br>${nameList(unq.map(p => p.name), { max: 8, sep: '、' })}<br><br>仍要執行轉運嗎？`), 'Transfer anyway')) return;
   await withBusy(btn, async () => {
     const r = await api('transfer.execute', d);
     r.transfers.forEach(t => S.transfers.push(t));
@@ -2713,7 +2728,7 @@ function renderSiteLog() {
   const tb = document.getElementById('slBody');
   tb.innerHTML = list.length ? list.map(l => `<tr><td class="mono nowrap">${fmtDT(l.time)}</td><td><span class="b ${l.activity === 'TRANSFER' ? 'b-navy' : l.activity === 'INCIDENT' ? 'b-bad' : 'b-info'}">${esc(l.activity)}</span></td>
     <td class="muted">${esc(l.source)}</td><td style="min-width:240px">${esc(l.detail)}</td><td class="nowrap">${esc(l.asset ? locName(l.asset) : '—')}</td>
-    <td class="nowrap">${esc(l.transport ? (vesselById(l.transport) || {}).name || '—' : '—')}</td><td class="hint" style="max-width:260px">${esc(l.personnel || '')}</td><td class="muted">${esc(l.logged_by)}</td>
+    <td class="nowrap">${esc(l.transport ? (vesselById(l.transport) || {}).name || '—' : '—')}</td><td class="hint" style="max-width:260px">${nameList(l.personnel)}</td><td class="muted">${esc(l.logged_by)}</td>
     ${staff ? `<td><div class="acts"><button class="btn btn-secondary btn-sm" onclick="openSiteLog('${l.id}')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteSiteLog('${l.id}')">🗑</button></div></td>` : ''}</tr>`).join('')
     : `<tr class="empty"><td colspan="9">No log entries</td></tr>`;
   document.getElementById('slFoot').textContent = all.length > 500 ? `Showing latest 500 of ${all.length} entries — use the filters or export CSV for the rest.` : `${all.length} entr${all.length === 1 ? 'y' : 'ies'}`;
@@ -3056,7 +3071,7 @@ function viewMeeting(id) {
   openModal(L('Meeting minutes', '會議紀錄') + ' — ' + esc(m.title), `
     <div class="mt-meta" style="margin-bottom:12px"><span>🕒 ${fmtDT(m.time)}</span>${m.location ? `<span>📍 ${esc(m.location)}</span>` : ''}<span>✍ ${esc(m.created_by)}</span></div>
     <h4 style="font-size:13px;color:var(--navy);margin-bottom:6px">👥 ${L('Attendees', '參與人員')} (${ppl.length})</h4>
-    <div class="chips" style="margin-bottom:16px">${ppl.map(x => `<span class="chip">${esc(x.name)} <small>${esc(x.company || '')}${x.external ? ' · ' + L('external', '外部') : ''}</small></span>`).join('') || '<span class="muted">—</span>'}</div>
+    <div class="chips" style="margin-bottom:16px">${nameList(ppl, { max: 10, sep: '', fmt: x => `<span class="chip">${esc(x.name)} <small>${esc(x.company || '')}${x.external ? ' · ' + L('external', '外部') : ''}</small></span>` }) || '<span class="muted">—</span>'}</div>
     <h4 style="font-size:13px;color:var(--navy);margin-bottom:6px">📝 ${L('Discussion items', '討論事項')}</h4>
     <div class="table-wrap"><table><thead><tr><th>#</th><th>${L('Topic', '議題')}</th><th>${L('Discussion / decision', '討論內容／決議')}</th><th>${L('Action', '待辦事項')}</th><th>${L('Owner', '負責人')}</th><th>${L('Due', '期限')}</th></tr></thead><tbody>
       ${items.map((i, n) => `<tr><td class="mono">${n + 1}</td><td><strong>${esc(i.topic)}</strong></td><td style="white-space:pre-wrap">${esc(i.discussion)}</td><td style="white-space:pre-wrap">${esc(i.action)}</td><td>${esc(i.owner)}</td><td class="nowrap">${fmtDate(i.due)}</td></tr>`).join('')}</tbody></table></div>
