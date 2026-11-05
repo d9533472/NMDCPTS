@@ -278,6 +278,7 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
 .vpos-card a{font-size:13px;font-weight:600;text-decoration:none}
 .vpos-card a:hover{text-decoration:underline}
 .vpos-none{font-size:12px;color:#b26a00}
+.vpos-meta{font-size:12px;color:var(--muted,#5b6b7a);margin-top:3px;max-width:260px}
 .vpos-card.pending{border-style:dashed;background:#fffdf6}
 .vpos-name .b{font-size:10px;padding:1px 6px;vertical-align:middle}
 .dash-left{gap:14px}
@@ -1634,8 +1635,11 @@ function renderDashboard() {
       const url = mtVesselUrl(x.mmsi);
       return `<div class="vpos-card${isApproved(x) ? '' : ' pending'}"><div class="vpos-name"><span class="notr">${esc(x.name)}</span>${isApproved(x) ? '' : ` <span class="b b-warn">${L('Pending', '待核准')}</span>`}</div>${url
         ? `<a href="${url}" target="_blank" rel="noopener" title="VesselFinder · MMSI ${esc(x.mmsi)}">🌍 Where am I ↗</a>`
-        : `<span class="vpos-none">⚠ ${L('No MMSI', '未填 MMSI')}</span>`}</div>`;
+        : `<span class="vpos-none">⚠ ${L('No MMSI', '未填 MMSI')}</span>`}
+        <div class="vpos-meta" title="${L('Vessel type', '船舶類型')}">🛳 ${esc(x.type || '—')}</div>
+        <div class="vpos-meta notr" title="${L('Work scope', '工作範疇')}">🔧 ${esc(vesselScopes(x).map(scopeLabel).join(' · ') || '—')}</div></div>`;
     }).join('')}</div></div>` : '';
+  if (vPos.some(x => x.scopes) && !SCOPES.list) loadScopes();
   renderWeather();
   renderAnnouncements();
   renderDashPending();
@@ -2445,6 +2449,38 @@ function contactHtml(x) {
   if (x.email) parts.push(`<div><a href="mailto:${esc(x.email)}">✉ ${esc(x.email)}</a></div>`);
   return parts.join('') || '<span class="muted">—</span>';
 }
+// ==================== 工作範疇 Scope（清單即時取自 Offshore PTW 的公開 scope.options）====================
+// 船舶存 Scope 的英文名稱（換行分隔）；PTW 端已停用／改名的舊值照樣顯示、勾選
+const SCOPES = { list: null, loading: null, err: '' };
+function loadScopes() {
+  if (SCOPES.list) return Promise.resolve(SCOPES.list);
+  if (SCOPES.loading) return SCOPES.loading;
+  const url = S && S.settings.ptw_url;
+  if (!url) return Promise.resolve([]);
+  SCOPES.loading = fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'scope.options', payload: {} }) })
+    .then(r => r.json())
+    .then(j => { if (!j.ok) throw new Error(j.msgEn || 'PTW system error'); SCOPES.list = j.data || []; SCOPES.err = ''; return SCOPES.list; })
+    .catch(e => { SCOPES.err = e.message; SCOPES.list = []; return []; })   // 失敗也定案，避免儀表板重畫時無限重抓
+    .finally(() => {
+      SCOPES.loading = null;
+      const box = document.getElementById('vm_scopes');
+      if (box) box.innerHTML = vmScopesHtml([...box.querySelectorAll('input:checked')].map(i => i.value), box.querySelector('input[disabled]') ? 'readonly disabled' : '');
+      if (currentPage === 'dashboard') refreshPage();
+    });
+  return SCOPES.loading;
+}
+function vesselScopes(x) { return String((x && x.scopes) || '').split('\n').map(s => s.trim()).filter(Boolean); }
+function scopeLabel(nameEn) {
+  const s = (SCOPES.list || []).find(o => o.nameEn === nameEn);
+  return s ? L(s.nameEn, s.nameZh || s.nameEn) : nameEn;
+}
+function vmScopesHtml(sel, ro) {
+  if (!SCOPES.list) { loadScopes(); if (!sel.length) return `<span class="muted">${L('Loading scopes from PTW…', '正在從 PTW 系統載入 Scope…')}</span>`; }
+  const names = (SCOPES.list || []).map(o => o.nameEn);
+  const all = names.concat(sel.filter(n => names.indexOf(n) < 0));
+  if (!all.length) return `<span class="muted">${SCOPES.err ? L('Could not load scopes from PTW: ', '無法從 PTW 系統載入 Scope：') + esc(SCOPES.err) : L('No scopes set up in the PTW system yet.', 'PTW 系統尚未建立 Scope。')}</span>`;
+  return all.map(n => `<label class="chk notr" style="margin-right:12px"><input type="checkbox" value="${esc(n)}" ${sel.indexOf(n) >= 0 ? 'checked' : ''} ${ro}> ${esc(scopeLabel(n))}</label>`).join('');
+}
 function openVessel(id, tab) {
   const x = id ? vesselById(id) : {};
   if (id && !x) return;
@@ -2478,6 +2514,8 @@ function openVessel(id, tab) {
       <div class="form-group"><label>Contact phone</label><input id="vm_phone" value="${esc(x.phone || '')}" placeholder="+886 …" ${ro}></div>
       <div class="form-group"><label>WhatsApp</label><input id="vm_whatsapp" value="${esc(x.whatsapp || '')}" placeholder="+886 …" ${ro}></div>
       <div class="form-group"><label>Email</label><input id="vm_email" type="email" value="${esc(x.email || '')}" ${ro}></div>
+      <div class="form-group full"><label>${L('Work scope', '工作範疇（Scope）')}</label><div id="vm_scopes" class="chips">${vmScopesHtml(vesselScopes(x), ro)}</div>
+        <div class="hint">${L('List comes from Offshore PTW System → Scopes.', '清單來自 Offshore PTW 系統的工程範疇（Scope）設定。')}</div></div>
       <div class="form-group full"><label>Remark</label><textarea id="vm_remark" ${ro}>${esc(x.remark || '')}</textarea></div>
       ${editable ? `<div class="form-actions"><button class="btn btn-primary" onclick="saveVessel(this,'${id || ''}')">💾 Save vessel</button></div>` : `<div class="full contact">${contactHtml(x)}</div>`}
     </div></div>
@@ -2563,7 +2601,8 @@ async function deleteVesselCert(cid, vid) {
 async function saveVessel(btn, id) {
   const d = { id, name: v('vm_name'), type: v('vm_type'), mmsi: v('vm_mmsi'), imo: v('vm_imo'), flag: v('vm_flag'), operator: v('vm_operator'),
     contact_person: v('vm_contact'), phone: v('vm_phone'), whatsapp: v('vm_whatsapp'), email: v('vm_email'), remark: v('vm_remark'),
-    gross_tonnage: v('vm_gt'), max_persons: v('vm_pob') };
+    gross_tonnage: v('vm_gt'), max_persons: v('vm_pob'),
+    scopes: [...document.querySelectorAll('#vm_scopes input:checked')].map(i => i.value).join('\n') };
   if (!d.name) { toast('Vessel name is required', 'error'); return; }
   if (!(parseFloat(d.gross_tonnage) > 0) || !(parseInt(d.max_persons, 10) > 0) || !d.flag) { toast(L('Please fill in gross tonnage, max persons on board and flag — they decide which certificates are required', '請填寫總噸位、船上限制員額與船籍，系統依這三項判斷需要哪些證書'), 'error'); return; }
   await withBusy(btn, async () => {
