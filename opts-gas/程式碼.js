@@ -64,7 +64,8 @@ const DEFAULT_SETTINGS = {
   weather_wave_limit: '1.5',
   weather_wind_limit: '25',
   // 船位追蹤（Datalastic AIS）：要抓船位的船舶 id（逗號分隔）；同一份清單也決定首頁 Where am I 顯示哪些船
-  track_vessels: ''
+  track_vessels: '',
+  ais_interval: '120'   // 船位更新間隔（分鐘，5–1440）
 };
 const NOTIFY_EVENTS = ['personnel_pending','vessel_pending','cert_pending','review_result','transfer','expiry','meeting'];
 const EXPIRY_ALERT_DAYS = [30, 14, 7, 1, 0];
@@ -569,7 +570,7 @@ function settings_() {
 // ---- MC 可用的系統管理項目（Admin 在系統設定勾選）----
 const MC_PERMS = ['users', 'companies', 'vct', 'pct', 'ann', 'basic'];   // 操作紀錄、登入紀錄不開放給 MC
 // 「基本設定」包含的設定欄位；其餘設定（PTW、通知信、清空資料、MC 權限）一律只有 Admin 能改
-const BASIC_SETTINGS = ['meeting_title', 'project_name', 'vessel_types', 'weather_name', 'weather_points', 'weather_lat', 'weather_lon', 'weather_wave_limit', 'weather_wind_limit', 'track_vessels'];
+const BASIC_SETTINGS = ['meeting_title', 'project_name', 'vessel_types', 'weather_name', 'weather_points', 'weather_lat', 'weather_lon', 'weather_wave_limit', 'weather_wind_limit', 'track_vessels', 'ais_interval'];
 function hasPerm_(u, perm) {
   if (!u) return false;
   if (u.role === 'admin') return true;
@@ -799,6 +800,11 @@ function saveSettings_(u, p) {
       Repo.all('Vessels').forEach(x => { ids[x.id] = true; });
       p.track_vessels = String(p.track_vessels || '').split(',').map(x => x.trim()).filter(x => ids[x]).join(',');
     }
+    if (p.ais_interval !== undefined) {
+      const n = Math.round(Number(str_(p.ais_interval)) / 5) * 5;   // 以 5 分鐘為單位（觸發器最細 5 分鐘）
+      if (!(n >= 5 && n <= 1440)) fail_('Update interval must be 5–1440 minutes');
+      p.ais_interval = String(n);
+    }
     ['weather_wave_limit', 'weather_wind_limit'].forEach(k => {
       if (p[k] !== undefined && !(Number(str_(p[k])) > 0)) p[k] = DEFAULT_SETTINGS[k];
     });
@@ -807,6 +813,7 @@ function saveSettings_(u, p) {
       if (Repo.get('Settings', k)) Repo.update('Settings', k, { value: str_(p[k]) });
       else Repo.insert('Settings', { key: k, value: str_(p[k]) });
     });
+    if (p.ais_interval !== undefined) ensureAisTrigger_();
     return settings_();
   });
 }
@@ -1535,9 +1542,9 @@ function dailyExpiryCheck() {
 }
 
 // ============ 船位追蹤（Datalastic AIS）============
-// 金鑰只存在 Script Properties（AIS_KEY），前端拿不到；每 2 小時由觸發器 aisRefresh 抓「系統管理勾選的船」，
+// 金鑰只存在 Script Properties（AIS_KEY），前端拿不到；觸發器 aisRefresh 依系統設定的間隔（ais_interval 分鐘）抓「系統管理勾選的船」，
 // 結果存在 Script Properties（ais_positions），所有人從 data.load 讀同一份，不會每個使用者各打一次 API。
-// 每艘船每次查詢消耗 1 點 Datalastic 額度（2 小時一次 ≈ 每船每月 360 點）。
+// 每艘船每次查詢消耗 1 點 Datalastic 額度（例：120 分鐘一次 ≈ 每船每月 360 點）。
 const AIS_URL = 'https://api.datalastic.com/api/v0/vessel';
 function aisData_() {
   const props = PropertiesService.getScriptProperties();
@@ -1554,13 +1561,31 @@ function aisKeyAdmin_(u, p) {
   else if (str_(p.key)) { props.setProperty('AIS_KEY', str_(p.key)); ensureAisTrigger_(); }
   return aisData_();
 }
+function aisInterval_() { const n = Number(settings_().ais_interval); return n >= 5 && n <= 1440 ? n : 120; }
+/** GAS 觸發器只能每 1/5/10/15/30 分鐘或每 1/2/4/6/8/12 小時：選一個能整除設定間隔的頻率，執行時再檢查距上次更新是否已滿間隔 */
+function aisTriggerSpec_(min) {
+  if (min % 60 === 0) return 'h' + [12, 8, 6, 4, 2, 1].find(h => (min / 60) % h === 0);
+  return 'm' + ([30, 15, 10, 5].find(m => min % m === 0) || 5);
+}
 function ensureAisTrigger_() {
   try {
-    if (!ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'aisRefresh')) ScriptApp.newTrigger('aisRefresh').timeBased().everyHours(2).create();
+    const props = PropertiesService.getScriptProperties();
+    const spec = aisTriggerSpec_(aisInterval_());
+    const mine = ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'aisRefresh');
+    if (mine.length === 1 && props.getProperty('ais_trigger_spec') === spec) return;
+    mine.forEach(t => ScriptApp.deleteTrigger(t));
+    const b = ScriptApp.newTrigger('aisRefresh').timeBased();
+    (spec[0] === 'h' ? b.everyHours(Number(spec.slice(1))) : b.everyMinutes(Number(spec.slice(1)))).create();
+    props.setProperty('ais_trigger_spec', spec);
   } catch (e) { console.warn('AIS trigger: ' + e.message); }
 }
-/** 觸發器每 2 小時執行 */
-function aisRefresh() { ensureSchema_(); aisRefresh_(); }
+/** 觸發器執行：距上次更新未滿設定間隔就跳過（觸發時間會有 1–2 分鐘誤差，所以留 2 分鐘寬限） */
+function aisRefresh() {
+  ensureSchema_();
+  const last = Date.parse(aisData_().updated_at || '') || 0;
+  if (Date.now() - last < (aisInterval_() - 2) * 60000) return;
+  aisRefresh_();
+}
 function aisRefresh_() {
   const props = PropertiesService.getScriptProperties();
   const key = props.getProperty('AIS_KEY');

@@ -1635,7 +1635,7 @@ function renderDashboard() {
   document.getElementById('dashStats').innerHTML = groups.map(g => `<div class="kpi-group ${g.cls}"><div class="kpi-group-title">${esc(g.title)}</div>
     <div class="kpi-row" style="--n:${g.cards.length}">${g.cards.map(kpiCard).join('')}</div></div>`).join('');
   // 最上方：已核准＋待核准船舶船位（VesselFinder；退件不列，已核准排前）；未填或非 9 碼 MMSI 照列但標示
-  // 只列「系統管理 → 船位追蹤」勾選的船（同一份清單也是每 2 小時抓 AIS 船位的船）
+  // 只列「系統管理 → 船位追蹤」勾選的船（同一份清單也是定時抓 AIS 船位的船）
   const tracked = trackedIds();
   const vPos = S.vessels.filter(x => x.approval !== 'Rejected' && tracked.indexOf(x.id) >= 0)
     .sort((a, b) => (isApproved(b) - isApproved(a)) || a.name.localeCompare(b.name));
@@ -1773,8 +1773,10 @@ let L_ = window.LEAFLET || null;   // Leaflet（window.L 會跟翻譯函式 L() 
 function wxPin(hs, c) {
   return L_.divIcon({ className: '', iconSize: null, html: `<div class="wx-pin ${wxTone(hs, c)}">${wxNum(hs, 1)}</div>` });
 }
-// ---- 船位（Datalastic AIS，後端每 2 小時抓一次「系統管理 → 船位追蹤」勾選的船）----
+// ---- 船位（Datalastic AIS，後端依設定間隔抓「系統管理 → 船位追蹤」勾選的船）----
 function trackedIds() { return String((S && S.settings.track_vessels) || '').split(',').filter(Boolean); }
+function aisInterval() { const n = Number(S && S.settings.ais_interval); return n >= 5 && n <= 1440 ? n : 120; }
+function aisEvery(min) { return min % 60 === 0 ? L(`every ${min / 60} h`, `每 ${min / 60} 小時`) : L(`every ${min} min`, `每 ${min} 分鐘`); }
 function aisWhen(iso) {
   const d = new Date(iso);
   if (!iso || isNaN(d)) return '—';
@@ -1817,7 +1819,7 @@ function wxRenderShips() {
   if (!trackedIds().length) { el.textContent = ''; return; }
   el.className = 'wxc-upd ship' + (a.error ? ' bad' : '');
   el.title = a.error || '';
-  el.textContent = '🚢 ' + (a.updated_at ? L('Vessel positions updated ', '船位更新 ') + aisWhen(a.updated_at) + L(' · every 2 h', ' · 每 2 小時') : L('Vessel positions: not updated yet', '船位：尚未更新')) +
+  el.textContent = '🚢 ' + (a.updated_at ? L('Vessel positions updated ', '船位更新 ') + aisWhen(a.updated_at) + ' · ' + aisEvery(aisInterval()) : L('Vessel positions: not updated yet', '船位：尚未更新')) +
     (a.error ? ' · ⚠ ' + L('some failed', '部分抓取失敗') : '');
 }
 // ---- 時間軸（像 Windy 一樣逐小時拖曳）：WX.hour 有值時，地圖數字＝該小時浪高；按上方時段按鈕回到「時段最大值」 ----
@@ -3381,6 +3383,7 @@ function renderAdmin() {
   if (auditSec && auditSec.parentNode !== document.getElementById('page-audit')) document.getElementById('page-audit').appendChild(auditSec);
   if (adminTab === 'audit') { el.innerHTML = ''; el.appendChild(auditSec); initAudit(); return; }
   ({ users: adminUsers, companies: adminCompanies, vct: adminVct, pct: adminPct, ann: adminAnn, sys: adminSys, logins: adminLogins }[adminTab])(el);
+  if (adminTab === 'sys') aisCostHint();
 }
 // 登入紀錄（含 IP）：只有 Admin
 let LOGINS = { rows: [], total: 0 };
@@ -3678,10 +3681,13 @@ function adminAisHtml() {
         <button class="btn btn-secondary btn-sm" onclick="saveAisKey(this,false)">💾 ${L('Save key', '儲存金鑰')}</button>${a.key_set ? `<button class="btn btn-secondary btn-sm" onclick="saveAisKey(this,true)">🗑 ${L('Remove', '移除')}</button>` : ''}</div>
       <span class="hint">${L('Stored on the server only (never sent to browsers).', '金鑰只存在後端，不會傳到瀏覽器。')}</span></div>
     <div class="form-group full"><label>${L('Vessels to track — shown on the sea-state map and in “Where am I” on the dashboard', '要追蹤的船 — 顯示在儀表板海象地圖與「Where am I」')}</label>
-      <div class="ais-list">${list.map(x => { const ok = String(x.mmsi || '').replace(/\D/g, '').length === 9; return `<label class="chk"><input type="checkbox" class="st_trk" value="${x.id}" ${ids.indexOf(x.id) >= 0 ? 'checked' : ''}> <span class="notr">${esc(x.name)}</span>${isApproved(x) ? '' : ` <span class="b b-warn">${L('Pending', '待核准')}</span>`}${ok ? '' : ` <span class="hint">⚠ ${L('no MMSI', '未填 MMSI')}</span>`}</label>`; }).join('') || `<span class="hint">${L('No vessels registered', '尚無船舶')}</span>`}</div>
-      <span class="hint">${L('Positions are fetched every 2 hours only for the ticked vessels (each vessel uses 1 Datalastic credit per update ≈ 360 per month). Vessels without a 9-digit MMSI are listed but cannot be located.', '只有勾選的船會每 2 小時抓一次船位（每艘每次耗 1 點 Datalastic 額度，約每月 360 點）。沒有 9 碼 MMSI 的船會列出但抓不到船位。')}</span>
+      <div class="ais-list">${list.map(x => { const ok = String(x.mmsi || '').replace(/\D/g, '').length === 9; return `<label class="chk"><input type="checkbox" class="st_trk" onchange="aisCostHint()" value="${x.id}" ${ids.indexOf(x.id) >= 0 ? 'checked' : ''}> <span class="notr">${esc(x.name)}</span>${isApproved(x) ? '' : ` <span class="b b-warn">${L('Pending', '待核准')}</span>`}${ok ? '' : ` <span class="hint">⚠ ${L('no MMSI', '未填 MMSI')}</span>`}</label>`; }).join('') || `<span class="hint">${L('No vessels registered', '尚無船舶')}</span>`}</div>
+      <span class="hint">${L('Only the ticked vessels are fetched. Vessels without a 9-digit MMSI are listed but cannot be located.', '只有勾選的船會抓船位。沒有 9 碼 MMSI 的船會列出但抓不到船位。')}</span></div>
+    <div class="form-group full"><label>${L('Update interval (minutes)', '船位更新間隔（分鐘）')}</label>
+      <div class="toolbar"><input id="st_aisint" class="mono" type="number" min="5" max="1440" step="5" style="width:100px" value="${aisInterval()}" oninput="aisCostHint()"> <span class="hint" id="aisCost"></span></div>
+      <span class="hint">${L('5–1440 minutes, in steps of 5 (other values are rounded). Each vessel uses 1 Datalastic credit per update. Updates may run a few minutes late.', '可填 5–1440 分鐘，以 5 分鐘為單位（其他數字會四捨五入）。每艘船每次更新耗 1 點 Datalastic 額度；實際更新時間可能晚幾分鐘。')}</span>
       <span class="hint">${L('Last update: ', '上次更新：')}<b>${a.updated_at ? fmtDT(a.updated_at) : '—'}</b>${a.error ? ` · <span style="color:#c62828">⚠ ${esc(a.error)}</span>` : ''}</span></div>
-    <div class="form-actions"><button class="btn btn-primary" onclick="saveTrack(this)">💾 ${L('Save vessel list', '儲存船舶清單')}</button><button class="btn btn-secondary" onclick="aisRefreshNow(this)" ${a.key_set ? '' : 'disabled'}>🔄 ${L('Update positions now', '立即更新船位')}</button></div></div></div></div>`;
+    <div class="form-actions"><button class="btn btn-primary" onclick="saveTrack(this)">💾 ${L('Save tracking settings', '儲存追蹤設定')}</button><button class="btn btn-secondary" onclick="aisRefreshNow(this)" ${a.key_set ? '' : 'disabled'}>🔄 ${L('Update positions now', '立即更新船位')}</button></div></div></div></div>`;
 }
 async function saveAisKey(btn, clear) {
   const key = v('st_aiskey');
@@ -3697,11 +3703,20 @@ async function saveTrack(btn) {
   const ids = [...document.querySelectorAll('.st_trk')].filter(c => c.checked).map(c => c.value);
   const added = ids.some(id => trackedIds().indexOf(id) < 0);
   await withBusy(btn, async () => {
-    S.settings = await api('settings.save', { track_vessels: ids.join(',') });
-    // 新加的船馬上抓一次，不用等下一輪 2 小時
+    S.settings = await api('settings.save', { track_vessels: ids.join(','), ais_interval: v('st_aisint') });
+    // 新加的船馬上抓一次，不用等下一輪
     if (added && (S.ais || {}).key_set) { try { S.ais = await api('ais.refresh'); } catch (e) { toast(e.message, 'error'); } }
-    toast(L('Vessel list saved', '船舶清單已儲存'), 'success'); renderAdmin();
+    toast(L('Tracking settings saved', '追蹤設定已儲存'), 'success'); renderAdmin();
   });
+}
+/** 依間隔與勾選船數估算每月額度 */
+function aisCostHint() {
+  const el = document.getElementById('aisCost'), n = Number(v('st_aisint'));
+  if (!el) return;
+  const ships = [...document.querySelectorAll('.st_trk')].filter(c => c.checked).length;
+  if (!(n >= 5 && n <= 1440)) { el.textContent = '⚠ ' + L('5–1440 minutes', '請填 5–1440 分鐘'); return; }
+  const per = Math.round(30 * 1440 / n);
+  el.textContent = L(`≈ ${per} credits / vessel / month · ${ships} vessel(s) ≈ ${per * ships} / month`, `≈ 每船每月 ${per} 點 · 目前 ${ships} 艘 ≈ 每月 ${per * ships} 點`);
 }
 async function aisRefreshNow(btn) {
   await withBusy(btn, async () => {
