@@ -62,7 +62,9 @@ const DEFAULT_SETTINGS = {
   weather_lat: '',
   weather_lon: '',
   weather_wave_limit: '1.5',
-  weather_wind_limit: '25'
+  weather_wind_limit: '25',
+  // 船位追蹤（Datalastic AIS）：要抓船位的船舶 id（逗號分隔）；同一份清單也決定首頁 Where am I 顯示哪些船
+  track_vessels: ''
 };
 const NOTIFY_EVENTS = ['personnel_pending','vessel_pending','cert_pending','review_result','transfer','expiry','meeting'];
 const EXPIRY_ALERT_DAYS = [30, 14, 7, 1, 0];
@@ -363,6 +365,8 @@ const ROUTES = {
   'user.delete': (u, p) => deleteUser_(u, p.id),
   'settings.save': (u, p) => saveSettings_(u, p),
   'admin.ptwKey': (u, p) => ptwLinkKeyAdmin_(u, p),
+  'admin.aisKey': (u, p) => aisKeyAdmin_(u, p),
+  'ais.refresh': (u, p) => { requirePerm_(u, 'basic'); ensureAisTrigger_(); return aisRefresh_(); },
 
   // Offshore PTW 系統（伺服器對伺服器，以連結金鑰驗證）
   'ext.vessels': () => ({ vessels: Repo.all('Vessels').map(extVessel_) }),
@@ -542,6 +546,8 @@ function setup() {
   const f = filesFolder_();
   ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'dailyExpiryCheck').forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('dailyExpiryCheck').timeBased().everyDays(1).atHour(8).create();
+  ensureAisTrigger_();
+  UrlFetchApp.getRequest('https://api.datalastic.com/');   // 讓授權畫面一併要求「連線到外部服務」權限
   Logger.log('OK — files folder: ' + f.getUrl() + ' · daily expiry check at 08:00 · mail quota left today: ' + MailApp.getRemainingDailyQuota());
 }
 
@@ -563,7 +569,7 @@ function settings_() {
 // ---- MC 可用的系統管理項目（Admin 在系統設定勾選）----
 const MC_PERMS = ['users', 'companies', 'vct', 'pct', 'ann', 'basic'];   // 操作紀錄、登入紀錄不開放給 MC
 // 「基本設定」包含的設定欄位；其餘設定（PTW、通知信、清空資料、MC 權限）一律只有 Admin 能改
-const BASIC_SETTINGS = ['meeting_title', 'project_name', 'vessel_types', 'weather_name', 'weather_points', 'weather_lat', 'weather_lon', 'weather_wave_limit', 'weather_wind_limit'];
+const BASIC_SETTINGS = ['meeting_title', 'project_name', 'vessel_types', 'weather_name', 'weather_points', 'weather_lat', 'weather_lon', 'weather_wave_limit', 'weather_wind_limit', 'track_vessels'];
 function hasPerm_(u, perm) {
   if (!u) return false;
   if (u.role === 'admin') return true;
@@ -788,6 +794,11 @@ function saveSettings_(u, p) {
         return a[0] + ', ' + lat + ', ' + lon;
       }).join('\n');
     }
+    if (p.track_vessels !== undefined) {
+      const ids = {};
+      Repo.all('Vessels').forEach(x => { ids[x.id] = true; });
+      p.track_vessels = String(p.track_vessels || '').split(',').map(x => x.trim()).filter(x => ids[x]).join(',');
+    }
     ['weather_wave_limit', 'weather_wind_limit'].forEach(k => {
       if (p[k] !== undefined && !(Number(str_(p[k])) > 0)) p[k] = DEFAULT_SETTINGS[k];
     });
@@ -831,6 +842,7 @@ function loadData_(u) {
     // 只有 Admin 看得到 Admin 帳號
     users: hasPerm_(u, 'users') ? Repo.all('Users').filter(x => u.role === 'admin' || x.role !== 'admin').map(publicUser_) : [],
     visits: visitCount_(),
+    ais: aisData_(),
     rev: rev
   };
 }
@@ -1520,6 +1532,68 @@ function dailyExpiryCheck() {
     rows.push([n === 0 ? 'EXPIRES TODAY｜今日到期' : n + ' days left｜剩 ' + n + ' 天', '🚢 ' + v.name + ' — ' + t.name + ' · ' + c.expiry_date]);
   });
   if (rows.length) notify_('expiry', 'Certificates expiring soon｜證照即將到期（' + rows.length + '）', rows);
+}
+
+// ============ 船位追蹤（Datalastic AIS）============
+// 金鑰只存在 Script Properties（AIS_KEY），前端拿不到；每 2 小時由觸發器 aisRefresh 抓「系統管理勾選的船」，
+// 結果存在 Script Properties（ais_positions），所有人從 data.load 讀同一份，不會每個使用者各打一次 API。
+// 每艘船每次查詢消耗 1 點 Datalastic 額度（2 小時一次 ≈ 每船每月 360 點）。
+const AIS_URL = 'https://api.datalastic.com/api/v0/vessel';
+function aisData_() {
+  const props = PropertiesService.getScriptProperties();
+  let d = {};
+  try { d = JSON.parse(props.getProperty('ais_positions') || '{}'); } catch (e) { d = {}; }
+  d.key_set = !!props.getProperty('AIS_KEY');
+  d.pos = d.pos || {};
+  return d;
+}
+function aisKeyAdmin_(u, p) {
+  requireRole_(u, ['admin']);
+  const props = PropertiesService.getScriptProperties();
+  if (p.clear) props.deleteProperty('AIS_KEY');
+  else if (str_(p.key)) { props.setProperty('AIS_KEY', str_(p.key)); ensureAisTrigger_(); }
+  return aisData_();
+}
+function ensureAisTrigger_() {
+  try {
+    if (!ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'aisRefresh')) ScriptApp.newTrigger('aisRefresh').timeBased().everyHours(2).create();
+  } catch (e) { console.warn('AIS trigger: ' + e.message); }
+}
+/** 觸發器每 2 小時執行 */
+function aisRefresh() { ensureSchema_(); aisRefresh_(); }
+function aisRefresh_() {
+  const props = PropertiesService.getScriptProperties();
+  const key = props.getProperty('AIS_KEY');
+  const old = aisData_();
+  const ids = String(settings_().track_vessels || '').split(',').filter(Boolean);
+  const ships = Repo.all('Vessels').filter(v => ids.indexOf(v.id) >= 0)
+    .map(v => ({ id: v.id, name: v.name, mmsi: str_(v.mmsi).replace(/\D/g, '') })).filter(v => v.mmsi.length === 9);
+  const out = { updated_at: nowIso_(), error: '', pos: {} };
+  if (!key) out.error = 'API key not set';
+  else if (ships.length) {
+    const res = UrlFetchApp.fetchAll(ships.map(v => ({ url: AIS_URL + '?api-key=' + encodeURIComponent(key) + '&mmsi=' + v.mmsi, muteHttpExceptions: true })));
+    const num = x => (x === null || x === undefined || x === '' || !isFinite(Number(x))) ? null : Number(x);
+    const errs = [];
+    res.forEach((r, i) => {
+      const v = ships[i];
+      let j = null;
+      try { j = JSON.parse(r.getContentText()); } catch (e) { j = null; }
+      const d = j && j.data;
+      if (r.getResponseCode() === 200 && d && num(d.lat) !== null && num(d.lon) !== null) {
+        out.pos[v.id] = { lat: num(d.lat), lon: num(d.lon), speed: num(d.speed), course: num(d.course), heading: num(d.heading),
+          status: str_(d.navigation_status), dest: str_(d.destination),
+          at: d.last_position_epoch ? new Date(Number(d.last_position_epoch) * 1000).toISOString() : str_(d.last_position_UTC) };
+      } else {
+        const msg = (j && ((j.meta && j.meta.message) || j.message || j.error)) || ('HTTP ' + r.getResponseCode());
+        errs.push(v.name + ': ' + (typeof msg === 'string' ? msg : JSON.stringify(msg)));
+        if (old.pos[v.id]) out.pos[v.id] = Object.assign({}, old.pos[v.id], { stale: true });   // 這次沒抓到就沿用上一筆並標示
+      }
+    });
+    out.error = errs.join(' · ').slice(0, 500);
+  }
+  props.setProperty('ais_positions', JSON.stringify(out));
+  bumpRev_();
+  return aisData_();
 }
 
 // ============ Vessel certificates ============
