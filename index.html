@@ -293,7 +293,11 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
 .vpos-card.pending{border-style:dashed;background:#fffdf6}
 .vpos-name .b{font-size:10px;padding:1px 6px;vertical-align:middle}
 .dash-left{gap:14px}
-.dash-left>#dashAnnounce:empty{display:none}
+.dash-left>#dashAnnounce:empty,.dash-left>#dashVesselPos:empty{display:none}
+/* 船舶位置放在地圖左邊，外框跟下方 KPI 群組一致 */
+.dash-left .vpos{margin:0;background:rgba(255,255,255,.55);border:1px solid var(--border);border-radius:14px;padding:12px}
+.dash-left .vpos-card{flex:1 1 170px}
+.dash-left .wx-empty{margin:0}
 .dash-left .kpi-grid{grid-template-columns:1fr;margin-bottom:0;gap:14px;flex:1}
 .dash-top:has(#dashWeather:empty) .dash-left .kpi-grid{grid-template-columns:1fr 1fr}
 .dash-top .ann-board,.dash-top .wxc,.dash-top .wx-empty{margin-bottom:0}
@@ -742,9 +746,8 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
     <div class="content">
       <!-- DASHBOARD -->
       <div class="page" id="page-dashboard">
-        <div id="dashVesselPos"></div>
         <div class="dash-top">
-          <div class="dash-left"><div id="dashAnnounce"></div><div class="kpi-grid" id="dashStats"></div></div>
+          <div class="dash-left"><div id="dashAnnounce"></div><div id="dashVesselPos"></div><div class="kpi-grid" id="dashStats"></div></div>
           <div id="dashWeather"></div>
         </div>
         <div class="grid-2">
