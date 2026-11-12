@@ -367,7 +367,8 @@ const ROUTES = {
   'settings.save': (u, p) => saveSettings_(u, p),
   'admin.ptwKey': (u, p) => ptwLinkKeyAdmin_(u, p),
   'admin.aisKey': (u, p) => aisKeyAdmin_(u, p),
-  'ais.refresh': (u, p) => { requirePerm_(u, 'basic'); ensureAisTrigger_(); return aisRefresh_(); },
+  'ais.refresh': (u, p) => { if (!isStaff_(u)) fail_('Permission denied', 'FORBIDDEN'); ensureAisTrigger_(); return aisRefresh_(); },
+  'ais.track': (u, p) => aisTrack_(u, p),
 
   // Offshore PTW 系統（伺服器對伺服器，以連結金鑰驗證）
   'ext.vessels': () => ({ vessels: Repo.all('Vessels').map(extVessel_) }),
@@ -1586,14 +1587,31 @@ function aisRefresh() {
   if (Date.now() - last < (aisInterval_() - 2) * 60000) return;
   aisRefresh_();
 }
-function aisRefresh_() {
+/** 儀表板地圖勾選／取消單一艘船（Admin／MC）；勾選時只抓這一艘，不重抓全部 */
+function aisTrack_(u, p) {
+  if (!isStaff_(u)) fail_('Permission denied', 'FORBIDDEN');
+  const v = Repo.get('Vessels', str_(p.id));
+  if (!v) fail_('Vessel not found', 'NOT_FOUND');
+  const settings = withLock_(() => {
+    const ids = String(settings_().track_vessels || '').split(',').filter(x => x && x !== v.id);
+    if (p.on) ids.push(v.id);
+    if (Repo.get('Settings', 'track_vessels')) Repo.update('Settings', 'track_vessels', { value: ids.join(',') });
+    else Repo.insert('Settings', { key: 'track_vessels', value: ids.join(',') });
+    return settings_();
+  });
+  let ais = aisData_();
+  if (p.on && ais.key_set) { ensureAisTrigger_(); ais = aisRefresh_([v.id]); }
+  return { settings: settings, ais: ais };
+}
+/** only：只抓這幾艘並合併進現有船位（其他船保留原資料與更新時間） */
+function aisRefresh_(only) {
   const props = PropertiesService.getScriptProperties();
   const key = props.getProperty('AIS_KEY');
   const old = aisData_();
-  const ids = String(settings_().track_vessels || '').split(',').filter(Boolean);
+  const ids = only || String(settings_().track_vessels || '').split(',').filter(Boolean);
   const ships = Repo.all('Vessels').filter(v => ids.indexOf(v.id) >= 0)
     .map(v => ({ id: v.id, name: v.name, mmsi: str_(v.mmsi).replace(/\D/g, '') })).filter(v => v.mmsi.length === 9);
-  const out = { updated_at: nowIso_(), error: '', pos: {} };
+  const out = only ? { updated_at: old.updated_at || nowIso_(), error: old.error || '', pos: Object.assign({}, old.pos) } : { updated_at: nowIso_(), error: '', pos: {} };
   if (!key) out.error = 'API key not set';
   else if (ships.length) {
     const res = UrlFetchApp.fetchAll(ships.map(v => ({ url: AIS_URL + '?api-key=' + encodeURIComponent(key) + '&mmsi=' + v.mmsi, muteHttpExceptions: true })));
@@ -1614,7 +1632,7 @@ function aisRefresh_() {
         if (old.pos[v.id]) out.pos[v.id] = Object.assign({}, old.pos[v.id], { stale: true });   // 這次沒抓到就沿用上一筆並標示
       }
     });
-    out.error = errs.join(' · ').slice(0, 500);
+    if (!only || errs.length) out.error = errs.join(' · ').slice(0, 500);
   }
   props.setProperty('ais_positions', JSON.stringify(out));
   bumpRev_();
