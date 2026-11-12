@@ -228,6 +228,12 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
 .wxc-ships{display:flex;align-items:center;gap:6px 14px;flex-wrap:wrap;padding:8px 14px;border-top:1px solid var(--border);font-size:13px}
 .wxc-ships .ttl{font-weight:700;color:var(--navy)}
 .wxc-ships .warn{flex-basis:100%;font-size:12px;color:#a11d1d}
+/* 船名清單預設只顯示一行，超過的按箭頭展開 */
+.wxsp-list{flex:1 1 0;min-width:0;display:flex;flex-wrap:wrap;gap:6px 14px;max-height:1.6em;line-height:1.6em;overflow:hidden}
+.wxsp-list.open{max-height:none}
+.wxsp-more{border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--navy);cursor:pointer;padding:0 6px;height:24px;display:inline-flex;align-items:center;gap:3px;font-size:12px}
+.wxsp-more svg{transition:transform .2s}.wxsp-more.open svg{transform:rotate(180deg)}
+.wxsp-more[hidden]{display:none}
 .wxc-foot{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;padding:10px 14px}
 .wxs{display:flex;align-items:center;gap:10px;padding:10px 14px 0}
 .wxs-play{flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:0;background:var(--navy);color:#fff;font-size:14px;cursor:pointer}
@@ -1837,13 +1843,28 @@ function wxRenderShipPick() {
   const a = S.ais || {}, ids = trackedIds();
   const list = S.vessels.filter(x => x.approval !== 'Rejected').sort((x, y) => (isApproved(y) - isApproved(x)) || x.name.localeCompare(y.name));
   box.style.display = list.length ? '' : 'none';
-  box.innerHTML = `<span class="ttl">🚢 ${L('Show on map:', '地圖顯示船位：')}</span>${list.map(x => {
+  const open = !!WX.shipPickOpen;
+  box.innerHTML = `<span class="ttl">🚢 ${L('Show on map:', '地圖顯示船位：')}</span><div class="wxsp-list${open ? ' open' : ''}" id="wxspList">${list.map(x => {
     const ok = String(x.mmsi || '').replace(/D/g, '').length === 9;
     return `<label class="chk" ${ok ? '' : `title="${L('No 9-digit MMSI', '未填 9 碼 MMSI')}"`}><input type="checkbox" value="${x.id}" onchange="aisTrackToggle(this)" ${ids.indexOf(x.id) >= 0 ? 'checked' : ''} ${ok ? '' : 'disabled'}> <span class="notr">${esc(x.name)}</span>${ok ? '' : ' <span class="hint">⚠ MMSI</span>'}</label>`;
-  }).join('')}
+  }).join('')}</div>
+    <button type="button" class="wxsp-more${open ? ' open' : ''}" id="wxspMore" onclick="wxShipPickToggle()" hidden><span id="wxspMoreTxt"></span><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 L6 8 L9.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <button type="button" class="btn btn-secondary btn-sm" onclick="aisDashRefresh(this)" ${a.key_set && ids.length ? '' : 'disabled'} title="${a.key_set ? '' : L('Datalastic API key not set', '尚未設定 Datalastic API 金鑰')}">🔄 ${L('Update positions', '更新船位')}</button>
     <span class="warn">⚠ ${L('Ticking a vessel uses Datalastic credits (1 per vessel per update, plus every scheduled update). Please make sure the vessel is actually working offshore before ticking it.', '勾選後會吃額度（每艘船每次更新扣 1 點，之後每次定時更新也會扣），請確認該船有在海外作業再進行勾選。')}</span>`;
+  wxShipPickFit();
 }
+window.addEventListener("resize", () => wxShipPickFit());
+/** 第一行放不下時才出現箭頭；收合時顯示還有幾艘沒露出來 */
+function wxShipPickFit() {
+  const list = document.getElementById('wxspList'), btn = document.getElementById('wxspMore');
+  if (!list || !btn) return;
+  const items = [...list.children], top = items.length ? items[0].offsetTop : 0;
+  const hidden = items.filter(el => el.offsetTop > top + 4).length;
+  btn.hidden = !hidden;
+  document.getElementById('wxspMoreTxt').textContent = WX.shipPickOpen ? L('Less', '收合') : '+' + hidden;
+  btn.title = WX.shipPickOpen ? L('Show one line', '只顯示一行') : L('Show all vessels', '顯示全部船舶');
+}
+function wxShipPickToggle() { WX.shipPickOpen = !WX.shipPickOpen; wxRenderShipPick(); }
 async function aisTrackToggle(cb) {
   const on = cb.checked;
   cb.disabled = true;
