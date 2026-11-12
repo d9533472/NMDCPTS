@@ -222,20 +222,26 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
 .wxc-map{position:relative}
 #wxMap{height:420px;background:#cfe3ef}
 @media(max-width:700px){#wxMap{height:320px}}
-.wxc-legend{position:absolute;left:10px;bottom:10px;z-index:500;background:rgba(255,255,255,.93);border-radius:8px;padding:6px 10px;font-size:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;max-width:calc(100% - 20px)}
+.wxc-legend{position:absolute;left:10px;top:10px;z-index:500;background:rgba(255,255,255,.93);border-radius:8px;padding:6px 10px;font-size:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;max-width:calc(100% - 70px)}
 .wxc-legend span{display:inline-flex;align-items:center;gap:4px}.wxc-legend i{width:10px;height:10px;border-radius:50%}
 .wxc-legend i.ok{background:#0a8a43}.wxc-legend i.warn{background:#d98a00}.wxc-legend i.bad{background:#c62828}
 .wxc-ships{display:flex;align-items:center;gap:6px 14px;flex-wrap:wrap;padding:8px 14px;border-top:1px solid var(--border);font-size:13px}
 .wxc-ships .ttl{font-weight:700;color:var(--navy)}
 .wxc-ships .warn{flex-basis:100%;font-size:12px;color:#a11d1d}
-/* 船名清單預設只顯示一行，超過的按箭頭展開 */
-.wxsp-list{flex:1 1 0;min-width:0;display:flex;flex-wrap:wrap;gap:6px 14px;max-height:1.6em;line-height:1.6em;overflow:hidden}
-.wxsp-list.open{max-height:none}
-.wxsp-more{border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--navy);cursor:pointer;padding:0 6px;height:24px;display:inline-flex;align-items:center;gap:3px;font-size:12px}
-.wxsp-more svg{transition:transform .2s}.wxsp-more.open svg{transform:rotate(180deg)}
-.wxsp-more[hidden]{display:none}
+/* 船名下拉選單：浮在地圖上往上展開，不佔版面（.wxc 有 overflow:hidden，所以往上開） */
+.wxc-ships{position:relative}
+.wxsp-dd{position:relative}
+.wxsp-btn{border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--navy);cursor:pointer;padding:0 8px;height:28px;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700}
+.wxsp-btn .cnt{font-weight:400;color:var(--muted)}
+.wxsp-btn svg{transition:transform .2s}.wxsp-btn.open svg{transform:rotate(180deg)}
+.wxsp-panel{position:absolute;left:0;bottom:calc(100% + 6px);z-index:1100;min-width:220px;max-width:min(360px,calc(100vw - 40px));max-height:300px;overflow:auto;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 6px 20px rgba(0,32,56,.18);padding:6px 0}
+.wxsp-panel[hidden]{display:none}
+.wxsp-panel .chk{display:flex;align-items:center;gap:6px;padding:5px 12px;cursor:pointer;white-space:nowrap}
+.wxsp-panel .chk:hover{background:#f1f6fa}
 .wxc-foot{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;padding:10px 14px}
-.wxs{display:flex;align-items:center;gap:10px;padding:10px 14px 0}
+/* 時間軸浮在地圖底部（右下角留給 Leaflet 版權列） */
+.wxs{position:absolute;left:10px;right:10px;bottom:22px;z-index:500;display:flex;align-items:center;gap:10px;padding:6px 12px 2px;background:rgba(255,255,255,.93);border-radius:8px;box-shadow:0 1px 6px rgba(0,32,56,.15)}
+.wxs:empty{display:none}
 .wxs-play{flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:0;background:var(--navy);color:#fff;font-size:14px;cursor:pointer}
 .wxs-body{flex:1;min-width:0;position:relative}
 .wxs-now{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:2px;display:flex;gap:8px;align-items:baseline}
@@ -1844,27 +1850,23 @@ function wxRenderShipPick() {
   const list = S.vessels.filter(x => x.approval !== 'Rejected').sort((x, y) => (isApproved(y) - isApproved(x)) || x.name.localeCompare(y.name));
   box.style.display = list.length ? '' : 'none';
   const open = !!WX.shipPickOpen;
-  box.innerHTML = `<span class="ttl">🚢 ${L('Show on map:', '地圖顯示船位：')}</span><div class="wxsp-list${open ? ' open' : ''}" id="wxspList">${list.map(x => {
-    const ok = String(x.mmsi || '').replace(/D/g, '').length === 9;
+  const on = list.filter(x => ids.indexOf(x.id) >= 0).length;
+  box.innerHTML = `<div class="wxsp-dd" id="wxspDd"><button type="button" class="wxsp-btn${open ? ' open' : ''}" onclick="wxShipPickToggle()" aria-expanded="${open}">🚢 ${L('Show on map', '地圖顯示船位')} <span class="cnt">(${on}/${list.length})</span><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 7.5 L6 4 L9.5 7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <div class="wxsp-panel" ${open ? '' : 'hidden'}>${list.map(x => {
+    const ok = String(x.mmsi || '').replace(/\D/g, '').length === 9;
     return `<label class="chk" ${ok ? '' : `title="${L('No 9-digit MMSI', '未填 9 碼 MMSI')}"`}><input type="checkbox" value="${x.id}" onchange="aisTrackToggle(this)" ${ids.indexOf(x.id) >= 0 ? 'checked' : ''} ${ok ? '' : 'disabled'}> <span class="notr">${esc(x.name)}</span>${ok ? '' : ' <span class="hint">⚠ MMSI</span>'}</label>`;
-  }).join('')}</div>
-    <button type="button" class="wxsp-more${open ? ' open' : ''}" id="wxspMore" onclick="wxShipPickToggle()" hidden><span id="wxspMoreTxt"></span><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 L6 8 L9.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  }).join('')}</div></div>
     <button type="button" class="btn btn-secondary btn-sm" onclick="aisDashRefresh(this)" ${a.key_set && ids.length ? '' : 'disabled'} title="${a.key_set ? '' : L('Datalastic API key not set', '尚未設定 Datalastic API 金鑰')}">🔄 ${L('Update positions', '更新船位')}</button>
     <span class="warn">⚠ ${L('Ticking a vessel uses Datalastic credits (1 per vessel per update, plus every scheduled update). Please make sure the vessel is actually working offshore before ticking it.', '勾選後會吃額度（每艘船每次更新扣 1 點，之後每次定時更新也會扣），請確認該船有在海外作業再進行勾選。')}</span>`;
-  wxShipPickFit();
 }
-window.addEventListener("resize", () => wxShipPickFit());
-/** 第一行放不下時才出現箭頭；收合時顯示還有幾艘沒露出來 */
-function wxShipPickFit() {
-  const list = document.getElementById('wxspList'), btn = document.getElementById('wxspMore');
-  if (!list || !btn) return;
-  const items = [...list.children], top = items.length ? items[0].offsetTop : 0;
-  const hidden = items.filter(el => el.offsetTop > top + 4).length;
-  btn.hidden = !hidden;
-  document.getElementById('wxspMoreTxt').textContent = WX.shipPickOpen ? L('Less', '收合') : '+' + hidden;
-  btn.title = WX.shipPickOpen ? L('Show one line', '只顯示一行') : L('Show all vessels', '顯示全部船舶');
+function wxShipPickToggle(force) {
+  const open = force === undefined ? !WX.shipPickOpen : force;
+  if (open === !!WX.shipPickOpen) return;
+  WX.shipPickOpen = open; wxRenderShipPick();
 }
-function wxShipPickToggle() { WX.shipPickOpen = !WX.shipPickOpen; wxRenderShipPick(); }
+// 點選單外面或按 Esc 收起下拉選單
+document.addEventListener('mousedown', e => { if (WX.shipPickOpen && !e.target.closest('#wxspDd')) wxShipPickToggle(false); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && WX.shipPickOpen) wxShipPickToggle(false); });
 async function aisTrackToggle(cb) {
   const on = cb.checked;
   cb.disabled = true;
@@ -2011,9 +2013,8 @@ function renderWeather() {
     el.innerHTML = `<div class="wxc"><div class="wxc-head"><h3 class="notr" id="wxTitle"></h3><span id="wxStatus"></span><span class="wxc-upd" id="wxUpd"></span><span class="wxc-upd ship" id="wxShipUpd"></span>
         <button type="button" class="wxc-fold" id="wxFold" onclick="wxToggle()"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 11 L9 6 L14 11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button></div>
       <div id="wxCollapsed" class="wxc-chips"></div>
-      <div id="wxExpanded"><div class="wxc-map"><div id="wxMap"></div><div class="wxc-legend" id="wxLegend"></div></div>
+      <div id="wxExpanded"><div class="wxc-map"><div id="wxMap"></div><div class="wxc-legend" id="wxLegend"></div><div class="wxs" id="wxSlider"></div></div>
         <div class="wxc-ships" id="wxShipPick"></div>
-        <div class="wxs" id="wxSlider"></div>
         <div class="wxc-foot"><span id="wxTabs"></span><span class="wxc-hint" id="wxHint"></span></div></div></div>`;
     WX.built = buildKey;
     WX.editing = false;
