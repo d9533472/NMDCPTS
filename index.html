@@ -240,16 +240,16 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
 .wxsp-panel .chk:hover{background:#f1f6fa}
 .wxc-foot{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;padding:10px 14px}
 /* 時間軸浮在地圖底部（右下角留給 Leaflet 版權列） */
-.wxs{position:absolute;left:10px;right:10px;bottom:22px;z-index:500;display:flex;align-items:center;gap:10px;padding:6px 12px 2px;background:rgba(255,255,255,.93);border-radius:8px;box-shadow:0 1px 6px rgba(0,32,56,.15)}
+.wxs{position:absolute;left:8px;right:8px;bottom:20px;z-index:500;display:flex;align-items:center;gap:8px;padding:3px 8px 1px;background:rgba(255,255,255,.85);border-radius:8px;box-shadow:0 1px 6px rgba(0,32,56,.15)}
 .wxs:empty{display:none}
-.wxs-play{flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:0;background:var(--navy);color:#fff;font-size:14px;cursor:pointer}
+.wxs-play{flex:0 0 auto;width:28px;height:28px;border-radius:50%;border:0;background:var(--navy);color:#fff;font-size:11px;cursor:pointer}
 .wxs-body{flex:1;min-width:0;position:relative}
-.wxs-now{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:2px;display:flex;gap:8px;align-items:baseline}
-.wxs-now small{font-weight:400;color:var(--text-2,#5b6b7d)}
-.wxs-strip{display:flex;height:6px;border-radius:3px;overflow:hidden;margin:0 7px}
+.wxs-now{font-size:11px;font-weight:700;color:var(--navy);margin-bottom:1px;display:flex;gap:6px;align-items:baseline;white-space:nowrap;overflow:hidden}
+.wxs-now small{font-weight:400;color:var(--text-2,#5b6b7d);overflow:hidden;text-overflow:ellipsis}
+.wxs-strip{display:flex;height:4px;border-radius:2px;overflow:hidden;margin:0 7px}
 .wxs-strip i{flex:1}.wxs-strip i.ok{background:#0a8a43}.wxs-strip i.warn{background:#d98a00}.wxs-strip i.bad{background:#c62828}.wxs-strip i.na{background:#cfd8e0}
-.wxs input[type=range]{width:100%;margin:4px 0 0;accent-color:var(--navy);cursor:pointer;height:22px}
-.wxs-days{position:relative;height:16px;font-size:11px;color:#5b6b7d;margin:0 7px}
+.wxs input[type=range]{width:100%;margin:1px 0 0;accent-color:var(--navy);cursor:pointer;height:16px}
+.wxs-days{position:relative;height:13px;font-size:10px;line-height:13px;color:#5b6b7d;margin:0 7px}
 .wxs-days span{position:absolute;top:0;white-space:nowrap;border-left:1px solid #b9c6d2;padding-left:3px}
 .wxc-hint{font-size:12px;color:var(--muted)}
 .wx-tabs{display:inline-flex;flex-wrap:wrap;background:var(--bg);border-radius:10px;padding:3px;gap:3px}
