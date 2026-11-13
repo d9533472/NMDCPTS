@@ -2270,14 +2270,17 @@ function renderPersonnel() {
   </tr>`).join('');
 }
 function exportPersonnelCSV() {
-  const rows = [['Name','Company','Nationality','Position','Email','Phone','Passport','Blood type','Emergency contact','Emergency contact phone','Medical','Offshore Safety Training','Qualified','Location']];
-  S.personnel.forEach(p => rows.push([p.name, p.company, p.nationality, p.position, p.email, p.phone, p.passport, p.blood_type, p.emergency, p.emergency_phone,
+  const rows = [['Name','Company','Nationality','Position','Email','Phone','Passport','Blood type','Emergency contact','Emergency contact phone','Access','Medical','Offshore Safety Training','Qualified','Location']];
+  S.personnel.forEach(p => rows.push([p.name, p.company, p.nationality, p.position, p.email, p.phone, p.passport, p.blood_type, p.emergency, p.emergency_phone, p.access || '',
     catStatus(p, 'Medical').text, catStatus(p, CAT_SAFETY).text, isQualified(p) ? 'Yes' : 'No', locName(p.current_location)]));
   downloadCSV(rows, 'opts_personnel_' + todayStr() + '.csv');
 }
 
 const BLOOD_TYPES = ['A+','A-','B+','B-','AB+','AB-','O+','O-'];
 const PERSON_REQUIRED = ['name','company','nationality','position','email','phone','passport','blood_type','emergency','emergency_phone'];
+// 進港方式（可複選，存成逗號分隔字串）
+const PERSON_ACCESS = [['Shore pass', 'Shore pass', '岸上通行證'], ['Port pass', 'Port pass', '港區通行證']];
+const accessOf = p => String(p.access || '').split(',').map(s => s.trim()).filter(Boolean);
 let pmPhoto = null;   // undefined = unchanged
 function openPersonnel(id) {
   const p = id ? S.personnel.find(x => x.id === id) : { company: isAdmin() ? '' : S.user.company };
@@ -2320,6 +2323,8 @@ function openPersonnel(id) {
       <div class="form-group"><label>Blood type *</label><select id="pm_blood"><option value="">-- Select --</option>${BLOOD_TYPES.map(b => `<option value="${b}" ${b === p.blood_type ? 'selected' : ''}>${b}</option>`).join('')}</select></div>
       <div class="form-group"><label>Emergency contact *</label><input id="pm_emergency" value="${esc(p.emergency || '')}" placeholder="Name / relation"></div>
       <div class="form-group"><label>Emergency contact phone *</label><input id="pm_emergency_phone" value="${esc(p.emergency_phone || '')}" placeholder="+971 …"></div>
+      <div class="form-group"><label>${L('Access', '進港方式')}</label><div style="display:flex;gap:16px;flex-wrap:wrap;min-height:38px;align-items:center">${PERSON_ACCESS.map(([k, en, zh]) =>
+        `<label class="chk"><input type="checkbox" name="pm_access" value="${k}" ${accessOf(p).indexOf(k) >= 0 ? 'checked' : ''}> ${L(en, zh + ' ' + en)}</label>`).join('')}</div></div>
       <div class="form-group"><label>Current location</label>${locField}${!staff && !id ? `<span class="hint">${L('Initial location only — later moves are done by MC (Transfer).', '只能設定初始位置，之後的移動由 MC 用「轉運」處理。')}</span>` : ''}</div>
       <div class="form-group full"><label>Remark</label><textarea id="pm_remark">${esc(p.remark || '')}</textarea></div>
       ${editable ? `<div class="form-actions"><button class="btn btn-primary" onclick="savePersonnel(this,'${id || ''}')">💾 Save personnel</button></div>` : ''}
@@ -2357,7 +2362,8 @@ function pickPhoto(input) {
 async function savePersonnel(btn, id) {
   const d = { id: id || '', name: v('pm_name'), company: v('pm_company'), position: v('pm_position'), email: v('pm_email'),
     phone: v('pm_phone'), nationality: v('pm_nationality'), passport: v('pm_passport'), blood_type: v('pm_blood'),
-    emergency: v('pm_emergency'), emergency_phone: v('pm_emergency_phone'), remark: v('pm_remark'), photo: pmPhoto || '' };
+    emergency: v('pm_emergency'), emergency_phone: v('pm_emergency_phone'), remark: v('pm_remark'), photo: pmPhoto || '',
+    access: [...document.querySelectorAll('input[name=pm_access]:checked')].map(x => x.value).join(', ') };
   if (isStaff() || !id) d.current_location = v('pm_location');
   if (PERSON_REQUIRED.some(f => !d[f])) { toast('All personnel fields are required', 'error'); return; }
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)) { toast('Email address looks invalid', 'error'); return; }

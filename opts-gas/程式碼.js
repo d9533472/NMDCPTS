@@ -10,7 +10,7 @@
 // 通知信：Settings.notify_emails（共用收件者）＋ notify_events（啟用的事件）；每日到期提醒由 setup() 建立的觸發器執行。
 // ============================================================
 
-const VERSION = '2.10';
+const VERSION = '2.12';
 const CAT_SAFETY = 'Offshore Safety Training';   // 原 'Sea Survival'（2.1 改名，ensureSchema_ 會遷移舊資料）
 
 const SCHEMAS = {
@@ -18,7 +18,7 @@ const SCHEMAS = {
   Sessions: ['token','user_id','expires_at','created_at'],
   Companies: ['id','name','active','created_at'],
   Vessels: ['id','name','mmsi','imo','type','flag','gross_tonnage','max_persons','operator','company','contact_person','phone','whatsapp','email','remark','scopes','approval','approval_note','approved_by','approved_at','created_by','created_at','updated_at'],
-  Personnel: ['id','name','company','nationality','position','email','phone','passport','blood_type','emergency','emergency_phone','photo','passport_file_id','passport_file_name','remark','current_location','approval','approval_note','approved_by','approved_at','created_by','created_at','updated_at'],
+  Personnel: ['id','name','company','nationality','position','email','phone','passport','blood_type','emergency','emergency_phone','access','photo','passport_file_id','passport_file_name','remark','current_location','approval','approval_note','approved_by','approved_at','created_by','created_at','updated_at'],
   Meetings: ['id','title','time','location','items','attendees','externals','remark','attachments','created_by','created_at','updated_at'],
   Announcements: ['id','text_zh','text_en','level','link_url','link_text','attachments','active','created_by','created_at','updated_at'],
   AuditLog: ['id','time','username','name','role','company','action','target_id','target_name','detail','result','error'],
@@ -937,7 +937,7 @@ function deleteLocation_(id) {
 }
 
 // ============ Personnel ============
-const PERSON_FIELDS = ['name','company','nationality','position','email','phone','passport','blood_type','emergency','emergency_phone','photo','remark','current_location'];
+const PERSON_FIELDS = ['name','company','nationality','position','email','phone','passport','blood_type','emergency','emergency_phone','access','photo','remark','current_location'];
 /** 人員必填欄位（照片、備註、位置除外） */
 const PERSON_REQUIRED = ['name','company','nationality','position','email','phone','passport','blood_type','emergency','emergency_phone'];
 const BLOOD_TYPES = ['A+','A-','B+','B-','AB+','AB-','O+','O-'];
