@@ -346,6 +346,7 @@ input,select,textarea{font:inherit;font-size:13px;color:var(--text)}
 .tf-row .loc{margin-left:auto;color:var(--muted);font-size:12px}
 .chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer}
 .chk input{width:16px;height:16px;accent-color:var(--green)}
+.help-q{width:18px;height:18px;border-radius:50%;border:0;background:var(--navy);color:#fff;font-size:11px;font-weight:700;line-height:18px;padding:0;margin-left:4px;cursor:pointer;vertical-align:1px}
 .contact a{text-decoration:none}
 .contact div{white-space:nowrap;font-size:12px}
 .menu-btn{display:none;background:none;border:1px solid var(--border);border-radius:var(--radius);padding:4px 9px;font-size:16px;cursor:pointer}
@@ -2279,7 +2280,10 @@ function exportPersonnelCSV() {
 const BLOOD_TYPES = ['A+','A-','B+','B-','AB+','AB-','O+','O-'];
 const PERSON_REQUIRED = ['name','company','nationality','position','email','phone','passport','blood_type','emergency','emergency_phone','access'];
 // 進港方式（可複選，存成逗號分隔字串）
-const PERSON_ACCESS = [['Shore pass', 'Shore pass', '岸上通行證'], ['Port pass', 'Port pass', '港區通行證']];
+const PERSON_ACCESS = [['Port pass', 'Harbor Entry Pass (Port Pass)', '港區通行證'], ['Shore pass', 'Crew Member’s Temporary Entry Permit (Shore Pass)', '船員臨時停留許可證']];
+function showAccessGuide() {
+  openModal(L('Access passes', '進港通行證說明'), `<img src="access-pass-guide.jpg" alt="" style="width:100%;height:auto;display:block;border-radius:6px">`, true);
+}
 const accessOf = p => String(p.access || '').split(',').map(s => s.trim()).filter(Boolean);
 let pmPhoto = null;   // undefined = unchanged
 function openPersonnel(id) {
@@ -2323,8 +2327,8 @@ function openPersonnel(id) {
       <div class="form-group"><label>Blood type *</label><select id="pm_blood"><option value="">-- Select --</option>${BLOOD_TYPES.map(b => `<option value="${b}" ${b === p.blood_type ? 'selected' : ''}>${b}</option>`).join('')}</select></div>
       <div class="form-group"><label>Emergency contact *</label><input id="pm_emergency" value="${esc(p.emergency || '')}" placeholder="Name / relation"></div>
       <div class="form-group"><label>Emergency contact phone *</label><input id="pm_emergency_phone" value="${esc(p.emergency_phone || '')}" placeholder="+971 …"></div>
-      <div class="form-group"><label>${L('Access *', '進港方式 *')}</label><div style="display:flex;gap:16px;flex-wrap:wrap;min-height:38px;align-items:center">${PERSON_ACCESS.map(([k, en, zh]) =>
-        `<label class="chk"><input type="checkbox" name="pm_access" value="${k}" ${accessOf(p).indexOf(k) >= 0 ? 'checked' : ''}> ${L(en, zh + ' ' + en)}</label>`).join('')}</div></div>
+      <div class="form-group"><label>${L('Access *', '進港方式 *')} <button type="button" class="help-q" onclick="showAccessGuide()" title="${L('What do these passes look like?', '通行證長什麼樣子？')}">?</button></label><div style="display:flex;flex-direction:column;gap:6px;min-height:38px;justify-content:center">${PERSON_ACCESS.map(([k, en, zh]) =>
+        `<label class="chk"><input type="checkbox" name="pm_access" value="${k}" ${accessOf(p).indexOf(k) >= 0 ? 'checked' : ''}> ${L(en, zh)}</label>`).join('')}</div></div>
       <div class="form-group"><label>Current location</label>${locField}${!staff && !id ? `<span class="hint">${L('Initial location only — later moves are done by MC (Transfer).', '只能設定初始位置，之後的移動由 MC 用「轉運」處理。')}</span>` : ''}</div>
       <div class="form-group full"><label>Remark</label><textarea id="pm_remark">${esc(p.remark || '')}</textarea></div>
       ${editable ? `<div class="form-actions"><button class="btn btn-primary" onclick="savePersonnel(this,'${id || ''}')">💾 Save personnel</button></div>` : ''}
