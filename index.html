@@ -2277,7 +2277,7 @@ function exportPersonnelCSV() {
 }
 
 const BLOOD_TYPES = ['A+','A-','B+','B-','AB+','AB-','O+','O-'];
-const PERSON_REQUIRED = ['name','company','nationality','position','email','phone','passport','blood_type','emergency','emergency_phone'];
+const PERSON_REQUIRED = ['name','company','nationality','position','email','phone','passport','blood_type','emergency','emergency_phone','access'];
 // 進港方式（可複選，存成逗號分隔字串）
 const PERSON_ACCESS = [['Shore pass', 'Shore pass', '岸上通行證'], ['Port pass', 'Port pass', '港區通行證']];
 const accessOf = p => String(p.access || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -2323,7 +2323,7 @@ function openPersonnel(id) {
       <div class="form-group"><label>Blood type *</label><select id="pm_blood"><option value="">-- Select --</option>${BLOOD_TYPES.map(b => `<option value="${b}" ${b === p.blood_type ? 'selected' : ''}>${b}</option>`).join('')}</select></div>
       <div class="form-group"><label>Emergency contact *</label><input id="pm_emergency" value="${esc(p.emergency || '')}" placeholder="Name / relation"></div>
       <div class="form-group"><label>Emergency contact phone *</label><input id="pm_emergency_phone" value="${esc(p.emergency_phone || '')}" placeholder="+971 …"></div>
-      <div class="form-group"><label>${L('Access', '進港方式')}</label><div style="display:flex;gap:16px;flex-wrap:wrap;min-height:38px;align-items:center">${PERSON_ACCESS.map(([k, en, zh]) =>
+      <div class="form-group"><label>${L('Access *', '進港方式 *')}</label><div style="display:flex;gap:16px;flex-wrap:wrap;min-height:38px;align-items:center">${PERSON_ACCESS.map(([k, en, zh]) =>
         `<label class="chk"><input type="checkbox" name="pm_access" value="${k}" ${accessOf(p).indexOf(k) >= 0 ? 'checked' : ''}> ${L(en, zh + ' ' + en)}</label>`).join('')}</div></div>
       <div class="form-group"><label>Current location</label>${locField}${!staff && !id ? `<span class="hint">${L('Initial location only — later moves are done by MC (Transfer).', '只能設定初始位置，之後的移動由 MC 用「轉運」處理。')}</span>` : ''}</div>
       <div class="form-group full"><label>Remark</label><textarea id="pm_remark">${esc(p.remark || '')}</textarea></div>
@@ -2365,6 +2365,7 @@ async function savePersonnel(btn, id) {
     emergency: v('pm_emergency'), emergency_phone: v('pm_emergency_phone'), remark: v('pm_remark'), photo: pmPhoto || '',
     access: [...document.querySelectorAll('input[name=pm_access]:checked')].map(x => x.value).join(', ') };
   if (isStaff() || !id) d.current_location = v('pm_location');
+  if (!d.access) { toast(L('Please tick at least one Access option', '請至少勾選一項進港方式'), 'error'); return; }
   if (PERSON_REQUIRED.some(f => !d[f])) { toast('All personnel fields are required', 'error'); return; }
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)) { toast('Email address looks invalid', 'error'); return; }
   const ppFile = document.getElementById('pm_passport_file').files[0];

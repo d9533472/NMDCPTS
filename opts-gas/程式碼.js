@@ -10,7 +10,7 @@
 // 通知信：Settings.notify_emails（共用收件者）＋ notify_events（啟用的事件）；每日到期提醒由 setup() 建立的觸發器執行。
 // ============================================================
 
-const VERSION = '2.12';
+const VERSION = '2.13';
 const CAT_SAFETY = 'Offshore Safety Training';   // 原 'Sea Survival'（2.1 改名，ensureSchema_ 會遷移舊資料）
 
 const SCHEMAS = {
@@ -938,8 +938,8 @@ function deleteLocation_(id) {
 
 // ============ Personnel ============
 const PERSON_FIELDS = ['name','company','nationality','position','email','phone','passport','blood_type','emergency','emergency_phone','access','photo','remark','current_location'];
-/** 人員必填欄位（照片、備註、位置除外） */
-const PERSON_REQUIRED = ['name','company','nationality','position','email','phone','passport','blood_type','emergency','emergency_phone'];
+/** 人員必填欄位（照片、備註、位置除外；進港方式至少勾一項） */
+const PERSON_REQUIRED = ['name','company','nationality','position','email','phone','passport','blood_type','emergency','emergency_phone','access'];
 const BLOOD_TYPES = ['A+','A-','B+','B-','AB+','AB-','O+','O-'];
 function savePersonnel_(u, p) {
   let event = '';
