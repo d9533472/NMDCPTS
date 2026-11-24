@@ -550,6 +550,13 @@ th{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.8px}
   .kpi-sub{margin-left:4px}
   .kpi-bar{margin:6px 0 0 4px}
 }
+/* 表格盡量不用左右卷軸：證照徽章、Email、位置可換行，欄距縮小 */
+th{letter-spacing:.3px}
+@media(min-width:641px){th,td{padding:8px 10px}}
+td.contact{min-width:140px}
+.contact div{white-space:normal}
+.contact div.tel{white-space:nowrap}
+td.cert-cell .b{white-space:normal;display:inline-block;line-height:1.35;border-radius:8px;min-width:96px}
 </style>
 </head>
 <body>
@@ -2262,11 +2269,11 @@ function renderPersonnel() {
     <td><div class="person-cell">${avatar(p)}<div><strong>${esc(p.name)}</strong><small>${esc(p.nationality || '')}</small></div></div></td>
     <td>${esc(p.company)}</td>
     <td>${esc(p.position || '—')}</td>
-    <td class="contact">${p.email ? `<div><a href="mailto:${esc(p.email)}">✉ ${esc(p.email)}</a></div>` : ''}${p.phone ? `<div><a href="tel:${esc(p.phone)}">☎ ${esc(p.phone)}</a></div>` : ''}${!p.email && !p.phone ? '<span class="muted">—</span>' : ''}</td>
+    <td class="contact">${p.email ? `<div><a href="mailto:${esc(p.email)}">✉ ${esc(p.email).replace('@', '<wbr>@')}</a></div>` : ''}${p.phone ? `<div class="tel"><a href="tel:${esc(p.phone)}">☎ ${esc(p.phone)}</a></div>` : ''}${!p.email && !p.phone ? '<span class="muted">—</span>' : ''}</td>
     <td>${approvalBadge(p)}</td>
-    <td>${catBadge(p, 'Medical')}</td>
-    <td>${catBadge(p, CAT_SAFETY)}</td>
-    <td class="nowrap">${esc(locName(p.current_location, true))}</td>
+    <td class="cert-cell">${catBadge(p, 'Medical')}</td>
+    <td class="cert-cell">${catBadge(p, CAT_SAFETY)}</td>
+    <td>${esc(locName(p.current_location, true))}</td>
     <td><div class="acts"><button class="btn btn-secondary btn-sm" onclick="openPersonnel('${p.id}')">Open</button>${canDeletePerson(p) ? `<button class="btn btn-danger btn-sm" onclick="deletePersonnel('${p.id}')">🗑</button>` : ''}</div></td>
   </tr>`).join('');
 }
@@ -2900,8 +2907,8 @@ function renderSiteLog() {
   const staff = isStaff();
   const tb = document.getElementById('slBody');
   tb.innerHTML = list.length ? list.map(l => `<tr><td class="mono nowrap">${fmtDT(l.time)}</td><td><span class="b ${l.activity === 'TRANSFER' ? 'b-navy' : l.activity === 'INCIDENT' ? 'b-bad' : 'b-info'}">${esc(l.activity)}</span></td>
-    <td class="muted">${esc(l.source)}</td><td style="min-width:240px">${esc(l.detail)}</td><td class="nowrap">${esc(l.asset ? locName(l.asset) : '—')}</td>
-    <td class="nowrap">${esc(l.transport ? (vesselById(l.transport) || {}).name || '—' : '—')}</td><td class="hint" style="max-width:260px">${nameList(l.personnel)}</td><td class="muted">${esc(l.logged_by)}</td>
+    <td class="muted">${esc(l.source)}</td><td style="min-width:160px">${esc(l.detail)}</td><td>${esc(l.asset ? locName(l.asset) : '—')}</td>
+    <td>${esc(l.transport ? (vesselById(l.transport) || {}).name || '—' : '—')}</td><td class="hint" style="max-width:260px">${nameList(l.personnel)}</td><td class="muted">${esc(l.logged_by)}</td>
     ${staff ? `<td><div class="acts"><button class="btn btn-secondary btn-sm" onclick="openSiteLog('${l.id}')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteSiteLog('${l.id}')">🗑</button></div></td>` : ''}</tr>`).join('')
     : `<tr class="empty"><td colspan="9">No log entries</td></tr>`;
   document.getElementById('slFoot').textContent = all.length > 500 ? `Showing latest 500 of ${all.length} entries — use the filters or export CSV for the rest.` : `${all.length} entr${all.length === 1 ? 'y' : 'ies'}`;
