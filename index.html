@@ -1244,7 +1244,7 @@ const ADMIN_TAB_PERM = { users: 'users', companies: 'companies', vct: 'vct', pct
 // 人員編修權：Admin 全部；MC／承包商只限自家公司
 const ownCompany = p => !!S && String(p.company || '').toLowerCase() === String(S.user.company || '').toLowerCase();
 const canEditPerson = p => !isViewer() && (isStaff() || ownCompany(p));      // Admin／MC 可編全部人員（含改公司）
-const canDeletePerson = p => !isViewer() && (isAdmin() || ownCompany(p));
+const canDeletePerson = p => !isViewer() && (isStaff() || ownCompany(p));
 const isApproved = r => r.approval === 'Approved';
 function approvalBadge(r) {
   if (r.approval === 'Approved') return '<span class="b b-ok">Approved</span>';

@@ -1005,8 +1005,8 @@ function personFor_(u, personnelId, forEdit) {
 }
 function deletePersonnel_(u, id) {
   const p = personFor_(u, id, true);
-  // 刪除人員維持原規則：Admin 全部，MC／承包商只能刪自家公司
-  if (u.role !== 'admin' && !sameCompany_(p.company, u.company)) fail_('Permission denied', 'FORBIDDEN');
+  // 刪除人員：Admin／MC 可刪全部，承包商只能刪自家公司
+  if (!isStaff_(u) && !sameCompany_(p.company, u.company)) fail_('Permission denied', 'FORBIDDEN');
   if (!isStaff_(u) && p.current_location) fail_('This person is currently assigned to a location — ask MC to transfer them out first');
   return withLock_(() => {
     Repo.all('PersonCerts').filter(c => c.personnel_id === id).forEach(c => trashFile_(c.file_id));
